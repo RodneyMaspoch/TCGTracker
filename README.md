@@ -1,47 +1,169 @@
-# TCG Alert dashboards — static deploy
+# TCGTracker (PWA)
 
-This folder is a fully static site: plain HTML/CSS/JS, no build step, no
-server-side code, and no dependency on any Claude-artifact-only runtime.
+A self-hosted, installable web app that tracks MTG, Disney Lorcana, and
+Pokémon TCG restocks and prices, and sends real push notifications the
+moment something changes — even if the app isn't open. This replaces the
+three separate Claude-hosted dashboards with one app, backed by a small
+server that polls retailer pages on its own schedule (not once an hour on
+a Claude check-in).
 
-## Files
+## Why this exists
 
-- `index.html` — Spellwatch (MTG price/alert dashboard)
-- `lorcana.html` — Inkwatch (Disney Lorcana price/alert dashboard)
-- `runtime.js` — shared template engine used by both pages (see the big
-  comment block at the top of the file for how it works)
-- `img/` — local product images referenced by `index.html`
-- `screenshot-spellwatch.png`, `screenshot-lorcana.png` — hero-section
-  screenshots taken during verification, for the human reviewer's benefit
-  only. **Safe (and recommended) to delete these two files before actually
-  deploying** — they aren't referenced by either page.
+The hourly Claude-based check is inherently on an hourly clock — fine for
+slow-moving MSRP/price watching, too slow for a true first-come-first-served
+restock. This app runs its own server with two poll tiers:
 
-## Hosting
+- **Fast tier (default 90s):** Pokémon products, per your scoping choice to
+  start narrow. Also polls the Walmart Collectibles Drawing page.
+- **Slow tier (default 30min):** MTG + Disney Lorcana, roughly matching what
+  the hourly Claude check already did, now folded into the same data source.
 
-No build step of any kind. Push this folder's contents to a GitHub repo and
-point GitHub Pages (or Cloudflare Pages) at it with the repo root (or this
-folder) as the site root — `index.html` is the home page and it links to
-`lorcana.html`, which links back.
+You can widen the fast tier to any product later via `POST /api/admin/set-tier`
+(see below) — nothing about the two-tier design is Pokémon-specific, it's
+just where you asked to start.
 
-If you deploy from a subfolder of a larger repo (e.g. this `deploy/` folder
-inside a bigger project), just make sure `index.html`, `lorcana.html`,
-`runtime.js`, and `img/` stay together in the same directory — every
-reference between them is a plain relative path.
+**Boundary that's carried through unchanged:** this only ever reads pages.
+It never adds to cart, logs in, or enters the Walmart drawing for you.
 
-## What changed vs. the original `.dc.html` files
+## Before you deploy — read this
 
-The two dashboards were originally built for Claude's artifact-only runtime
-(`<x-dc>`, `{{ }}` interpolation, `<sc-if>`/`<sc-for>` directives, a custom
-`<image-slot>` element, and `support.js`/`image-slot.js`, none of which exist
-outside Claude). `runtime.js` reimplements just enough of that (a `DCLogic`
-base class, live DOM compiling/patching for `{{ }}`, `sc-if`, `sc-for`,
-`style-hover`, and `image-slot`) using only standard browser APIs, so the
-exact same markup and the exact same component script (state, computed
-values, event handlers, the 1-second countdown clock, etc.) now run anywhere.
+Retailer sites actively block bot-like traffic, including requests from
+generic cloud-hosting IP ranges (this is true of Railway/Fly/Render's
+shared IPs too, not just this sandbox). In local testing here, Best Buy,
+Target, GameStop, and Walmart all returned `HTTP 403` to a plain scripted
+request — this is expected and is a real constraint on this whole category
+of tool, not a bug to "fix" by tweaking headers. Two things follow:
 
-No prices, dates, URLs, or copy were changed — every data array
-(`ALL_DEALS`, `EVENTS`, `LOCAL`, `CONS`, etc.) and the whole `class Component
-extends DCLogic { ... }` script is carried over byte-for-byte from the
-source files. The only content edits are the cross-links between the two
-pages (`./Lorcana Dashboard.dc.html` → `lorcana.html`, and
-`./Spellwatch Dashboard.dc.html` → `index.html`) so navigation works on the
-deployed site.
+1. **Test against your actual deploy target before trusting it.** Deploy,
+   watch the logs (`console.log` on every fetch failure), and see which
+   retailers actually respond from that host's IPs. Some may work, some may
+   not, and it can change over time as retailers adjust their blocking.
+2. **The scraping logic itself is solid and future-proofed reasonably well**
+   (it prefers each page's embedded schema.org product data over fragile CSS
+   selectors — see the comment block at the top of `server/scrapers.js`), so
+   if a retailer is blocking you, that's a network/IP reputation problem, not
+   a parsing problem.
+
+If a specific retailer consistently 403s from your host, options (in rough
+order of effort) are: try a different low-cost host, add a residential/
+datacenter-proxy fetch layer (extra cost, not included here), or just accept
+that retailer isn't covered by the fast loop and lean on the Claude-based
+hourly check for it instead. This is worth knowing going in rather than
+discovering it after you've deployed and started trusting alerts that
+never fire.
+
+## Project layout
+
+```
+server/
+  index.js        Express app + all API routes
+  db.js           SQLite schema (better-sqlite3, one file)
+  seed.js         Seeds the 10 tracked products (edit this to add/remove products)
+  scrapers.js     Fetch + parse retailer pages (JSON-LD first, text fallback)
+  poller.js       The two-tier polling loop + alert rules (restock, good price, drawing open)
+  push.js         Web Push (VAPID) send/subscribe/unsubscribe
+  generate-vapid.js  One-time CLI helper to print a VAPID key pair
+public/
+  index.html, app.js, styles.css   The PWA itself (one page, three tab views)
+  manifest.json   PWA install manifest
+  sw.js           Service worker — offline shell cache + push receiver
+  icons/          App icons (192px, 512px)
+```
+
+## Run it locally
+
+```bash
+npm install
+npm run generate-vapid        # prints a VAPID key pair — paste into .env
+cp .env.example .env           # then fill in the VAPID_* values
+npm start                      # serves on http://localhost:3000
+```
+
+Open `http://localhost:3000` in Chrome. Click **Enable alerts** to test the
+push flow end-to-end (grant the browser permission prompt). Trigger a test
+notification any time with:
+
+```bash
+curl -X POST http://localhost:3000/api/push/test
+```
+
+Without VAPID keys set, the server still runs fully (dashboard, API, in-app
+alert list) — it just skips sending real push notifications and logs a
+warning, so you can develop without generating keys every time.
+
+## Deploying (free-tier hosting)
+
+Any of Railway, Fly.io, or Render will work — they all support: a Node
+buildpack, environment variables, and (importantly) a **persistent volume**,
+which you need so the SQLite file survives redeploys. Steps are the same
+shape everywhere:
+
+1. Push this folder to a git repo (a `.gitignore` is already set up to keep
+   `node_modules`, `.env`, and the local `.db` file out of it).
+2. Create a new app on your chosen host, pointed at that repo.
+   - Build command: `npm install`
+   - Start command: `npm start`
+3. Attach a persistent volume/disk, mounted at e.g. `/data`.
+4. Set environment variables in the host's dashboard:
+   - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` — from
+     `npm run generate-vapid`, run once locally.
+   - `DB_PATH=/data/tcgtracker.db` — pointing at the volume from step 3, so
+     tracked history and push subscriptions survive a redeploy.
+   - `PORT` — most hosts set this for you automatically; only set it
+     yourself if the host requires it.
+   - Leave `FAST_INTERVAL_MS` / `SLOW_INTERVAL_MS` unset to use the 90s /
+     30min defaults, or override them (milliseconds) if you want to tune
+     cadence later.
+5. Deploy. Watch the logs for the first few poll cycles to see which
+   retailers are actually reachable from that host (see the section above).
+6. Visit the deployed URL on your phone, and use the browser's **"Add to
+   Home Screen"** (iOS Safari) or the install prompt (Android Chrome) to
+   install it as an app. On iOS, push notifications only work *after* this
+   install step — a plain Safari tab can't receive them.
+
+## Getting `tcgplayer_ref` populated (for the "good price" alert)
+
+The bold "good price vs. TCGPlayer" alert (`poller.js`, Trigger 2b — this
+mirrors the standing rule you set for the Claude-based check) compares a
+listing's live price against each product's `tcgplayer_ref` column. That
+column starts out empty for every seeded product. Two ways to fill it in:
+
+- **Manual, quick:** run a one-off SQL update whenever you have a fresh
+  TCGPlayer/secondary-market reference price (same MTGStocks/PriceCharting
+  research approach already used in the Claude-based checks):
+  ```bash
+  node -e "require('./server/db').prepare('UPDATE products SET tcgplayer_ref=?, tcgplayer_ref_checked_at=? WHERE id=?').run(230, new Date().toISOString(), 'pkm-30th-etb')"
+  ```
+- **Scripted refresh:** add a small scheduled job (a third poll tier, or a
+  cron endpoint you hit manually) that re-derives these reference prices
+  periodically. Not built in yet since it needs the same manual research
+  step the Claude-based check already does well — this is the one piece
+  still worth doing by hand or handing back to the Claude-based check to
+  keep populating going forward.
+
+## Editing the tracked product list
+
+Edit the `PRODUCTS` array in `server/seed.js` — add a product with its
+`game`, `msrp`, `poll_tier` (`'fast'` or `'slow'`), and a `listings` array
+of `{ retailer, url }` retailer product pages. Seeding runs automatically on
+every boot and is safe to re-run (it upserts by product id).
+
+To move a product between tiers without redeploying, call:
+
+```bash
+curl -X POST https://your-app.example.com/api/admin/set-tier \
+  -H 'Content-Type: application/json' \
+  -d '{"product_id": "mtg-reality-fracture-cbb", "tier": "fast"}'
+```
+
+(This endpoint has no auth on it — fine for personal use behind an
+obscure URL, but don't link it publicly without adding at least a shared
+secret header if you're worried about randoms flipping your poll tiers.)
+
+## What this does not replace (yet)
+
+The hourly Claude-based scheduled check (MTG/Lorcana/Pokémon dashboards +
+the project doc log) keeps running independently — this PWA is additive,
+not a replacement, unless you decide otherwise. It's a reasonable source
+of the periodic TCGPlayer reference-price research this app needs, until
+that gets automated here too.

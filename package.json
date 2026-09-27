@@ -1,0 +1,23 @@
+{
+  "name": "tcgtracker-pwa",
+  "version": "1.0.0",
+  "description": "TCGTracker — self-hosted PWA + fast-polling backend for MTG, Disney Lorcana, and Pokemon TCG restock/price alerts, with real push notifications.",
+  "main": "server/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "generate-vapid": "node server/generate-vapid.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-fetch": "^2.7.0",
+    "web-push": "^3.6.7"
+  }
+}

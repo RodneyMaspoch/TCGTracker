@@ -1,0 +1,14 @@
+{
+  "name": "TCGTracker",
+  "short_name": "TCGTracker",
+  "description": "MTG, Disney Lorcana, and Pokémon TCG restock & price alerts",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08060e",
+  "theme_color": "#08060e",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
