@@ -123,10 +123,24 @@ shape everywhere:
 
 ## Getting `tcgplayer_ref` populated (for the "good price" alert)
 
-The bold "good price vs. TCGPlayer" alert (`poller.js`, Trigger 2b — this
-mirrors the standing rule you set for the Claude-based check) compares a
-listing's live price against each product's `tcgplayer_ref` column. That
-column starts out empty for every seeded product. Two ways to fill it in:
+The bold "good price" alert (`poller.js`, Trigger 2b — this mirrors the
+standing rule you set for the Claude-based check) is anchored to **MSRP**,
+not to TCGPlayer directly. TCGPlayer is almost always well above MSRP for
+the kind of hyped sealed product this app tracks, so a version that just
+compares live price to TCGPlayer ends up flagging any marked-up scalper
+listing as a "deal" the moment it happens to undercut TCGPlayer's inflated
+ceiling. Instead, it fires only when **both** hold:
+
+1. TCGPlayer is meaningfully above MSRP (`GOOD_PRICE_MIN_MARKUP`, default
+   25%) — this is what tells you the product actually carries real resale
+   demand worth caring about.
+2. The retail price you'd actually pay is at or near MSRP
+   (`GOOD_PRICE_MAX_PREMIUM`, default 10% over MSRP) — this is what
+   confirms *this specific listing* isn't itself a marked-up price.
+
+Both thresholds are environment variables you can tune (see `.env.example`).
+Either way, the comparison needs each product's `tcgplayer_ref` column,
+which starts out empty for every seeded product. Two ways to fill it in:
 
 - **Manual, quick:** run a one-off SQL update whenever you have a fresh
   TCGPlayer/secondary-market reference price (same MTGStocks/PriceCharting

@@ -17,6 +17,11 @@ const { notifyAll } = require('./push');
 const FAST_INTERVAL_MS = parseInt(process.env.FAST_INTERVAL_MS || '90000', 10);   // 90s default
 const SLOW_INTERVAL_MS = parseInt(process.env.SLOW_INTERVAL_MS || '1800000', 10); // 30min default
 
+// Trigger 2b thresholds — see the long comment on pollOneListing below for
+// why MSRP has to lead this comparison, not TCGPlayer.
+const MIN_MARKUP_OVER_MSRP = parseFloat(process.env.GOOD_PRICE_MIN_MARKUP || '0.25');       // TCGPlayer must be >= 25% over MSRP
+const MAX_RETAIL_PREMIUM_OVER_MSRP = parseFloat(process.env.GOOD_PRICE_MAX_PREMIUM || '0.10'); // retail price must be <= 10% over MSRP
+
 const getListingsForTier = db.prepare(`
   SELECT rl.*, p.name as product_name, p.msrp, p.tcgplayer_ref, p.game
   FROM retailer_listings rl
@@ -69,13 +74,45 @@ async function pollOneListing(row) {
     await notifyAll({ title: '🟢 Restock', body: msg, url: '/', tag: `${row.product_id}-${row.retailer}` });
   }
 
-  // Trigger 2b — good price vs. resale market (user's explicit ask: bold + prominent).
-  if (nowPurchasable && result.price != null && row.tcgplayer_ref) {
-    const gap = row.tcgplayer_ref - result.price;
-    if (gap > 0 && gap / row.tcgplayer_ref >= 0.15) { // at least ~15% under known secondary value
-      const msg = `GOOD PRICE: ${row.product_name} is $${result.price} at ${row.retailer} — TCGPlayer ref ~$${row.tcgplayer_ref} — $${gap.toFixed(2)} under market`;
-      insertEvent.run({ created_at: now, kind: 'good_price', product_id: row.product_id, message: msg, data_json: JSON.stringify({ ...result, tcgplayer_ref: row.tcgplayer_ref, gap }) });
-      await notifyAll({ title: '💰 Good price vs. TCGPlayer', body: msg, url: '/', tag: `${row.product_id}-goodprice` });
+  // Trigger 2b — good price, anchored to MSRP (not to TCGPlayer).
+  //
+  // The original version of this compared the live retail price directly
+  // against TCGPlayer and fired whenever retail was >=15% under it. That's
+  // backwards: TCGPlayer is the secondary/resale price, and for exactly the
+  // kind of hyped sealed product this app tracks, TCGPlayer is almost
+  // always well above MSRP. That means "retail price is well under
+  // TCGPlayer" was true almost all the time, including for a scalped
+  // third-party listing that's marked up 30-40% over MSRP but still
+  // cheaper than TCGPlayer's ceiling — which is not a good price, it's
+  // just a slightly-less-bad markup. Comparing to TCGPlayer alone can't
+  // tell the difference between "this is basically MSRP" and "this is
+  // marked up but still a relative bargain vs. resale."
+  //
+  // The fix: MSRP leads. Two conditions, both anchored to MSRP:
+  //   1. TCGPlayer must sit meaningfully above MSRP (>= MIN_MARKUP_OVER_MSRP,
+  //      default 25%) — this is what tells you the item has real resale
+  //      demand worth caring about at all.
+  //   2. The retail price you'd actually pay must be at or near MSRP
+  //      (<= MAX_RETAIL_PREMIUM_OVER_MSRP over it, default 10%) — this is
+  //      what tells you *this specific listing* isn't itself a marked-up
+  //      scalper price just because it happens to undercut TCGPlayer.
+  // Only when both hold is this "MSRP is $50, TCGPlayer has it at $200+,
+  // and you can actually buy it near $50 right now" — the exact scenario
+  // you described wanting flagged.
+  if (nowPurchasable && result.price != null && row.tcgplayer_ref && row.msrp) {
+    const markupOverMsrp = (row.tcgplayer_ref - row.msrp) / row.msrp;
+    const retailPremiumOverMsrp = (result.price - row.msrp) / row.msrp;
+
+    if (markupOverMsrp >= MIN_MARKUP_OVER_MSRP && retailPremiumOverMsrp <= MAX_RETAIL_PREMIUM_OVER_MSRP) {
+      const msg = `GOOD PRICE: ${row.product_name} — MSRP $${row.msrp.toFixed(2)}, TCGPlayer $${row.tcgplayer_ref.toFixed(2)} (+${Math.round(markupOverMsrp * 100)}% over MSRP) — purchasable now at ${row.retailer} for $${result.price.toFixed(2)}`;
+      insertEvent.run({
+        created_at: now,
+        kind: 'good_price',
+        product_id: row.product_id,
+        message: msg,
+        data_json: JSON.stringify({ ...result, msrp: row.msrp, tcgplayer_ref: row.tcgplayer_ref, markupOverMsrp, retailPremiumOverMsrp }),
+      });
+      await notifyAll({ title: '💰 Good price vs. MSRP/TCGPlayer', body: msg, url: '/', tag: `${row.product_id}-goodprice` });
     }
   }
 }

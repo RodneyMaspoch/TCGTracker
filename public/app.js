@@ -100,15 +100,26 @@ function renderGrid() {
   }
 }
 
+// Mirrors the server-side Trigger 2b logic in server/poller.js — MSRP
+// leads the comparison, TCGPlayer just confirms there's real resale
+// demand. See the comment above pollOneListing() there for the full
+// reasoning (TCGPlayer is almost always above MSRP for hyped sealed
+// product, so comparing straight to TCGPlayer flags marked-up listings
+// as "good deals" just because they're cheaper than an inflated ceiling).
+const MIN_MARKUP_OVER_MSRP = 0.25;        // TCGPlayer must be >= 25% over MSRP
+const MAX_RETAIL_PREMIUM_OVER_MSRP = 0.10; // retail price must be <= 10% over MSRP
+
 function bestGoodPriceListing(product) {
-  if (!product.tcgplayer_ref) return null;
+  if (!product.tcgplayer_ref || !product.msrp) return null;
+  const markupOverMsrp = (product.tcgplayer_ref - product.msrp) / product.msrp;
+  if (markupOverMsrp < MIN_MARKUP_OVER_MSRP) return null;
+
   let best = null;
   for (const l of product.listings || []) {
     if (!l.last_purchasable || l.last_price == null) continue;
-    const gap = product.tcgplayer_ref - l.last_price;
-    const pct = gap / product.tcgplayer_ref;
-    if (gap > 0 && pct >= 0.15 && (!best || pct > best.pct)) {
-      best = { listing: l, gap, pct };
+    const retailPremiumOverMsrp = (l.last_price - product.msrp) / product.msrp;
+    if (retailPremiumOverMsrp <= MAX_RETAIL_PREMIUM_OVER_MSRP && (!best || retailPremiumOverMsrp < best.retailPremiumOverMsrp)) {
+      best = { listing: l, markupOverMsrp, retailPremiumOverMsrp };
     }
   }
   return best;
@@ -143,7 +154,7 @@ function renderCard(product) {
   if (good) {
     const badge = document.createElement('div');
     badge.className = 'good-price-badge';
-    badge.textContent = `💰 ${Math.round(good.pct * 100)}% under TCGPlayer at ${good.listing.retailer}`;
+    badge.textContent = `💰 near MSRP, TCGPlayer +${Math.round(good.markupOverMsrp * 100)}% at ${good.listing.retailer}`;
     card.appendChild(badge);
   }
 
