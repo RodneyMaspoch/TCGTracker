@@ -129,12 +129,25 @@ Without VAPID keys set, the server still runs fully (dashboard, API, in-app
 alert list) — it just skips sending real push notifications and logs a
 warning, so you can develop without generating keys every time.
 
-## Deploying (free-tier hosting)
+## Deploying
 
-Any of Railway, Fly.io, or Render will work — they all support: a Node
-buildpack, environment variables, and (importantly) a **persistent volume**,
-which you need so the SQLite file survives redeploys. Steps are the same
-shape everywhere:
+**Cloudflare Workers (recommended — genuinely free, no sleep-on-inactivity,
+no usage-metered credit that quietly runs out): see `worker/README.md`.**
+It's a rewrite of this server for Workers' free plan (D1 instead of SQLite,
+a staggered per-minute Cron Trigger instead of the setInterval loop below,
+Web Crypto instead of the `web-push` package), same frontend, same alert
+logic. Read the tradeoffs section at the top of that README before
+choosing it — Workers' free 10ms-per-invocation CPU cap is a real
+constraint this rewrite works around, not one you can ignore.
+
+## Deploying this Node/Express version (Railway/Fly.io/Render)
+
+Useful for local development either way, or if you'd rather run this
+version somewhere with a persistent volume instead of migrating to
+Workers. Any of Railway, Fly.io, or Render will work — they all support: a
+Node buildpack, environment variables, and (importantly) a **persistent
+volume**, which you need so the SQLite file survives redeploys. Steps are
+the same shape everywhere:
 
 1. Push this folder to a git repo (a `.gitignore` is already set up to keep
    `node_modules`, `.env`, and the local `.db` file out of it).

@@ -1,0 +1,44 @@
+name = "tcgtracker"
+main = "src/index.js"
+compatibility_date = "2026-09-29"
+
+# Serves everything in ../public (the existing PWA frontend — index.html,
+# lorcana.html, pokemon.html, pwa-boot.js, sw.js, manifest.json, images,
+# icons — all untouched) directly, with no build step. Any request that
+# doesn't match a file in there (e.g. /api/*) falls through to this
+# Worker's fetch handler in src/index.js.
+[assets]
+directory = "../public"
+binding = "ASSETS"
+
+# Fires the `scheduled` export in src/index.js once a minute. This is the
+# staggered rotation described in src/poll.js — it does NOT check every
+# tracked listing every tick, it checks one (sometimes two) per tick. See
+# poll.js's header comment for the cadence math and how to retune it.
+# Free plan cap: 5 Cron Triggers per ACCOUNT (not per Worker) — this uses 1.
+[triggers]
+crons = ["* * * * *"]
+
+# How many ticks (minutes) between each slow-lane advance. Default 3 means
+# the 12-listing MTG+Lorcana slow lane completes a full cycle every ~36
+# minutes. Raise this to check less often (lower total request volume to
+# retailers), lower it to check more often (closer to, but still slower
+# than, the fast lane).
+[vars]
+SLOW_LANE_EVERY_N_TICKS = "3"
+
+# D1 database binding. Run `wrangler d1 create tcgtracker-db` once, then
+# paste the database_id it prints below (see worker/README.md for the full
+# step-by-step). Left blank here on purpose — wrangler will refuse to
+# deploy until it's filled in, which is the point: it stops you from
+# accidentally deploying against a database that doesn't exist yet.
+[[d1_databases]]
+binding = "DB"
+database_name = "tcgtracker-db"
+database_id = ""
+
+# Secrets (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT) are NOT set
+# here — .toml files are meant to be committed to git, and these are
+# credentials. Set them with `wrangler secret put VAPID_PUBLIC_KEY` etc.
+# (see worker/README.md). The Node version's existing VAPID keys (from
+# `npm run generate-vapid`) work as-is here — no need to regenerate them.
