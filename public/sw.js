@@ -2,8 +2,27 @@
 // for offline load, and is what actually receives push events (this is
 // the piece that lets a notification arrive even if the app is closed).
 
-const CACHE = 'tcgtracker-shell-v1';
-const SHELL_FILES = ['/', '/index.html', '/app.js', '/styles.css', '/manifest.json'];
+// v2 — was cache-first for the shell (index.html/app.js/styles.css), which
+// meant editing those files on disk had NO visible effect until someone
+// manually unregistered the service worker: the browser just kept serving
+// whatever it cached the first time it ever loaded the page. That's the
+// "I uploaded the new files and nothing changed" bug.
+//
+// Fixed to network-first: always try the network for the shell files first
+// (so an edit shows up on the very next reload), and only fall back to the
+// cache if the network is unreachable (offline). Bumping the cache name to
+// v2 also forces every previously-installed copy of this service worker to
+// throw away its old (possibly stale-forever) cache on next activate.
+// v3 — shell file list updated for the real MTG/Lorcana/Pokémon pages
+// (index.html, lorcana.html, pokemon.html + their own scripts/styles),
+// replacing the old single-page app.js/styles.css. Bumping v2 -> v3 also
+// forces any previously-installed service worker to drop its old cache.
+const CACHE = 'tcgtracker-shell-v3';
+const SHELL_FILES = [
+  '/', '/index.html', '/lorcana.html', '/pokemon.html',
+  '/runtime.js', '/pwa-boot.js', '/pokemon-app.js', '/pokemon-styles.css',
+  '/manifest.json',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL_FILES)));
@@ -17,13 +36,20 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Network-first for API calls (always want fresh data), cache-first for
-// the static app shell (fast load, works offline for the UI itself).
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith('/api/')) return; // let it hit the network directly
+  if (url.pathname.startsWith('/api/')) return; // let API calls hit the network directly, untouched
+
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((res) => {
+        // Keep the cache warm with whatever the network just gave us, so
+        // offline fallback (below) stays reasonably fresh too.
+        const copy = res.clone();
+        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        return res;
+      })
+      .catch(() => caches.match(event.request)) // offline (or dev server down) — serve last-known-good
   );
 });
 

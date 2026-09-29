@@ -45,27 +45,61 @@ const updateDrawingState = db.prepare(`
 `);
 const getDrawingState = db.prepare(`SELECT * FROM walmart_drawing_state WHERE id=1`);
 
+// Some retailers (Best Buy especially) block scripted requests outright —
+// that's a known, permanent limitation (see README), not a transient
+// hiccup, so logging it every single cycle just floods the console.
+// Track consecutive failures per listing and only log the 1st, then every
+// 20th after that (still visible, not spammy) — resets to logging
+// immediately again once a fetch succeeds.
+const consecutiveFailures = new Map(); // key: `${retailer}/${product_id}` -> count
+
 async function pollOneListing(row) {
+  const failKey = `${row.retailer}/${row.product_id}`;
   let result;
   try {
     result = await scrapeGeneric(row.url);
+    consecutiveFailures.delete(failKey);
   } catch (err) {
-    console.warn(`[poller] fetch failed for ${row.retailer}/${row.product_id}: ${err.message}`);
+    const count = (consecutiveFailures.get(failKey) || 0) + 1;
+    consecutiveFailures.set(failKey, count);
+    if (count === 1 || count % 20 === 0) {
+      const suffix = count === 1 ? '' : ` (repeated ${count}x in a row — this retailer is likely blocking automated requests; see README)`;
+      console.warn(`[poller] fetch failed for ${failKey}: ${err.message}${suffix}`);
+    }
     return;
   }
 
   const now = new Date().toISOString();
   const wasPurchasable = !!row.last_purchasable;
-  const nowPurchasable = !!result.purchasable;
+  let nowPurchasable = !!result.purchasable;
+
+  // Sanity check, second line of defense after the block-page detection in
+  // scrapers.js: if we got a "text-heuristic" (no JSON-LD) result and the
+  // price is way outside any plausible range for this product's MSRP, this
+  // is very likely a mis-parsed page (interstitial, unrelated promo text,
+  // wrong page entirely) rather than a real price. Don't trust it enough to
+  // flip purchasable/fire an alert — still record what was seen for
+  // debugging, just don't act on it.
+  let suspicious = false;
+  if (result.source === 'text-heuristic' && nowPurchasable && row.msrp && result.price != null) {
+    const ratio = result.price / row.msrp;
+    if (ratio < 0.3 || ratio > 8) {
+      suspicious = true;
+      nowPurchasable = false;
+      console.warn(`[poller] suspicious result for ${row.retailer}/${row.product_id}: price $${result.price} vs MSRP $${row.msrp} (ratio ${ratio.toFixed(2)}) via text-heuristic — ignoring this cycle, not firing an alert`);
+    }
+  }
 
   updateListing.run({
     product_id: row.product_id,
     retailer: row.retailer,
     last_price: result.price,
-    last_stock: result.stock,
+    last_stock: suspicious ? 'unknown' : result.stock,
     last_purchasable: nowPurchasable ? 1 : 0,
     last_checked_at: now,
   });
+
+  if (suspicious) return; // don't evaluate any triggers off a result we don't trust
 
   // Trigger 4 — restock: not purchasable -> purchasable.
   if (!wasPurchasable && nowPurchasable) {

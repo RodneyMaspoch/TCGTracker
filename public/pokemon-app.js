@@ -36,6 +36,21 @@ const EVENTS_BY_GAME = {
   ],
 };
 
+// Same idea as EVENTS_BY_GAME/ALERT_SERVICES above — this is the specific
+// last-known-good research snapshot from the project doc (drawing price,
+// exact confirmed window, item list, and the still-unconfirmed "next
+// window" rumor), not something the scraper can produce on its own: it
+// can tell you open/closed, but it can't research and write up a summary
+// like this. Update this by hand when you have a fresher confirmed
+// window — same as tcgplayer_ref, it's a snapshot, not a live feed.
+const WALMART_DRAWING_REF = {
+  itemName: '30th Celebration Elite Trainer Box',
+  drawingPrice: 69.97,
+  msrp: 49.99,
+  lastWindow: 'Wed Sep 23, 2:00pm PT / 5:00pm ET — 6 items incl. this ETB, a Knock Out Collection 4-pack, Mystery Power Box: Vault Edition.',
+  rumor: 'A Prismatic Evolutions double-drawing was rumored "in ~5 days" as of a Sep-26 social post — not independently confirmed, treat as tentative, not live.',
+};
+
 const ALERT_SERVICES = [
   { name: 'PokeNotify', kind: 'App + Discord', price: 'Free tier / $7.99/mo', note: 'Pokémon/MTG/Lorcana/One Piece/Yu-Gi-Oh across Walmart, Target, Costco, Best Buy, Pokémon Center, GameStop, Amazon', url: 'https://www.pokenotify.com/' },
   { name: 'PokeRestock', kind: 'App + Discord', price: 'Freemium', note: 'Pokémon-focused restock alerts', url: 'https://discord.com/invite/pkmnalerts' },
@@ -160,12 +175,17 @@ function renderDrawingHero() {
     </div>
     <div class="drawing-panel">
       <div class="artwell cut-sm">
-        <div class="mono">Walmart Collectibles Drawing<br>(official page — link out)</div>
+        <div class="mono">${WALMART_DRAWING_REF.itemName}<br>(official product photo — link out)</div>
       </div>
       <div class="drawing-panel-body">
-        <div class="drawing-panel-title">Entry window status</div>
-        <div class="drawing-panel-status">${isOpen ? 'OPEN · ENTRIES BEING ACCEPTED NOW' : 'CLOSED · NO WINDOW OPEN'}</div>
-        <div class="mono" style="font-size:12px;color:var(--dim2);margin-top:10px;line-height:1.6">Last checked ${checked}. This app polls the drawing page roughly every 90 seconds and pushes an alert the moment a window opens.</div>
+        <div class="drawing-panel-title">${WALMART_DRAWING_REF.itemName} (last drawing price)</div>
+        <div class="drawing-panel-prices">
+          <div><div class="label mono">Drawing price</div><div class="num" style="font-size:24px;color:#fff">$${WALMART_DRAWING_REF.drawingPrice.toFixed(2)}</div></div>
+          <div><div class="label mono">General MSRP</div><div class="num" style="font-size:24px;color:var(--dim)">$${WALMART_DRAWING_REF.msrp.toFixed(2)}</div></div>
+        </div>
+        <div class="drawing-panel-status">${isOpen ? 'OPEN · ENTRIES BEING ACCEPTED NOW' : 'CLOSED · ENTRIES NO LONGER ACCEPTED FOR THIS WINDOW'}</div>
+        <div class="mono" style="font-size:12px;color:var(--dim2);margin-top:14px;padding-top:14px;border-top:1px solid var(--hair);line-height:1.6">Last confirmed window (re-verified directly against the drawing page): ${WALMART_DRAWING_REF.lastWindow} ${WALMART_DRAWING_REF.rumor}</div>
+        <div class="mono" style="font-size:11px;color:var(--dim2);margin-top:10px">This app's own last check: ${checked}. It polls roughly every 90s and pushes an alert the moment the state above flips to OPEN.</div>
       </div>
     </div>
   `;

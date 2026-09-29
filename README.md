@@ -57,20 +57,58 @@ never fire.
 ```
 server/
   index.js        Express app + all API routes
-  db.js           SQLite schema (better-sqlite3, one file)
-  seed.js         Seeds the 10 tracked products (edit this to add/remove products)
+  db.js           SQLite schema (Node's built-in node:sqlite, one file — no native compiling needed)
+  seed.js         Seeds the 16 tracked products (edit this to add/remove products — see below)
   scrapers.js     Fetch + parse retailer pages (JSON-LD first, text fallback)
   poller.js       The two-tier polling loop + alert rules (restock, good price, drawing open)
   push.js         Web Push (VAPID) send/subscribe/unsubscribe
   generate-vapid.js  One-time CLI helper to print a VAPID key pair
 public/
-  index.html, app.js, styles.css   The PWA itself (one page, three tab views)
+  index.html      The real MTG dashboard ("Spellwatch") — your original design, untouched
+  lorcana.html    The real Lorcana dashboard ("Inkwatch") — same
+  pokemon.html, pokemon-app.js, pokemon-styles.css
+                  A temporary bridge page for Pokémon (no matching legacy
+                  page existed for this game) — different visual style
+                  from the other two on purpose, until it's rebuilt to match
+  runtime.js      The template engine index.html/lorcana.html are built on
+                  (converts their `{{ }}` / `sc-if` / `sc-for` markup to
+                  plain DOM updates — this is what makes them work as
+                  static files with no build step)
+  pwa-boot.js     The ONLY new logic added to index.html/lorcana.html:
+                  registers the service worker, and patches each page's own
+                  `ALL_DEALS` array in place with live price/stock from
+                  this server, matched by URL — everything else in those
+                  two pages (layout, copy, images, interactions) is exactly
+                  as it was
+  img/            Product photos used by index.html/lorcana.html
   manifest.json   PWA install manifest
-  sw.js           Service worker — offline shell cache + push receiver
+  sw.js           Service worker — network-first shell cache + push receiver
   icons/          App icons (192px, 512px)
 ```
 
+### How the live-data wiring works
+
+`index.html` and `lorcana.html` each define a plain JS array near the bottom
+of the file — `const ALL_DEALS = [...]` — with one entry per tracked
+listing (name, retailer, url, price, stock, msrp, etc.). That's the data
+the page renders from. `pwa-boot.js` fetches `/api/products` on load (and
+every 20s after) and, for every `ALL_DEALS` entry whose `url` matches a
+listing this server actually tracks, overwrites that entry's `price`,
+`stock`, `delta`, `under`, and `ago` fields with the live value, then
+triggers a re-render. A listing whose URL isn't in `server/seed.js` yet
+just keeps showing its original curated numbers — nothing breaks, it
+simply doesn't update until you add that URL to `seed.js`.
+
+To track a new product: add it to the `PRODUCTS` array in `server/seed.js`
+(id, game, name, msrp, a URL) AND add a matching entry to the page's own
+`ALL_DEALS` array with the exact same `url` — the two have to agree on the
+URL for the live patch to find it.
+
 ## Run it locally
+
+Needs Node.js **v22.5.0 or newer** (uses Node's own built-in SQLite support,
+so there's nothing to compile — no Visual Studio Build Tools or Xcode CLI
+tools required, even on a fresh Windows/Mac machine).
 
 ```bash
 npm install

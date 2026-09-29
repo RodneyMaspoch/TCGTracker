@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TCGTracker — Lorcana</title>
+<meta name="theme-color" content="#060b1a">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#060b1a;color:#e8ecf7;font-family:Archivo,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-wrap:pretty;overflow-x:hidden}
+a{color:#8f9df0;text-decoration:none}a:hover{color:#a9b6f2}
+::-webkit-scrollbar{width:0;height:0}
+@keyframes sw-blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes sw-ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+</style>
+<style id="dc-hover-styles"></style>
+</head>
+<body>
+<div id="dc-root"></div>
+<template id="dc-template">
+
+
+
+<sc-if value="{{ hist }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeHistory }}" style="position:fixed;inset:0;z-index:60;background:rgba(3,6,16,.82);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:26px">
+<div onClick="{{ stop }}" style="width:min(760px,100%);background:#0e1732;border:1px solid rgba(232,236,247,.14);border-radius:20px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.6)">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:20px 22px 0">
+<div>
+<div style="display:flex;align-items:center;gap:8px">
+<div onClick="{{ openSearch }}" title="Search" style="cursor:pointer;flex:none;width:36px;height:36px;border-radius:50%;border:1px solid rgba(232,236,247,.2);display:flex;align-items:center;justify-content:center" style-hover="border-color:#8f9df0">
+<svg width="16" height="17" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="6" stroke="currentColor" stroke-width="1.8" style="color:#e8ecf7"></circle><line x1="13" y1="13" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:#e8ecf7"></line></svg>
+</div>
+<div style="position:relative">
+<div onClick="{{ toggleMenu }}" title="Menu" style="cursor:pointer;width:36px;height:36px;border-radius:50%;border:1px solid {{ menuBd }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+<span style="width:15px;height:1.6px;background:{{ menuFg }};display:block"></span>
+<span style="width:15px;height:1.6px;background:{{ menuFg }};display:block"></span>
+<span style="width:15px;height:1.6px;background:{{ menuFg }};display:block"></span>
+</div>
+<sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:46px;right:0;z-index:75;min-width:212px;background:#0e1732;border:1px solid rgba(232,236,247,.18);border-radius:16px;padding:10px;box-shadow:0 24px 60px rgba(0,0,0,.6)">
+<sc-for list="{{ menuItems }}" as="m" hint-placeholder-count="5">
+<a href="{{ m.href }}" onClick="{{ closeMenu }}" style="display:block;text-decoration:none;font-family:'Roboto Mono',monospace;font-size:14px;color:{{ m.fg }};padding:11px 14px;border-radius:10px;white-space:nowrap" style-hover="background:rgba(255,255,255,.06)">{{ m.label }}</a>
+</sc-for>
+<div onClick="{{ armAllFromMenu }}" style="cursor:pointer;text-align:center;margin-top:8px;background:#3d4fbe;color:#ffffff;font-family:Archivo,sans-serif;font-weight:700;font-size:14px;padding:11px 16px;border-radius:999px;white-space:nowrap">ARM ALL</div>
+</div>
+</sc-if>
+</div>
+<span style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62)">{{ histRetailer }} · LAST 30 DAYS</span>
+</div>
+<div style="font-size:26px;font-family:Archivo,sans-serif;font-weight:700;letter-spacing:-.02em;color:#fff;margin-top:9px;line-height:1.1">{{ histName }}</div>
+</div>
+<div onClick="{{ closeHistory }}" style="cursor:pointer;flex:none;width:32px;height:32px;border-radius:50%;border:1px solid rgba(232,236,247,.2);display:flex;align-items:center;justify-content:center;font-size:15px;color:#e8ecf7" style-hover="border-color:#8f9df0;color:#8f9df0">✕</div>
+</div>
+
+<div style="display:flex;gap:26px;flex-wrap:wrap;padding:18px 22px 0">
+<sc-for list="{{ histStats }}" as="st" hint-placeholder-count="4">
+<div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.55)">{{ st.k }}</div>
+<div style="font-family:Archivo,sans-serif;font-weight:700;font-size:22px;color:{{ st.c }};line-height:1.2">{{ st.v }}</div>
+</div>
+</sc-for>
+</div>
+
+<div style="padding:16px 22px 0">
+<div onMouseMove="{{ histMove }}" onMouseLeave="{{ histLeave }}" style="position:relative;cursor:crosshair">
+<svg viewBox="0 0 640 200" width="100%" height="200" preserveAspectRatio="none" style="display:block;pointer-events:none">
+<polyline points="{{ histArea }}" fill="{{ histFill }}" stroke="none"></polyline>
+<polyline points="{{ histLine }}" fill="none" stroke="{{ histColor }}" stroke-width="2"></polyline>
+<line x1="0" y1="{{ histMsrpY }}" x2="640" y2="{{ histMsrpY }}" stroke="#e3c07f" stroke-width="1" stroke-dasharray="5 5"></line>
+</svg>
+<sc-if value="{{ histHover }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:0;bottom:0;width:1px;background:rgba(232,236,247,.45);pointer-events:none;left:{{ histHoverX }}"></div>
+<div style="position:absolute;width:11px;height:11px;border-radius:50%;background:{{ histColor }};border:2px solid #0e1732;pointer-events:none;transform:translate(-50%,-50%);left:{{ histHoverX }};top:{{ histHoverY }}"></div>
+<div style="position:absolute;pointer-events:none;transform:translate(-50%,-140%);left:{{ histHoverX }};top:{{ histHoverY }};background:#0a1024;border:1px solid rgba(232,236,247,.24);border-radius:10px;padding:7px 11px;white-space:nowrap;text-align:center">
+<div style="font-family:Archivo,sans-serif;font-weight:700;font-size:16px;color:{{ histColor }};line-height:1">{{ histHoverPrice }}</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62);margin-top:4px">{{ histHoverDay }}</div>
+</div>
+</sc-if>
+</div>
+<div style="display:flex;justify-content:space-between;font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.55);margin-top:6px">
+<span>{{ histStartDate }}</span><span style="color:#e3c07f">— — MSRP {{ histMsrp }}</span><span>{{ histEndDate }}</span>
+</div>
+</div>
+
+<div style="padding:18px 22px 22px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<div onClick="{{ histToggle }}" style="cursor:pointer;background:{{ histBtnBg }};color:{{ histBtnFg }};border:1px solid #5c72d8;font-family:Archivo,sans-serif;font-weight:700;font-size:14px;padding:11px 24px;border-radius:999px">{{ histBtnLabel }}</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62)">{{ histNote }}</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<div style="position:relative;background:
+radial-gradient(62% 40% at 88% -6%,rgba(227,192,127,.30) 0%,transparent 62%),
+radial-gradient(50% 34% at 2% 4%,rgba(92,114,216,.13) 0%,transparent 60%),
+#060b1a">
+<sc-if value="{{ searchOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:fixed;inset:0;z-index:80;background:rgba(3,6,16,.94);backdrop-filter:blur(10px);display:flex;flex-direction:column;padding:34px 40px">
+<div style="display:flex;align-items:center;gap:18px;max-width:900px;width:100%;margin:0 auto;padding-bottom:22px;border-bottom:1px solid rgba(232,236,247,.2)">
+<svg width="22" height="22" viewBox="0 0 20 20" fill="none" style="flex:none"><circle cx="8.5" cy="8.5" r="6" stroke="#5c72d8" stroke-width="1.8"></circle><line x1="13" y1="13" x2="18" y2="18" stroke="#5c72d8" stroke-width="1.8" stroke-linecap="round"></line></svg>
+<input value="{{ q }}" onChange="{{ setQ }}" autoFocus="{{ true }}" placeholder="Search sets, decks, Illumineer’s Quest…" style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:#fff;font-family:Archivo,sans-serif;font-weight:700;letter-spacing:-.005em;font-size:34px">
+<div onClick="{{ closeSearch }}" style="cursor:pointer;flex:none;width:40px;height:40px;border-radius:50%;border:1px solid rgba(232,236,247,.2);display:flex;align-items:center;justify-content:center;color:#e8ecf7;font-size:16px" style-hover="border-color:#8f9df0;color:#8f9df0">✕</div>
+</div>
+
+<div style="max-width:900px;width:100%;margin:0 auto;overflow:auto;padding-top:26px">
+<sc-for list="{{ results }}" as="r" hint-placeholder-count="3">
+<div style="padding:22px 0;border-bottom:1px solid rgba(232,236,247,.1)">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap">
+<div style="font-size:20px;font-weight:700;letter-spacing:-.005em;color:#fff">{{ r.name }}</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.55)">MSRP {{ r.msrp }}</div>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+<sc-for list="{{ r.quotes }}" as="qt" hint-placeholder-count="3">
+<div style="display:flex;align-items:baseline;gap:10px;background:{{ qt.bg }};border:1px solid {{ qt.bd }};border-radius:999px;padding:9px 16px">
+<span style="font-family:'Roboto Mono',monospace;font-size:14px;color:{{ qt.labelFg }};white-space:nowrap">{{ qt.src }}</span>
+<span style="font-family:Archivo,sans-serif;font-weight:700;font-size:19px;color:{{ qt.fg }}">{{ qt.price }}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+<sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+<div style="font-size:16px;color:rgba(232,236,247,.6);padding:26px 0">No tracked products match that. Try a set name or product type.</div>
+</sc-if>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.45);line-height:1.7;padding:26px 0 8px">PRICES SHOWN ARE FROM THE LISTED RETAILER DIRECTLY · NO TCGPLAYER OR THIRD-PARTY MARKET DATA TRACKED YET</div>
+</div>
+</div>
+</sc-if>
+
+<div style="position:fixed;inset:0;z-index:70;pointer-events:none;opacity:.5;mix-blend-mode:overlay;background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27220%27%20height=%27220%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.85%27%20numOctaves=%274%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20type=%27saturate%27%20values=%270%27/%3E%3C/filter%3E%3Crect%20width=%27220%27%20height=%27220%27%20filter=%27url%28%23n%29%27%20opacity=%270.5%27/%3E%3C/svg%3E);background-size:220px 220px"></div>
+
+<div style="background:#0e1732;overflow:hidden;padding:8px 0;border-bottom:1px solid rgba(227,192,127,.28)">
+<div style="display:flex;width:max-content;animation:sw-ticker 34s linear infinite;animation-duration:{{ tickerDur }}">
+<sc-for list="{{ tickerLoop }}" as="lap" hint-placeholder-count="2">
+<div style="display:flex;gap:34px;flex:0 0 auto;width:max-content;padding-right:34px">
+<sc-for list="{{ tickerItems }}" as="t" hint-placeholder-count="3">
+<a href="{{ t.url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62);white-space:nowrap" style-hover="color:#8f9df0">
+<span style="color:{{ t.tone }}">{{ t.glyph }}</span>{{ t.label }}
+</a>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="max-width:1340px;margin:0 auto;padding:0 40px 150px">
+
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:24px 0">
+<div style="display:flex;align-items:center;gap:10px;flex:none">
+<div style="width:10px;height:10px;border-radius:50%;background:#5c72d8;box-shadow:0 0 16px rgba(92,114,216,.7)"></div>
+<div style="font-family:Archivo,sans-serif;font-weight:700;font-size:20px;letter-spacing:.1em;color:#fff;text-shadow:0 0 26px rgba(92,114,216,.45);white-space:nowrap">INKWATCH</div>
+<div style="display:flex;align-items:center;gap:2px;padding:2px;border-radius:999px;border:1px solid rgba(232,236,247,.18);flex:none"><a href="index.html" style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.55);text-decoration:none;padding:6px 11px;border-radius:999px;white-space:nowrap">MTG</a><span style="font-family:'Roboto Mono',monospace;font-size:14px;color:#ffffff;background:#3d4fbe;padding:6px 11px;border-radius:999px;white-space:nowrap">LORCANA</span><a href="pokemon.html" style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.55);text-decoration:none;padding:6px 11px;border-radius:999px;white-space:nowrap">POKÉMON</a></div>
+</div>
+
+<div style="display:flex;align-items:center;gap:8px">
+<div onClick="{{ openSearch }}" title="Search" style="cursor:pointer;flex:none;width:36px;height:36px;border-radius:50%;border:1px solid rgba(232,236,247,.2);display:flex;align-items:center;justify-content:center" style-hover="border-color:#8f9df0">
+<svg width="16" height="17" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="6" stroke="currentColor" stroke-width="1.8" style="color:#e8ecf7"></circle><line x1="13" y1="13" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:#e8ecf7"></line></svg>
+</div>
+<div style="position:relative">
+<div onClick="{{ toggleMenu }}" title="Menu" style="cursor:pointer;width:36px;height:36px;border-radius:50%;border:1px solid {{ menuBd }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+<span style="width:15px;height:1.6px;background:{{ menuFg }};display:block"></span>
+<span style="width:15px;height:1.6px;background:{{ menuFg }};display:block"></span>
+<span style="width:15px;height:1.6px;background:{{ menuFg }};display:block"></span>
+</div>
+<sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:46px;right:0;z-index:75;min-width:212px;background:#0e1732;border:1px solid rgba(232,236,247,.18);border-radius:16px;padding:10px;box-shadow:0 24px 60px rgba(0,0,0,.6)">
+<sc-for list="{{ menuItems }}" as="m" hint-placeholder-count="5">
+<a href="{{ m.href }}" onClick="{{ closeMenu }}" style="display:block;text-decoration:none;font-family:'Roboto Mono',monospace;font-size:14px;color:{{ m.fg }};padding:11px 14px;border-radius:10px;white-space:nowrap" style-hover="background:rgba(255,255,255,.06)">{{ m.label }}</a>
+</sc-for>
+<div onClick="{{ armAllFromMenu }}" style="cursor:pointer;text-align:center;margin-top:8px;background:#3d4fbe;color:#ffffff;font-family:Archivo,sans-serif;font-weight:700;font-size:14px;padding:11px 16px;border-radius:999px;white-space:nowrap">ARM ALL</div>
+</div>
+</sc-if>
+</div>
+</div>
+</div>
+
+<div style="position:relative;left:50%;right:50%;margin-left:-50vw;margin-right:-50vw;width:100vw;margin-top:14px;overflow:hidden;background:#0b1228">
+<div style="position:absolute;inset:0"><image-slot id="sw-hero" shape="rect" placeholder="Drop Lorcana key art — full bleed, 2400×1300" src="https://ravensburger.cloud/cms/gallery/lorcana-web/products/fabled/header/3ymwmlx4fw_v4.jpg"></image-slot></div>
+<div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,rgba(6,11,26,.97) 0%,rgba(6,11,26,.9) 42%,rgba(25,30,92,.72) 72%,rgba(227,192,127,.42) 100%)"></div>
+<div style="position:absolute;inset:0;pointer-events:none;opacity:.6;mix-blend-mode:soft-light;background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27220%27%20height=%27220%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.85%27%20numOctaves=%274%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20type=%27saturate%27%20values=%270%27/%3E%3C/filter%3E%3Crect%20width=%27220%27%20height=%27220%27%20filter=%27url%28%23n%29%27%20opacity=%270.5%27/%3E%3C/svg%3E);background-size:200px 200px"></div>
+<div style="position:absolute;right:40px;bottom:36px;width:min(34%,420px);aspect-ratio:16/7;opacity:.2;mix-blend-mode:screen"><image-slot id="sw-hero-logo" shape="rect" placeholder="Drop licensed Lorcana logo — transparent PNG, 1600×700"></image-slot></div>
+
+<div style="position:relative;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:40px;align-items:center;padding:0;min-height:100vh;box-sizing:border-box">
+<div>
+<div style="display:inline-flex;align-items:center;gap:11px;background:rgba(92,114,216,.12);border:1px solid rgba(92,114,216,.4);border-radius:999px;padding:7px 17px;font-family:'Roboto Mono',monospace;font-size:14px;letter-spacing:.1em;color:#8f9df0;white-space:nowrap">
+<span style="width:7px;height:7px;border-radius:50%;background:#5c72d8;animation:sw-blink 1.2s infinite"></span>HYPERIA CITY · PRERELEASE OCT 16
+</div>
+<div style="font-family:Archivo,sans-serif;font-weight:900;font-stretch:112%;font-size:clamp(30px,3.6vw,52px);line-height:.95;letter-spacing:-.03em;color:#fff;margin-top:18px;text-transform:uppercase">Never miss the <span style="color:#8f9df0">Hyperia City</span> prerelease</div>
+
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:30px">
+<div onClick="{{ armHero }}" style="cursor:pointer;background:{{ heroBg }};color:{{ heroFg }};border:1px solid {{ heroBd }};font-family:Archivo,sans-serif;font-weight:700;font-size:16px;padding:15px 34px;border-radius:999px;box-shadow:{{ heroGlow }}">{{ heroLabel }}</div>
+<a href="https://www.disneylorcana.com/en-US/product/hyperia-city" target="_blank" rel="noopener" style="cursor:pointer;border-radius:999px;border:1px solid rgba(232,236,247,.3);color:#e8ecf7;font-family:Archivo,sans-serif;font-weight:700;font-size:16px;padding:14px 30px;text-decoration:none;display:inline-block">VIEW HYPERIA CITY PRODUCTS</a>
+</div>
+
+</div>
+
+<div style="background:rgba(10,16,36,.72);backdrop-filter:blur(14px);border:1px solid rgba(232,236,247,.16);border-radius:24px;padding:16px;box-shadow:0 30px 80px rgba(0,0,0,.5)">
+<div style="position:relative;border-radius:16px;overflow:hidden;aspect-ratio:16/10;background:#0a1024">
+<image-slot id="sw-hero-card" shape="rect" placeholder="Featured drop art — 800×1000" src="https://ravensburger.cloud/cms/gallery/lorcana-web/products/s14-hyperia-city/hero-and-background-new/s14_header_still_1920x1080.jpg"></image-slot>
+<div style="position:absolute;top:12px;left:12px;pointer-events:none;background:#e3c07f;color:#141a44;font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:5px 13px;border-radius:999px;white-space:nowrap">{{ heroSource }}</div>
+</div>
+<div style="padding:18px 6px 4px">
+<div style="font-size:21px;font-weight:800;font-stretch:110%;letter-spacing:-.02em;color:#fff;line-height:1.15">Hyperia City — Booster Box</div>
+<div style="display:flex;gap:26px;margin-top:14px">
+<div>
+<div style="font-size:14px;font-weight:600;color:rgba(232,236,247,.6)">Booster Box</div>
+<div style="font-family:Archivo,sans-serif;font-weight:700;font-size:28px;line-height:1.1;color:#fff">$143.76</div>
+</div>
+<div>
+<div style="font-size:14px;font-weight:600;color:rgba(232,236,247,.6)">Illumineer's Trove</div>
+<div style="font-family:Archivo,sans-serif;font-weight:700;font-size:28px;line-height:1.1;color:#8f9df0">$49.99</div>
+</div>
+</div>
+<div style="display:flex;align-items:baseline;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid rgba(232,236,247,.14)">
+<sc-for list="{{ clock }}" as="c" hint-placeholder-count="4">
+<div style="display:flex;align-items:baseline;gap:3px">
+<span style="font-family:Archivo,sans-serif;font-weight:700;font-size:27px;line-height:1;color:#fff;font-variant-numeric:tabular-nums">{{ c.v }}</span>
+<span style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.5)">{{ c.u }}</span>
+</div>
+</sc-for>
+</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;letter-spacing:.1em;color:#8f9df0;margin-top:10px">UNTIL PRERELEASE (OCT 16)</div>
+</div>
+</div>
+</div>
+
+<div style="position:relative;border-top:1px solid rgba(232,236,247,.14);padding:34px 40px 42px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;letter-spacing:.12em;color:#8f9df0;white-space:nowrap">IN THIS RELEASE</div>
+<a href="#tracking" style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62);white-space:nowrap">SEE EVERYTHING TRACKED →</a>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,164px),1fr));gap:18px;margin-top:18px">
+<sc-for list="{{ lairs }}" as="l" hint-placeholder-count="7">
+<a href="#tracking" style="display:block;text-decoration:none">
+<div style="position:relative;border-radius:16px;overflow:hidden;aspect-ratio:5/7;background:#0a1024;border:1px solid rgba(232,236,247,.14)" style-hover="border-color:#8f9df0">
+<image-slot id="{{ l.slot }}" shape="rect" placeholder=" " src="{{ l.art }}"></image-slot>
+<div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(transparent 44%,rgba(6,11,26,.94))"></div>
+<div style="position:absolute;left:16px;right:16px;bottom:14px;pointer-events:none">
+<div style="font-size:16px;font-weight:700;letter-spacing:-.005em;color:#fff;line-height:1.25">{{ l.name }}</div>
+<div style="font-family:Archivo,sans-serif;font-weight:700;font-size:16px;color:#8f9df0;margin-top:5px">{{ l.price }}</div>
+</div>
+</div>
+</a>
+</sc-for>
+</div>
+</div>
+</div>
+
+<div style="margin-top:56px;background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27220%27%20height=%27220%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.85%27%20numOctaves=%274%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20type=%27saturate%27%20values=%270%27/%3E%3C/filter%3E%3Crect%20width=%27220%27%20height=%27220%27%20filter=%27url%28%23n%29%27%20opacity=%270.5%27/%3E%3C/svg%3E),linear-gradient(100deg,#141a44 0%,#20265f 48%,#2c3382 76%,#5d5330 100%);background-size:200px 200px,auto;background-blend-mode:soft-light,normal;display:flex;align-items:center;gap:34px;flex-wrap:wrap;padding:72px 56px;border-radius:22px">
+<div style="flex:1 1 340px;min-width:280px">
+<div style="font-size:42px;font-family:Archivo,sans-serif;font-weight:900;font-stretch:118%;line-height:.98;letter-spacing:-.03em;color:#fff;margin-top:12px">HYPERIA<br>CITY</div>
+<div style="display:flex;gap:30px;margin-top:24px">
+<div>
+<div style="font-size:14px;font-weight:600;color:rgba(255,255,255,.72)">Booster Box</div>
+<div style="font-family:Archivo,sans-serif;font-weight:700;font-size:30px;line-height:1.1;color:#fff">$143.76</div>
+</div>
+<div>
+<div style="font-size:14px;font-weight:600;color:rgba(255,255,255,.72)">Illumineer's Trove</div>
+<div style="font-family:Archivo,sans-serif;font-weight:700;font-size:30px;line-height:1.1;color:#e3c07f">$49.99</div>
+</div>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:30px">
+<a href="https://www.disneylorcana.com/en-US/product/hyperia-city" target="_blank" rel="noopener" style="text-decoration:none;background:#fff;color:#20265f;font-family:Archivo,sans-serif;font-weight:700;font-size:15px;padding:13px 26px;border-radius:999px;white-space:nowrap">VIEW ON DISNEYLORCANA.COM →</a>
+<div onClick="{{ armHero }}" style="cursor:pointer;border:1px solid rgba(255,255,255,.55);color:#fff;font-family:Archivo,sans-serif;font-weight:700;font-size:15px;padding:12px 24px;border-radius:999px;white-space:nowrap">{{ heroLabel }}</div>
+</div>
+</div>
+<div style="flex:0 0 auto">
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;letter-spacing:.12em;color:rgba(255,255,255,.78);margin-bottom:12px;white-space:nowrap">PRERELEASE OCT 16 · RELEASES OCT 23</div>
+<div style="display:flex;gap:22px">
+<sc-for list="{{ clock }}" as="c" hint-placeholder-count="4">
+<div style="text-align:center">
+<div style="font-family:Archivo,sans-serif;font-weight:700;font-size:46px;line-height:1;color:#fff;font-variant-numeric:tabular-nums">{{ c.v }}</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(255,255,255,.78);margin-top:6px">{{ c.k }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+
+<div id="hot" style="margin-top:132px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap">
+<div style="font-size:42px;font-family:Archivo,sans-serif;font-weight:900;font-stretch:118%;line-height:1;letter-spacing:-.03em;color:#fff">WHAT'S HOT</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr));gap:16px;margin-top:38px">
+<sc-for list="{{ hot }}" as="h" hint-placeholder-count="4">
+<a href="{{ h.url }}" target="_blank" rel="noopener" style="display:block;text-decoration:none">
+<div style="background:#0e1732;border:1px solid rgba(232,236,247,.1);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer" style-hover="border-color:{{ h.tone }}">
+<div style="position:relative;aspect-ratio:5/6;background:#0a1024">
+<image-slot id="{{ h.slot }}" shape="rect" placeholder="{{ h.slotHint }}" src="{{ h.art }}"></image-slot>
+<div style="position:absolute;top:0;left:0;pointer-events:none;background:{{ h.tone }};color:{{ h.toneInk }};font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:4px 11px;border-radius:999px;white-space:nowrap;margin:12px">{{ h.heat }}</div>
+</div>
+<div style="padding:18px 18px 20px;display:flex;flex-direction:column;flex:1">
+<div style="font-size:17px;font-weight:700;letter-spacing:-.005em;line-height:1.2;color:#fff">{{ h.name }}</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62);margin-top:9px;line-height:1.5">{{ h.source }}</div>
+<div style="display:flex;align-items:baseline;gap:8px;margin-top:16px">
+<span style="font-family:Archivo,sans-serif;font-weight:700;font-size:26px;line-height:1;color:{{ h.tone }}">{{ h.price }}</span>
+<span style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62)">PRICE</span>
+</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:13px;color:rgba(232,236,247,.45);margin-top:8px">{{ h.ago }}</div>
+<div style="font-size:14px;line-height:1.5;color:rgba(232,236,247,.74);margin-top:16px">{{ h.why }}</div>
+<div style="flex:1;min-height:18px"></div>
+<div onClick="{{ h.toggle }}" style="cursor:pointer;align-self:flex-start;background:{{ h.btnBg }};color:{{ h.btnFg }};border:1px solid {{ h.btnBd }};font-family:Archivo,sans-serif;font-weight:700;font-size:14px;padding:9px 18px;border-radius:999px">{{ h.btnLabel }}</div>
+</div>
+</div>
+</a>
+</sc-for>
+</div>
+</div>
+
+<div id="tracking" style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:132px">
+<div>
+<div style="font-size:42px;font-family:Archivo,sans-serif;font-weight:900;font-stretch:118%;line-height:1;letter-spacing:-.03em;color:#fff">TRACKING NOW</div>
+</div>
+<div style="display:flex;gap:4px">
+<sc-for list="{{ filters }}" as="f" hint-placeholder-count="5">
+<div onClick="{{ f.pick }}" style="cursor:pointer;font-family:'Roboto Mono',monospace;font-size:14px;padding:8px 14px;border-radius:999px;background:{{ f.bg }};color:{{ f.fg }};border:1px solid {{ f.bd }}">
+<div>{{ f.label }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:26px;padding-bottom:16px;border-bottom:1px solid rgba(232,236,247,.1)">
+<div></div>
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+<span style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.5);white-space:nowrap">SORT</span>
+<div style="position:relative;flex:none;display:flex;align-items:center">
+<select value="{{ sort }}" onChange="{{ setSort }}" aria-label="Sort products" style="cursor:pointer;appearance:none;-webkit-appearance:none;font-family:'Roboto Mono',monospace;font-size:14px;height:36px;color:#e8ecf7;background:#0e1732;padding:0 40px 0 16px;border-radius:999px;border:1px solid rgba(232,236,247,.22);outline:none">
+<sc-for list="{{ sortOpts }}" as="o" hint-placeholder-count="3">
+<option value="{{ o.k }}" style="background:#0e1732;color:#e8ecf7">{{ o.label }}</option>
+</sc-for>
+</select>
+<svg width="12" height="8" viewBox="0 0 12 8" fill="none" style="position:absolute;right:15px;pointer-events:none"><path d="M1 1.5L6 6.5L11 1.5" stroke="#e3c07f" stroke-width="1.6" stroke-linecap="round"></path></svg>
+</div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,262px),1fr));gap:26px;margin-top:38px">
+<sc-for list="{{ deals }}" as="d" hint-placeholder-count="6">
+<div style="background:#0e1732;border:1px solid rgba(232,236,247,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(92,114,216,.55);box-shadow:0 0 28px rgba(92,114,216,.14)">
+<div style="position:relative;aspect-ratio:5/6;background:#0a1024">
+<image-slot id="{{ d.slot }}" shape="rect" placeholder="{{ d.slotHint }}" src="{{ d.art }}"></image-slot>
+<div style="position:absolute;top:0;left:0;pointer-events:none;background:{{ d.chipBg }};color:{{ d.chipFg }};font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:5px 12px;border-radius:999px;white-space:nowrap;font-size:14px">{{ d.retailer }}</div>
+</div>
+<div style="padding:18px 18px 20px;display:flex;flex-direction:column;flex:1">
+<div style="font-size:15px;font-weight:700;letter-spacing:-.005em;line-height:1.2;color:#fff">{{ d.name }}</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62);margin-top:7px">{{ d.stock }}</div>
+<div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-top:14px">
+<span style="font-family:Archivo,sans-serif;font-weight:700;font-size:26px;color:{{ d.priceColor }};line-height:1">{{ d.price }}</span>
+<span style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.45);text-decoration:line-through">{{ d.msrp }}</span>
+</div>
+<div onClick="{{ d.openHistory }}" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding:8px 12px;border-radius:12px;border:1px solid rgba(232,236,247,.12)" style-hover="border-color:{{ d.priceColor }};background:rgba(255,255,255,.04)">
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.66);white-space:nowrap">30D HISTORY</div>
+<svg width="62" height="22" viewBox="0 0 58 20" fill="none" style="flex:none"><polyline points="{{ d.spark }}" stroke="{{ d.priceColor }}" stroke-width="1.4" fill="none"></polyline></svg>
+</div>
+<div style="flex:1;min-height:18px"></div>
+<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:6px;background:#0a1024;border:1px solid rgba(232,236,247,.16);border-radius:999px;padding:7px 14px">
+<span style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62)">ALERT ≤</span>
+<span style="font-family:Archivo,sans-serif;font-weight:700;font-size:15px;color:#fff">$</span>
+<input value="{{ d.target }}" onChange="{{ d.setTarget }}" inputMode="decimal" style="width:56px;background:transparent;border:none;outline:none;color:#fff;font-family:Archivo,sans-serif;font-weight:700;font-size:15px">
+</div>
+<div onClick="{{ d.toggle }}" style="cursor:pointer;background:{{ d.btnBg }};color:{{ d.btnFg }};border:1px solid {{ d.btnBd }};font-family:Archivo,sans-serif;font-weight:700;font-size:14px;padding:10px 20px;border-radius:999px;box-shadow:{{ d.btnGlow }}">{{ d.btnLabel }}</div>
+</div>
+</div>
+</div>
+</sc-for>
+</div>
+
+<sc-if value="{{ dealPages }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:48px">
+<div onClick="{{ dealPrev }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(232,236,247,.2);color:#e8ecf7;font-size:14px" style-hover="border-color:#8f9df0;color:#8f9df0">‹</div>
+<sc-for list="{{ dealDots }}" as="p" hint-placeholder-count="2">
+<div onClick="{{ p.pick }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 12px;border-radius:999px;background:{{ p.bg }};color:{{ p.fg }};border:1px solid {{ p.bd }};font-family:Archivo,sans-serif;font-weight:700;font-size:14px">{{ p.n }}</div>
+</sc-for>
+<div onClick="{{ dealNext }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(232,236,247,.2);color:#e8ecf7;font-size:14px" style-hover="border-color:#8f9df0;color:#8f9df0">›</div>
+</div>
+</sc-if>
+
+<div style="margin-top:132px">
+<div style="font-size:42px;font-family:Archivo,sans-serif;font-weight:900;font-stretch:118%;line-height:1;letter-spacing:-.03em;color:#fff">SHOP BY CATEGORY</div>
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:22px;margin-top:38px">
+<sc-for list="{{ cats }}" as="k" hint-placeholder-count="6">
+<div onClick="{{ k.pick }}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:12px;padding:18px 10px;border-radius:18px;background:{{ k.bg }};border:1px solid {{ k.bd }}" style-hover="border-color:rgba(92,114,216,.6)">
+<div style="width:100%;max-width:132px;aspect-ratio:1;border-radius:50%;overflow:hidden;background:#0a1024;border:1px solid rgba(232,236,247,.12)"><image-slot id="{{ k.slot }}" shape="circle" placeholder=" " src="{{ k.art }}"></image-slot></div>
+<div style="font-size:16px;font-weight:700;letter-spacing:-.005em;color:#fff;text-align:center">{{ k.name }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:132px">
+<div>
+<div style="font-size:42px;font-family:Archivo,sans-serif;font-weight:900;font-stretch:118%;line-height:1;letter-spacing:-.03em;color:#fff" id="calendar">RELEASE CALENDAR</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,262px),1fr));gap:26px;margin-top:38px">
+<sc-for list="{{ upcoming }}" as="u" hint-placeholder-count="4">
+<div style="background:#0e1732;border:1px solid rgba(232,236,247,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(227,192,127,.6)">
+<div style="position:relative;aspect-ratio:5/6;background:#0a1024">
+<image-slot id="{{ u.slot }}" shape="rect" placeholder="{{ u.slotHint }}" src="{{ u.art }}"></image-slot>
+<div style="position:absolute;left:0;bottom:0;pointer-events:none;background:rgba(6,11,26,.86);padding:7px 14px 7px 10px;border-radius:999px;display:flex;align-items:baseline;gap:7px">
+<span style="font-family:'Roboto Mono',monospace;font-size:14px;color:{{ u.fg }}">{{ u.mon }}</span>
+<span style="font-family:Archivo,sans-serif;font-weight:700;font-size:22px;line-height:1;color:#fff">{{ u.day }}</span>
+</div>
+<div style="position:absolute;top:0;right:0;pointer-events:none;background:{{ u.bg }};color:{{ u.fg }};border:1px solid {{ u.bd }};font-family:'Roboto Mono',monospace;font-size:14px;padding:4px 9px">{{ u.away }}</div>
+</div>
+<div style="padding:18px 18px 20px;display:flex;flex-direction:column;flex:1">
+<div style="font-size:15px;font-weight:700;letter-spacing:-.005em;line-height:1.2;color:#fff">{{ u.name }}</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62);margin-top:6px;line-height:1.7;white-space:pre-line">{{ u.meta }}</div>
+<div style="flex:1;min-height:18px"></div>
+<div onClick="{{ u.toggle }}" style="cursor:pointer;align-self:flex-start;background:{{ u.btnBg }};color:{{ u.btnFg }};border:1px solid {{ u.btnBd }};font-family:Archivo,sans-serif;font-weight:700;font-size:14px;padding:10px 22px;border-radius:999px">{{ u.btnLabel }}</div>
+</div>
+</div>
+</sc-for>
+</div>
+
+<sc-if value="{{ upPages }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:48px">
+<div onClick="{{ upPrev }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(232,236,247,.2);color:#e8ecf7;font-size:14px" style-hover="border-color:#8f9df0;color:#8f9df0">‹</div>
+<sc-for list="{{ upDots }}" as="p" hint-placeholder-count="2">
+<div onClick="{{ p.pick }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 12px;border-radius:999px;background:{{ p.bg }};color:{{ p.fg }};border:1px solid {{ p.bd }};font-family:Archivo,sans-serif;font-weight:700;font-size:14px">{{ p.n }}</div>
+</sc-for>
+<div onClick="{{ upNext }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(232,236,247,.2);color:#e8ecf7;font-size:14px" style-hover="border-color:#8f9df0;color:#8f9df0">›</div>
+</div>
+</sc-if>
+
+<div style="margin-top:132px">
+
+<div>
+<div style="font-size:42px;font-family:Archivo,sans-serif;font-weight:900;font-stretch:118%;line-height:1;letter-spacing:-.03em;color:#fff" id="watchlist">MY WATCHLIST</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,262px),1fr));gap:26px;margin-top:38px">
+<sc-for list="{{ watch }}" as="w" hint-placeholder-count="4">
+<a href="{{ w.url }}" target="_blank" rel="noopener" style="display:block;text-decoration:none">
+<div style="background:#0e1732;border:1px solid rgba(232,236,247,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;height:100%" style-hover="border-color:{{ w.color }}">
+<div style="position:relative;aspect-ratio:5/6;background:#0a1024">
+<image-slot id="{{ w.slot }}" shape="rect" placeholder="{{ w.slotHint }}" src="{{ w.art }}"></image-slot>
+<div style="position:absolute;top:12px;left:12px;pointer-events:none;background:{{ w.fill }};color:{{ w.ink }};font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:5px 12px;border-radius:999px;white-space:nowrap">{{ w.badge }}</div>
+</div>
+<div style="padding:18px 18px 20px;display:flex;flex-direction:column;flex:1">
+<div style="font-size:18px;font-weight:700;letter-spacing:-.005em;line-height:1.2;color:#fff">{{ w.name }}</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62);margin-top:9px;line-height:1.5">{{ w.retailer }}</div>
+<div style="display:flex;align-items:baseline;gap:12px;margin-top:18px;flex-wrap:wrap">
+<span style="font-family:Archivo,sans-serif;font-weight:700;font-size:30px;line-height:1;color:{{ w.color }}">{{ w.now }}</span>
+<span style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.5);text-decoration:line-through">{{ w.was }}</span>
+</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:{{ w.color }};margin-top:10px">{{ w.delta }}</div>
+<div style="flex:1;min-height:18px"></div>
+<div style="align-self:flex-start;background:{{ w.fill }};color:{{ w.ink }};font-family:Archivo,sans-serif;font-weight:700;font-size:15px;padding:10px 22px;border-radius:999px;white-space:nowrap">{{ w.cta }}</div>
+</div>
+</div>
+</a>
+</sc-for>
+</div>
+</div>
+
+
+</div>
+
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:132px">
+<div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:#e3c07f;margin-bottom:8px">EVENTS &amp; CONVENTIONS NEAR YOU</div>
+<div style="font-size:42px;font-family:Archivo,sans-serif;font-weight:900;font-stretch:118%;line-height:1;letter-spacing:-.03em;color:#fff" id="events">WHAT'S IN RANGE</div>
+</div>
+<div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+<div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62);margin-bottom:6px">ZIP CODE</div>
+<input value="{{ zip }}" onChange="{{ setZip }}" inputMode="numeric" maxLength="5" placeholder="78701" style="width:118px;background:#0e1732;border-radius:12px;border:1px solid rgba(92,114,216,.5);color:#fff;font-family:Archivo,sans-serif;font-weight:700;font-size:20px;letter-spacing:.06em;padding:9px 12px;outline:none">
+</div>
+<div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62);margin-bottom:6px">RADIUS</div>
+<div style="display:flex;gap:3px">
+<sc-for list="{{ radii }}" as="r" hint-placeholder-count="4">
+<div onClick="{{ r.pick }}" style="cursor:pointer;font-family:'Roboto Mono',monospace;font-size:14px;padding:11px 14px;border-radius:999px;background:{{ r.bg }};color:{{ r.fg }};border:1px solid {{ r.bd }}">
+<div>{{ r.label }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:26px;margin-top:38px">
+<sc-for list="{{ nearby }}" as="e" hint-placeholder-count="4">
+<div style="background:#0e1732;border:1px solid rgba(232,236,247,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(92,114,216,.5)">
+<div style="position:relative;height:132px;background:#0a1024">
+<image-slot id="{{ e.slot }}" shape="rect" placeholder="{{ e.slotHint }}"></image-slot>
+<div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(transparent 40%,rgba(6,11,26,.9))"></div>
+<div style="position:absolute;top:12px;left:12px;pointer-events:none;font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:4px 11px;background:{{ e.kindBg }};color:{{ e.kindFg }};border-radius:999px;white-space:nowrap">{{ e.kind }}</div>
+<div style="position:absolute;top:12px;right:12px;pointer-events:none;font-family:'Roboto Mono',monospace;font-size:14px;padding:4px 11px;border-radius:999px;background:rgba(6,11,26,.75);color:{{ e.tone }};white-space:nowrap">{{ e.dist }} MI</div>
+</div>
+<div style="padding:20px;display:flex;flex-direction:column;flex:1">
+<div style="font-size:17px;font-weight:700;letter-spacing:-.005em;line-height:1.15;color:#fff">{{ e.name }}</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62);margin-top:7px;line-height:1.75">{{ e.venue }}<br>{{ e.when }}</div>
+<div style="display:flex;align-items:baseline;gap:8px;margin-top:11px">
+<span style="font-family:Archivo,sans-serif;font-weight:700;font-size:19px;color:{{ e.tone }}">{{ e.entry }}</span>
+<span style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62)">{{ e.entryNote }}</span>
+</div>
+<div style="flex:1;min-height:18px"></div>
+<div onClick="{{ e.toggle }}" style="cursor:pointer;align-self:flex-start;margin-top:2px;background:{{ e.btnBg }};color:{{ e.btnFg }};border:1px solid {{ e.btnBd }};font-family:Archivo,sans-serif;font-weight:700;font-size:14px;padding:10px 22px;border-radius:999px">{{ e.btnLabel }}</div>
+</div>
+</div>
+</sc-for>
+</div>
+
+<div style="margin-top:104px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap">
+<div style="font-size:42px;font-family:Archivo,sans-serif;font-weight:900;font-stretch:118%;line-height:1;letter-spacing:-.03em;color:#fff">CONVENTIONS &amp; MAJOR EVENTS</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,262px),1fr));gap:26px;margin-top:38px">
+<sc-for list="{{ cons }}" as="c" hint-placeholder-count="3">
+<div style="background:#0e1732;border:1px solid rgba(232,236,247,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(227,192,127,.6)">
+<div style="position:relative;aspect-ratio:5/6;background:#0a1024">
+<image-slot id="{{ c.slot }}" shape="rect" placeholder="{{ c.slotHint }}"></image-slot>
+<div style="position:absolute;top:0;left:0;pointer-events:none;background:#e3c07f;color:#141a44;font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:4px 13px;border-radius:999px;white-space:nowrap">{{ c.tag }}</div>
+<div style="position:absolute;bottom:0;left:0;right:0;pointer-events:none;background:linear-gradient(transparent,rgba(6,11,26,.94));padding:26px 14px 12px">
+<div style="font-size:22px;font-family:Archivo,sans-serif;font-weight:700;line-height:1;letter-spacing:-.02em;color:#fff">{{ c.name }}</div>
+</div>
+</div>
+<div style="padding:18px 18px 20px;display:flex;flex-direction:column;flex:1">
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62);line-height:1.75">{{ c.place }}<br>{{ c.when }}</div>
+<div style="display:flex;align-items:baseline;gap:8px;margin-top:10px">
+<span style="font-family:Archivo,sans-serif;font-weight:700;font-size:19px;color:{{ c.tone }}">{{ c.status }}</span>
+<span style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62)">{{ c.dist }}</span>
+</div>
+<div style="flex:1;min-height:18px"></div>
+<div onClick="{{ c.toggle }}" style="cursor:pointer;align-self:flex-start;background:{{ c.btnBg }};color:{{ c.btnFg }};border:1px solid {{ c.btnBd }};font-family:Archivo,sans-serif;font-weight:700;font-size:14px;padding:10px 22px;border-radius:999px">{{ c.btnLabel }}</div>
+</div>
+</div>
+</sc-for>
+</div>
+
+
+</div>
+</div>
+
+</template>
+<script src="pwa-boot.js"></script>
+<script src="runtime.js"></script>
+<script>
+
+const DIM = 'rgba(232,236,247,.55)', BD = 'rgba(232,236,247,.18)';
+const LIME = '#8f9df0', LINE = '#5c72d8', FILL = '#3d4fbe', PURPLE = '#e3c07f', RED = '#ff9a3d', INK = '#ffffff', DARKINK = '#141a44';
+
+function spark(vals) {
+  const min = Math.min(...vals), max = Math.max(...vals), r = max - min || 1;
+  return vals.map((v, i) => `${(i / (vals.length - 1) * 56 + 1).toFixed(1)},${(18 - (v - min) / r * 16).toFixed(1)}`).join(' ');
+}
+
+// Prices/stock verified via live web fetch on Sep 25, 2026 — see each item's real retailer link. No 30-day price history exists yet
+// (that needs a price-tracking integration); "series" below is a flat snapshot, not a fabricated trend.
+const ALL_DEALS = [
+  { id: 'aotv-target', art: 'https://target.scene7.com/is/image/Target/GUEST_0ca8caf7-d26e-4b41-a127-6d1629cb9caa?wid=548&hei=432&fmt=pjpeg', url: 'https://www.target.com/p/lorcana-trading-card-game-attack-of-the-vine-booster-display/-/A-1011483405', name: 'Attack of the Vine! Booster Display', retailer: 'TARGET', stock: 'OUT OF STOCK', price: '$143.99', msrp: '$143.76', delta: 'AT MSRP', ago: 'checked Sep 25', under: false, src: 'BIG', series: [143.99,143.99,143.99,143.99,143.99,143.99,143.99,143.99,143.99,143.99], slotHint: 'Attack of the Vine booster display' },
+  { id: 'aotv-walmart', art: '', url: 'https://www.walmart.com/ip/Disney-Lorcana-Trading-Card-Game-Attack-of-the-Vine-Booster-Box-24-Packs/20663157247', name: 'Attack of the Vine! Booster Box (3rd-party seller)', retailer: 'WALMART MARKETPLACE', stock: 'IN STOCK — MARKETPLACE RESELLER', price: '$229.99', msrp: '$143.76', delta: '+60% OVER MSRP', ago: 'checked Sep 25', under: false, src: 'BIG', series: [229.99,229.99,229.99,229.99,229.99,229.99,229.99,229.99,229.99,229.99], slotHint: 'Attack of the Vine booster box — no verified photo yet' },
+  { id: 'aotv-bestbuy', art: '', url: 'https://www.bestbuy.com/product/disney-lorcana-attack-of-the-vine-booster-box-24-packs/CJ6QGKYQT7/sku/6680144', name: 'Attack of the Vine! Booster Box', retailer: 'BEST BUY', stock: 'SOLD OUT — RESTOCK PENDING', price: '$400.00', msrp: '$143.76', delta: '+178% OVER MSRP — AVOID', ago: 'checked Sep 25', under: false, src: 'BIG', series: [400,400,400,400,400,400,400,400,400,400], slotHint: 'Attack of the Vine booster box — no verified photo yet' },
+  { id: 'hyperia-box-mm', art: '', url: 'https://www.miniaturemarket.com/Lorcana-TCG-Hyperia-City-Booster-Box-24-Preorder/RVN11090098-BOX', name: 'Hyperia City Booster Box (preorder)', retailer: 'MINIATURE MARKET', stock: 'PREORDER — RELEASES OCT 23', price: '$189.99', msrp: '$143.76', delta: '+32% OVER MSRP', ago: 'checked Sep 25', under: false, src: 'BIG', series: [189.99,189.99,189.99,189.99,189.99,189.99,189.99,189.99,189.99,189.99], slotHint: 'Hyperia City booster box — no verified photo yet' },
+  { id: 'hyperia-trove', art: 'https://ravensburger.cloud/cms/gallery/lorcana-web/products/s14-hyperia-city/hero-and-background-new/s14_header_still_1920x1080.jpg', url: 'https://www.disneylorcana.com/en-US/product/hyperia-city', name: "Hyperia City — Illumineer's Trove", retailer: 'DISNEY LORCANA (OFFICIAL)', stock: 'PREORDER — RELEASES OCT 23', price: '$49.99', msrp: '$49.99', delta: 'AT MSRP', ago: 'checked Sep 25', under: false, src: 'DL', series: [49.99,49.99,49.99,49.99,49.99,49.99,49.99,49.99,49.99,49.99], slotHint: "Hyperia City Illumineer's Trove" },
+  { id: 'hunny-rescue', art: '', url: 'https://www.disneylorcana.com/en-GB/product/great-hunny-rescue', name: "Illumineer's Quest: The Great Hunny Rescue", retailer: 'RAVENSBURGER PLAY HUB STORES', stock: 'RELEASES OCT 2', price: 'TBD', msrp: '', delta: 'NO MSRP PUBLISHED', ago: 'checked Sep 25', under: false, src: 'LGS', series: [0,0,0,0,0,0,0,0,0,0], slotHint: 'Illumineer\u2019s Quest: The Great Hunny Rescue — no verified photo yet' },
+];
+
+// "Signal Check" cards — live-patched by pwa-boot.js (heat + price, matched
+// by url). The old version of this file also had a `pct` field driving a
+// colored "buzz meter" bar with no real data behind it — removed entirely
+// rather than left as fake signal. `ago` is filled in by the live patch.
+const HOT_ITEMS = [
+  { slot: 'hot-1', url: 'https://www.miniaturemarket.com/Lorcana-TCG-Hyperia-City-Booster-Box-24-Preorder/RVN11090098-BOX', art: 'https://ravensburger.cloud/cms/gallery/lorcana-web/products/s14-hyperia-city/hero-and-background-new/s14_header_still_1920x1080.jpg', name: 'Hyperia City Booster Box (preorder)', source: 'MINIATURE MARKET', heat: 'STATUS UNKNOWN', price: '—', tone: '#ff9a3d', toneInk: '#2a1207', why: 'Official MSRP is $143.76 — this is a preorder listing, watch it against that baseline.', ago: 'not yet checked', slotHint: 'Hyperia City booster box' },
+  { slot: 'hot-2', url: 'https://www.bestbuy.com/product/disney-lorcana-attack-of-the-vine-booster-box-24-packs/CJ6QGKYQT7/sku/6680144', art: '', name: 'Attack of the Vine! Booster Box', source: 'BEST BUY', heat: 'STATUS UNKNOWN', price: '—', tone: '#8f9df0', toneInk: '#141a44', why: 'MSRP is $143.76 — this listing has run well above that before.', ago: 'not yet checked', slotHint: 'Attack of the Vine booster box — no verified photo yet' },
+  { slot: 'hot-3', url: 'https://www.disneylorcana.com/en-GB/product/great-hunny-rescue', art: '', name: "Illumineer's Quest: The Great Hunny Rescue", source: 'RAVENSBURGER PLAY HUB STORES', heat: 'STATUS UNKNOWN', price: '—', tone: '#e3c07f', toneInk: '#141a44', why: 'Ravensburger has not published an MSRP for this co-op box yet — worth watching once pricing lands.', ago: 'not yet checked', slotHint: 'Illumineer’s Quest: The Great Hunny Rescue — no verified photo yet' },
+];
+
+// "Recently released, price watch" bar — live-patched by pwa-boot.js
+// (`now` + `pct`, matched by url; `was` is the known MSRP baseline).
+const WATCH_ITEMS = [
+  { slot: 'w-aotv-target', art: 'https://target.scene7.com/is/image/Target/GUEST_0ca8caf7-d26e-4b41-a127-6d1629cb9caa?wid=548&hei=432&fmt=pjpeg', name: 'Attack of the Vine! Booster Display', retailer: 'TARGET', now: null, was: '$143.76', pct: null, ago: 'not yet checked', url: 'https://www.target.com/p/lorcana-trading-card-game-attack-of-the-vine-booster-display/-/A-1011483405', slotHint: 'Attack of the Vine booster display' },
+  { slot: 'w-aotv-walmart', art: '', name: 'Attack of the Vine! Booster Box (3rd-party seller)', retailer: 'WALMART MARKETPLACE', now: null, was: '$143.76', pct: null, ago: 'not yet checked', url: 'https://www.walmart.com/ip/Disney-Lorcana-Trading-Card-Game-Attack-of-the-Vine-Booster-Box-24-Packs/20663157247', slotHint: 'Attack of the Vine booster box — no verified photo yet' },
+  { slot: 'w-aotv-bestbuy', art: '', name: 'Attack of the Vine! Booster Box', retailer: 'BEST BUY', now: null, was: '$143.76', pct: null, ago: 'not yet checked', url: 'https://www.bestbuy.com/product/disney-lorcana-attack-of-the-vine-booster-box-24-packs/CJ6QGKYQT7/sku/6680144', slotHint: 'Attack of the Vine booster box — no verified photo yet' },
+  { slot: 'w-hyperia-mm', art: '', name: 'Hyperia City Booster Box (preorder)', retailer: 'MINIATURE MARKET', now: null, was: '$143.76', pct: null, ago: 'not yet checked', url: 'https://www.miniaturemarket.com/Lorcana-TCG-Hyperia-City-Booster-Box-24-Preorder/RVN11090098-BOX', slotHint: 'Hyperia City booster box — no verified photo yet' },
+  { slot: 'w-hyperia-trove', art: 'https://ravensburger.cloud/cms/gallery/lorcana-web/products/s14-hyperia-city/hero-and-background-new/s14_header_still_1920x1080.jpg', name: "Hyperia City — Illumineer's Trove", retailer: 'DISNEY LORCANA (OFFICIAL)', now: null, was: '$49.99', pct: null, ago: 'not yet checked', url: 'https://www.disneylorcana.com/en-US/product/hyperia-city', slotHint: "Hyperia City Illumineer's Trove" },
+];
+
+const FILTERS = [
+  { key: 'ALL', label: 'ALL' },
+  { key: 'DL', label: 'DISNEY LORCANA' },
+  { key: 'LGS', label: 'GAME STORES' },
+  { key: 'BIG', label: 'RETAIL' },
+  { key: 'UNDER', label: '↓ UNDER MSRP' },
+];
+
+// Builds one ticker marquee item straight from an ALL_DEALS entry's own
+// (live-patched) fields — see the comment on tickerItems in renderVals.
+function dealTicker(dealId, glyph, tone) {
+  const d = ALL_DEALS.find((x) => x.id === dealId);
+  if (!d) return { glyph, tone, label: '', url: '' };
+  const bits = [d.name.toUpperCase(), d.stock];
+  if (d.delta && d.delta !== 'NO DISCOUNT' && d.delta !== 'NO MSRP PUBLISHED') bits.push(d.delta);
+  return { glyph, tone, label: bits.join(' · ') + ' — ' + d.retailer, url: d.url };
+}
+
+// Verified via disneylorcana.com and lorcanaplayer.com's release/event calendar on Sep 25, 2026
+const EVENTS = [
+  { id: 'ev-hunny-release', mon: 'OCT', day: '02', name: "Illumineer's Quest: The Great Hunny Rescue — Release", meta: 'RAVENSBURGER PLAY HUB STORES\nNO MSRP PUBLISHED YET', away: '7D', hot: 1, slotHint: 'Great Hunny Rescue release' },
+  { id: 'ev-hyperia-pre', mon: 'OCT', day: '16', name: 'Hyperia City — Prerelease', meta: 'LOCAL GAME STORES\nALLOCATION VARIES BY STORE', away: '21D', hot: 2, slotHint: 'Hyperia City prerelease' },
+  { id: 'ev-hyperia-release', mon: 'OCT', day: '23', name: 'Hyperia City — Set Release', meta: 'BOOSTER BOX $143.76 MSRP\nAMAZON · TARGET · WALMART · GAME STORES', away: '28D', hot: 1, slotHint: 'Hyperia City set release' },
+  { id: 'ev-challenge-tampa', mon: 'DEC', day: '18', name: 'Disney Lorcana Challenge — Tampa', meta: 'NORTH AMERICAN CHALLENGE EVENT\nWORLD CHAMPIONSHIP INVITE ON TOP FINISH', away: '84D', hot: 0, slotHint: 'Lorcana Challenge Tampa' },
+  { id: 'ev-inkdark-pre', mon: 'FEB', day: '05', name: 'Into the Inkdark — Prerelease', meta: 'SET 15 · FEATURES HADES\nLOCAL GAME STORES', away: '133D', hot: 0, slotHint: 'Into the Inkdark prerelease' },
+];
+
+// Real Spartanburg, SC-area stores that run Disney Lorcana events — distances are approximate, not geocoded live.
+// Exact times/entry fees change weekly; contact each store directly rather than treating these as fixed.
+const LOCAL = [
+  { id: 'lc-cheerful', kind: 'GAME STORE', slot: 'lc-1', slotHint: 'Store photo', name: 'Cheerful TCG — Disney Lorcana Events', venue: '2811 Reidville Rd, Spartanburg, SC 29301', when: 'Runs Lorcana learn-to-play and league events — contact store for current schedule', entry: 'VARIES', entryNote: 'CONTACT STORE', dist: 3.0, hot: 0 },
+  { id: 'lc-upstate', kind: 'TCG STORE', slot: 'lc-2', slotHint: 'Store photo', name: 'Upstate TCG', venue: '2041 Chesnee Hwy, Spartanburg, SC 29303', when: 'General TCG shop — contact store to confirm current Lorcana event schedule', entry: 'VARIES', entryNote: 'CONTACT STORE', dist: 5.0, hot: 0 },
+];
+
+// Real, verified events from lorcanaplayer.com's release/event calendar — distances are approximate driving-distance
+// estimates from Spartanburg, SC 29301, not geocoded live.
+const CONS = [
+  { id: 'con-ccq-raleigh', slot: 'con-1', tag: 'THIS WEEKEND', name: 'CCS $10,000 Lorcana Weekend (CCQ)', place: 'Raleigh, NC', when: 'SEP 26\u201327, 2026 \u00b7 $10,000 PRIZE POOL + NA CHAMPIONSHIP INVITE', status: 'REGIONAL QUALIFIER', dist: '~243 MI AWAY (EST.)', tone: '#e3c07f', slotHint: 'Tournament hall photo' },
+  { id: 'con-challenge-tampa', slot: 'con-2', tag: 'OFFICIAL CHALLENGE', name: 'Disney Lorcana Challenge \u2014 Tampa', place: 'Tampa, FL', when: 'DEC 18\u201320, 2026 \u00b7 NORTH AMERICAN CHALLENGE', status: 'WORLD CHAMPIONSHIP INVITE ON TOP FINISH', dist: '~574 MI AWAY (EST.)', tone: '#8f9df0', slotHint: 'Convention floor photo' },
+  { id: 'con-worlds-hawaii', slot: 'con-3', tag: 'FLAGSHIP EVENT', name: 'Disney Lorcana World Championship 2026', place: 'Aulani Resort \u2014 Hawaii', when: 'DEC 04\u201306, 2026 \u00b7 38 INVITED COMPETITORS WORLDWIDE', status: 'INVITE-ONLY', dist: 'NOT REACHABLE BY ROAD \u2014 FLIGHT REQUIRED', tone: '#8f9df0', slotHint: 'Showcase stage photo' },
+];
+
+class Component extends DCLogic {
+  state = { now: Date.now(), filter: 'ALL', menuOpen: false, searchOpen: false, q: '', cat: 'ALL', sort: 'DEAL', dealPage: 0, upPage: 0, history: null, hoverIdx: null, targets: {}, zip: '78701', radius: 50, armed: { 'sl-super': true, 'ev-superdrop': true, hero: true } };
+
+  componentDidMount() {
+    this.target = Date.now() + (4 * 3600 + 12 * 60 + 7) * 1000;
+    this.t = setInterval(() => this.setState({ now: Date.now() }), 1000);
+
+    // Live data — patches ALL_DEALS in place from the backend, matched by
+    // URL. See public/pwa-boot.js for what this actually does.
+    const refresh = () => window.TCGLiveData && window.TCGLiveData.refreshAll({ deals: ALL_DEALS, hot: HOT_ITEMS, watch: WATCH_ITEMS }, () => this.setState({}));
+    refresh();
+    this.liveInterval = setInterval(refresh, 20000);
+  }
+  componentWillUnmount() { clearInterval(this.t); clearInterval(this.liveInterval); }
+
+  toggle(id) {
+    this.setState(s => ({ armed: { ...s.armed, [id]: !s.armed[id] } }));
+  }
+
+  btn(on, onLabel, offLabel) {
+    return {
+      btnLabel: on ? onLabel : offLabel,
+      btnBg: on ? 'transparent' : FILL,
+      btnFg: on ? LIME : INK,
+      btnBd: LINE,
+      btnGlow: on ? 'none' : '0 0 20px rgba(92,114,216,.22)',
+    };
+  }
+
+  pager(total, per, page, key) {
+    const pages = Math.ceil(total / per) || 1;
+    const cur = Math.min(page, pages - 1);
+    return {
+      multi: pages > 1,
+      start: cur * per,
+      prev: () => this.setState({ [key]: (cur - 1 + pages) % pages }),
+      next: () => this.setState({ [key]: (cur + 1) % pages }),
+      dots: Array.from({ length: pages }, (_, i) => ({
+        n: String(i + 1),
+        pick: () => this.setState({ [key]: i }),
+        bg: i === cur ? FILL : 'transparent',
+        fg: i === cur ? INK : DIM,
+        bd: i === cur ? LINE : BD,
+      })),
+    };
+  }
+
+  dayLabel(daysAgo) {
+    const d = new Date(Date.now() - daysAgo * 86400e3);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+  }
+
+  targetOf(d) {
+    const t = this.state.targets[d.id];
+    return t === undefined ? parseFloat(d.msrp.replace(/[^0-9.]/g, '')).toFixed(2) : t;
+  }
+
+  historyVals() {
+    const d = ALL_DEALS.find(x => x.id === this.state.history);
+    if (!d) return { hist: false };
+    const s = d.series, min = Math.min(...s), max = Math.max(...s), r = (max - min) || 1;
+    const pad = (max - min) * 0.25 || max * 0.06;
+    const lo = min - pad, hi = max + pad, span = hi - lo;
+    const y = v => (190 - (v - lo) / span * 180).toFixed(1);
+    const pts = s.map((v, i) => `${(i / (s.length - 1) * 640).toFixed(1)},${y(v)}`);
+    const msrpNum = parseFloat(d.msrp.replace(/[^0-9.]/g, ''));
+    const on = !!this.state.armed[d.id];
+    return {
+      hist: true,
+      histName: d.name,
+      histRetailer: d.retailer,
+      histMark: d.mark, histMarkBg: d.markBg, histMarkFg: d.markFg,
+      histColor: d.under ? LIME : PURPLE,
+      histFill: d.under ? 'rgba(92,114,216,.12)' : 'rgba(227,192,127,.14)',
+      histLine: pts.join(' '),
+      histArea: ['0,200', ...pts, '640,200'].join(' '),
+      histMsrp: d.msrp,
+      histStartDate: this.dayLabel(30),
+      histEndDate: this.dayLabel(0),
+      histMsrpY: y(msrpNum),
+      histStats: [
+        { k: 'NOW', v: d.price, c: d.under ? LIME : PURPLE },
+        { k: 'MSRP', v: d.msrp, c: '#fff' },
+        { k: '30D LOW', v: '$' + Math.min(...s).toFixed(2), c: LIME },
+        { k: '30D HIGH', v: '$' + Math.max(...s).toFixed(2), c: RED },
+        { k: 'VS MSRP', v: d.delta, c: d.under ? LIME : PURPLE },
+      ],
+      histNote: on ? 'ALERTS ON AT OR BELOW $' + this.targetOf(d) + ' — PUSH · SMS · EMAIL' : 'WE WATCH ALL 4 OFFICIAL SOURCES',
+      histMove: (ev) => {
+        const r = ev.currentTarget.getBoundingClientRect();
+        const i = Math.round(((ev.clientX - r.left) / r.width) * (s.length - 1));
+        this.setState({ hoverIdx: Math.max(0, Math.min(s.length - 1, i)) });
+      },
+      histLeave: () => this.setState({ hoverIdx: null }),
+      histHover: this.state.hoverIdx !== null,
+      histHoverX: (this.state.hoverIdx !== null ? (this.state.hoverIdx / (s.length - 1)) * 100 : 0).toFixed(2) + '%',
+      histHoverY: (this.state.hoverIdx !== null ? (parseFloat(y(s[this.state.hoverIdx])) / 200) * 100 : 0).toFixed(2) + '%',
+      histHoverPrice: '$' + (s[this.state.hoverIdx ?? 0]).toFixed(2),
+      histHoverDay: this.state.hoverIdx !== null ? this.dayLabel(Math.round((s.length - 1 - this.state.hoverIdx) * (30 / (s.length - 1)))) : '',
+      histToggle: () => this.toggle(d.id),
+      histBtnLabel: on ? '✓ ALERT ARMED' : '+ ADD ALERT',
+      histBtnBg: on ? 'transparent' : FILL,
+      histBtnFg: on ? LIME : INK,
+      stop: (ev) => ev.stopPropagation(),
+      closeHistory: () => this.setState({ history: null, hoverIdx: null }),
+    };
+  }
+
+  renderVals() {
+    const f = this.state.filter, armed = this.state.armed;
+    const target = this.target || (Date.now() + 4 * 3600e3);
+    const left = Math.max(0, Math.floor((target - this.state.now) / 1000));
+    const pad = n => String(n).padStart(2, '0');
+    const clock = [
+      { k: 'DAYS', u: 'D', v: pad(Math.floor(left / 86400)) },
+      { k: 'HRS', u: 'H', v: pad(Math.floor(left / 3600) % 24) },
+      { k: 'MIN', u: 'M', v: pad(Math.floor(left / 60) % 60) },
+      { k: 'SEC', u: 'S', v: pad(left % 60) },
+    ];
+    const heroOn = !!armed.hero;
+    const q = this.state.q.trim().toLowerCase();
+    const catOf = d => /booster|display/i.test(d.name) ? 'BOOSTERS'
+      : /quest/i.test(d.name) ? 'QUEST'
+      : /starter/i.test(d.name) ? 'PRECONS'
+      : /bundle|gift/i.test(d.name) ? 'BUNDLES' : 'OTHER';
+    const num = p => (p == null ? NaN : parseFloat(String(p).replace(/[^0-9.]/g, '')));
+    let shown = ALL_DEALS
+      .filter(d => f === 'ALL' || (f === 'UNDER' ? d.under : d.src === f))
+      .filter(d => this.state.cat === 'ALL' || catOf(d) === this.state.cat)
+      .filter(d => !q || d.name.toLowerCase().includes(q) || d.retailer.toLowerCase().includes(q));
+    const srt = this.state.sort;
+    shown = shown.slice().sort((a, b) =>
+      srt === 'LOW' ? num(a.price) - num(b.price)
+      : srt === 'HIGH' ? num(b.price) - num(a.price)
+      : (num(b.msrp) - num(b.price)) / num(b.msrp) - (num(a.msrp) - num(a.price)) / num(a.msrp));
+    const dp = this.pager(shown.length, 6, this.state.dealPage, 'dealPage');
+    const up = this.pager(EVENTS.length, 6, this.state.upPage, 'upPage');
+    const CATS = [
+      { name: 'Booster Boxes', key: 'BOOSTERS', slot: 'cat-boosters', art: 'https://ravensburger.cloud/cms/gallery/lorcana-web/products/s6/products/lorcana_set_6_booster_850x850_en.png' },
+      { name: 'Starter Decks', key: 'PRECONS', slot: 'cat-starters', art: 'https://ravensburger.cloud/cms/gallery/lorcana-web/products/jafar/skus/en/en_jytakhhxo3.png' },
+      { name: "Illumineer's Quest", key: 'QUEST', slot: 'cat-quest', art: 'https://ravensburger.cloud/cms/gallery/lorcana-web/products/dt/en_9qtnfq4muo.png' },
+      { name: 'Gift Sets', key: 'BUNDLES', slot: 'cat-gift', art: 'https://target.scene7.com/is/image/Target/GUEST_2e0ed7c9-b720-433d-a239-b981cd18af9b' },
+      { name: 'Everything', key: 'ALL', slot: 'cat-all', art: 'https://target.scene7.com/is/image/Target/GUEST_fde042cc-275e-4e77-b901-c4908de1470c' },
+    ];
+
+    return {
+      dealPages: dp.multi, dealDots: dp.dots, dealPrev: dp.prev, dealNext: dp.next,
+      upPages: up.multi, upDots: up.dots, upPrev: up.prev, upNext: up.next,
+      menuOpen: this.state.menuOpen,
+      menuBd: this.state.menuOpen ? LIME : 'rgba(232,236,247,.2)',
+      menuFg: this.state.menuOpen ? LIME : '#e8ecf7',
+      toggleMenu: () => this.setState(st => ({ menuOpen: !st.menuOpen })),
+      closeMenu: () => this.setState({ menuOpen: false }),
+      armAllFromMenu: () => {
+        const all = {};
+        ALL_DEALS.forEach(d => { all[d.id] = true; });
+        EVENTS.forEach(e => { all[e.id] = true; });
+        LOCAL.forEach(e => { all[e.id] = true; });
+        CONS.forEach(c => { all[c.id] = true; });
+        ['hot-1', 'hot-2', 'hot-3'].forEach(k => { all[k] = true; });
+        all.hero = true;
+        this.setState({ armed: all, menuOpen: false });
+      },
+      menuItems: [
+        { label: 'DROPS', href: '#tracking', fg: LIME },
+        { label: "WHAT'S HOT", href: '#hot', fg: '#e8ecf7' },
+        { label: 'RELEASE CALENDAR', href: '#calendar', fg: '#e8ecf7' },
+        { label: 'MY WATCHLIST', href: '#watchlist', fg: '#e8ecf7' },
+        { label: 'EVENTS NEAR ME', href: '#events', fg: '#e8ecf7' },
+      ],
+      searchOpen: this.state.searchOpen,
+      openSearch: () => this.setState({ searchOpen: true }),
+      closeSearch: () => this.setState({ searchOpen: false, q: '' }),
+      noResults: !!q && ALL_DEALS.filter(d => d.name.toLowerCase().includes(q)).length === 0,
+      results: (q ? ALL_DEALS.filter(d => d.name.toLowerCase().includes(q) || d.retailer.toLowerCase().includes(q)) : ALL_DEALS.slice(0, 4)).map(d => {
+        return {
+          name: d.name,
+          msrp: d.msrp,
+          quotes: [
+            { src: d.retailer, price: d.price, bg: d.under ? 'rgba(92,114,216,.1)' : 'transparent', bd: d.under ? LIME : BD, fg: d.under ? LIME : '#fff', labelFg: DIM },
+          ],
+        };
+      }),
+      q: this.state.q,
+      setQ: (e) => this.setState({ q: e.target.value }),
+      resultCount: String(shown.length).padStart(2, '0'),
+      underCount: String(shown.filter(d => d.under).length).padStart(2, '0'),
+      cats: CATS.map(c => {
+        const on = this.state.cat === c.key;
+        return {
+          ...c,
+          count: String(c.key === 'ALL' ? ALL_DEALS.length : ALL_DEALS.filter(d => catOf(d) === c.key).length).padStart(2, '0'),
+          pick: () => this.setState({ cat: c.key }),
+          bg: on ? 'rgba(92,114,216,.08)' : '#0e1732',
+          bd: on ? LIME : 'rgba(232,236,247,.1)',
+          countFg: on ? LIME : 'rgba(232,236,247,.55)',
+        };
+      }),
+      sortOpts: [
+        { k: 'DEAL', label: 'BEST DEAL' },
+        { k: 'LOW', label: 'PRICE ↑' },
+        { k: 'HIGH', label: 'PRICE ↓' },
+      ],
+      sort: srt,
+      setSort: (e) => this.setState({ sort: e.target.value, dealPage: 0 }),
+      tickerDur: (this.props.tickerSpeed ?? 34) + 's',
+      tickerLoop: [{}, {}],
+      // Built from the SAME live-patched ALL_DEALS objects the cards below
+      // use (via dealTicker()), not separately hardcoded strings.
+      tickerItems: [
+        { glyph: '●', tone: PURPLE, label: `HYPERIA CITY PRERELEASE IN ${clock[1].v}H ${clock[2].v}M`, url: 'https://www.disneylorcana.com/en-US/product/hyperia-city' },
+        dealTicker('aotv-walmart', '▲', RED),
+        dealTicker('aotv-bestbuy', '▲', RED),
+        dealTicker('hunny-rescue', '◆', LIME),
+        dealTicker('hyperia-box-mm', '▲', RED),
+      ],
+      clock,
+      heroShort: `${clock[1].v}H ${clock[2].v}M`,
+      heroStats: [
+        { k: 'SET', v: 'HYPERIA CITY', c: '#fff' },
+        { k: 'PRERELEASE', v: 'OCT 16', c: LIME },
+        { k: 'RELEASE', v: 'OCT 23', c: '#fff' },
+      ],
+      heroSource: 'DISNEY LORCANA',
+      hot: HOT_ITEMS.map(h => {
+        const on = !!armed[h.slot];
+        return { ...h, toggle: (ev) => { if (ev && ev.stopPropagation) ev.stopPropagation(); this.toggle(h.slot); }, ...this.btn(on, '✓ ALERT ARMED', '+ ADD ALERT') };
+      }),
+      lairs: [
+        { slot: 'lair-1', art: 'https://ravensburger.cloud/cms/gallery/lorcana-web/products/s14-hyperia-city/hero-and-background-new/s14_header_still_1920x1080.jpg', name: 'Hyperia City — Booster Box', price: '$143.76' },
+        { slot: 'lair-2', art: 'https://ravensburger.cloud/cms/gallery/lorcana-web/products/s14-hyperia-city/hero-and-background-new/s14_header_still_1920x1080.jpg', name: "Hyperia City — Illumineer's Trove", price: '$49.99' },
+        { slot: 'lair-3', art: '', name: 'Hyperia City — 2-Player Starter Set', price: '$29.99' },
+        { slot: 'lair-4', art: '', name: 'Hyperia City — Playmat (Miguel)', price: '$24.99' },
+        { slot: 'lair-5', art: '', name: 'Hyperia City — Playmat (Stitch & Angel)', price: '$24.99' },
+      ],
+      howShots: [
+        { slot: 'how-1', label: 'SECRET LAIR' },
+        { slot: 'how-2', label: 'BOOSTER BOXES' },
+        { slot: 'how-3', label: 'COMMANDER PRECONS' },
+        { slot: 'how-4', label: 'BUNDLES' },
+      ],
+      steps: [
+        { n: '1', t: 'Wizards posts the drop' },
+        { n: '2', t: 'You set your price cap' },
+        { n: '3', t: 'We poll 4 official sources' },
+        { n: '4', t: 'Alert fires — push, SMS, email' },
+        { n: '5', t: 'You check out at MSRP' },
+      ].map((x, i) => ({ ...x, bg: i === 0 ? FILL : 'rgba(227,192,127,.2)', fg: i === 0 ? INK : DARKINK })),
+      armedCount: pad(Object.values(armed).filter(Boolean).length),
+      armAll: () => {
+        const all = {};
+        ALL_DEALS.forEach(d => { all[d.id] = true; });
+        EVENTS.forEach(e => { all[e.id] = true; });
+        LOCAL.forEach(e => { all[e.id] = true; });
+        CONS.forEach(c => { all[c.id] = true; });
+        ['hot-1', 'hot-2', 'hot-3'].forEach(k => { all[k] = true; });
+        all.hero = true;
+        this.setState({ armed: all });
+      },
+      armHero: () => this.toggle('hero'),
+      heroLabel: heroOn ? '✓ ALERT ARMED' : 'ADD ALERT',
+      heroBg: heroOn ? 'transparent' : FILL,
+      heroFg: heroOn ? LIME : INK,
+      heroBd: LIME,
+      heroGlow: heroOn ? 'none' : '0 0 26px rgba(92,114,216,.34)',
+      filters: FILTERS.map(x => ({
+        label: x.label,
+        pick: () => this.setState({ filter: x.key }),
+        bg: f === x.key ? PURPLE : 'transparent',
+        fg: f === x.key ? DARKINK : DIM,
+        bd: f === x.key ? PURPLE : BD,
+      })),
+      deals: shown.slice(dp.start, dp.start + 6).map(d => {
+        const on = !!armed[d.id];
+        return {
+          ...d,
+          slot: 'sw-' + d.id,
+          spark: spark(d.series),
+          priceColor: d.under ? LIME : PURPLE,
+          edge: d.under ? LIME : PURPLE,
+          chipBg: d.src === 'SL' ? PURPLE : 'rgba(6,11,26,.82)',
+          chipFg: d.src === 'SL' ? DARKINK : 'rgba(232,236,247,.8)',
+          toggle: () => this.toggle(d.id),
+          openHistory: () => this.setState({ history: d.id, hoverIdx: null }),
+          target: this.targetOf(d),
+          setTarget: (ev) => {
+            const v = ev.target.value.replace(/[^0-9.]/g, '');
+            this.setState(st => ({ targets: { ...st.targets, [d.id]: v } }));
+          },
+          ...this.btn(on, '✓ ALERT ARMED', '+ ADD ALERT'),
+        };
+      }),
+      upcoming: EVENTS.slice(up.start, up.start + 6).map(e => {
+        const on = !!armed[e.id];
+        const tone = e.hot === 2 ? RED : e.hot === 1 ? LIME : DIM;
+        return {
+          ...e,
+          slot: e.id,
+          fg: tone,
+          bg: e.hot === 2 ? 'rgba(255,154,61,.16)' : 'rgba(6,11,26,.8)',
+          bd: e.hot ? tone : BD,
+          toggle: () => this.toggle(e.id),
+          ...this.btn(on, '✓ ALERT ARMED', '+ ADD ALERT'),
+        };
+      }),
+      zip: this.state.zip,
+      setZip: (e) => this.setState({ zip: e.target.value.replace(/[^0-9]/g, '').slice(0, 5) }),
+      radii: [25, 50, 100, 250].map(r => ({
+        label: r + ' MI',
+        pick: () => this.setState({ radius: r }),
+        bg: this.state.radius === r ? FILL : 'transparent',
+        fg: this.state.radius === r ? INK : DIM,
+        bd: this.state.radius === r ? LINE : BD,
+      })),
+      nearSummary: (() => {
+        const n = LOCAL.filter(e => e.dist <= this.state.radius).length;
+        const z = this.state.zip.length === 5 ? this.state.zip : '—';
+        return n + ' EVENT' + (n === 1 ? '' : 'S') + ' WITHIN ' + this.state.radius + ' MI OF ' + z + ' · UPDATED HOURLY FROM OFFICIAL STORE LOCATOR';
+      })(),
+      nearby: LOCAL.filter(e => e.dist <= this.state.radius).map(e => {
+        const on = !!armed[e.id];
+        const tone = e.hot === 2 ? RED : e.hot === 1 ? LIME : PURPLE;
+        return {
+          ...e,
+          dist: e.dist.toFixed(1),
+          tone,
+          kindBg: e.hot === 2 ? RED : e.hot === 1 ? FILL : PURPLE,
+          kindFg: e.hot === 2 ? '#2a1207' : e.hot === 1 ? INK : DARKINK,
+          toggle: () => this.toggle(e.id),
+          ...this.btn(on, '\u2713 ALERT ARMED', '+ ADD ALERT'),
+        };
+      }),
+      cons: CONS.map(c => {
+        const on = !!armed[c.id];
+        return { ...c, toggle: () => this.toggle(c.id), ...this.btn(on, '\u2713 ALERT ARMED', '+ ADD ALERT') };
+      }),
+      watch: WATCH_ITEMS.map(w => {
+        if (w.now == null || w.pct == null) {
+          return { ...w, now: '—', color: DIM, fill: DIM, ink: '#fff', badge: 'NOT YET CHECKED', delta: w.ago, cta: 'VIEW LISTING →' };
+        }
+        const hot = w.pct >= 12, at = w.pct === 0, over = w.pct < 0;
+        return {
+          ...w,
+          color: over ? RED : at ? PURPLE : LIME,
+          fill: over ? RED : at ? PURPLE : FILL,
+          ink: over ? '#2a1207' : at ? DARKINK : INK,
+          badge: over ? 'ABOVE MSRP' : at ? 'AT MSRP' : hot ? 'BEST PRICE YET' : 'BELOW MSRP',
+          delta: at ? 'MSRP — NO DISCOUNT' : over ? Math.abs(w.pct) + '% OVER MSRP' : w.pct + '% OFF MSRP · SAVE $' + (parseFloat(w.was.slice(1) || 0) - parseFloat(w.now.slice(1) || 0)).toFixed(2),
+          cta: over ? 'AVOID — SEE LISTING →' : at ? 'VIEW DROP →' : 'BUY NOW →',
+        };
+      }),
+      ...this.historyVals(),
+      next: [
+        { i: '01', t: 'Add-to-watchlist flow with price-cap slider' },
+        { i: '02', t: 'Lock-screen push + Watch complication' },
+        { i: '03', t: 'Source trust rules — what counts as official' },
+        { i: '04', t: 'Drop receipts — did I actually get it?' },
+      ],
+    };
+  }
+}
+
+window.DCRuntime.mount({ templateId: 'dc-template', rootId: 'dc-root', ComponentClass: Component, props: { tickerSpeed: 34 } });
+</script>
+</body>
+</html>

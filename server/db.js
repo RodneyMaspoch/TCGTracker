@@ -2,13 +2,23 @@
 // On Railway: attach a Volume mounted at /data and set DB_PATH=/data/tcgtracker.db
 // so state survives redeploys. Without a volume, the file lives in the
 // container's ephemeral disk and resets on every deploy/restart.
+//
+// Uses Node's own built-in `node:sqlite` (DatabaseSync) rather than the
+// `better-sqlite3` npm package. Same synchronous prepare/run/get/all API,
+// but nothing to compile — better-sqlite3 is a native addon and needs a
+// C++ toolchain (Visual Studio Build Tools on Windows, Xcode CLI tools on
+// Mac) to install from source whenever a prebuilt binary isn't published
+// yet for your exact Node version. node:sqlite ships inside Node itself,
+// so `npm install` never touches node-gyp for the database at all. It's
+// still marked "experimental" by Node (harmless warning on startup) but
+// is fully functional for this use case.
 
 const path = require('path');
-const Database = require('better-sqlite3');
+const { DatabaseSync } = require('node:sqlite');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'tcgtracker.db');
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
+const db = new DatabaseSync(DB_PATH);
+db.exec('PRAGMA journal_mode = WAL;');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS products (

@@ -23,6 +23,16 @@ const cheerio = require('cheerio');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
+// Signs the page we got back is a bot-check/interstitial/error page rather
+// than the real product page — seen in the wild when a retailer serves a
+// challenge page to a script instead of a 403 (which is why it slips past
+// the fetchHtml try/catch: the HTTP request itself "succeeds", it just
+// returns garbage). If this matches, the text-heuristic fallback below
+// must not run — that's exactly how two unrelated products both got
+// falsely flagged "in stock at $35" from a shared piece of boilerplate
+// challenge-page text.
+const BLOCK_PAGE_SIGNS = /(access .{0,20}denied|are you a human|verify you are (a )?human|pardon our interruption|unusual traffic|automat(ed|ion) (access|request|tools)|request could not be satisfied|captcha|robot check|bot detection|something went wrong.{0,40}try again)/i;
+
 async function fetchHtml(url) {
   const res = await fetch(url, {
     headers: {
@@ -75,6 +85,10 @@ function stockFromText(text) {
 async function scrapeGeneric(url) {
   const html = await fetchHtml(url);
   const $ = cheerio.load(html);
+  const bodyTextForBlockCheck = $('body').text().replace(/\s+/g, ' ').slice(0, 4000);
+  if (BLOCK_PAGE_SIGNS.test(bodyTextForBlockCheck)) {
+    throw new Error('page looks like a bot-check/interstitial page, not the real product page — skipping this cycle');
+  }
   const product = extractJsonLdProduct($);
 
   if (product) {
