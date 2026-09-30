@@ -196,23 +196,27 @@ function renderDrawingHero() {
   `;
 }
 
-function renderGrid() {
-  const grid = els.grid;
-  grid.innerHTML = '';
-  const items = state.products.filter((p) => p.game === state.activeGame);
-
-  if (items.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-state';
-    empty.textContent = 'No tracked products for this game yet.';
-    grid.appendChild(empty);
-    return;
-  }
-
-  for (const product of items) {
-    grid.appendChild(renderCard(product));
-  }
-}
+// Card layout below is deliberately built to match index.html's/
+// lorcana.html's own "Tracking Now" deal cards one-for-one: a 5/6 photo
+// well with a retailer chip overlay, the name as a link, a stock line, a
+// big price with MSRP struck through, and an "ALERT ≤ $ / ADD ALERT" row.
+// The one structural difference: those pages treat "same product, two
+// retailers" as two separate cards (see server/seed.js's hobbit-target /
+// hobbit-walmart pair), so this flattens each PRODUCT's listings into one
+// card per LISTING too, instead of nesting all of a product's retailers
+// inside a single card the way the earlier version of this page did —
+// that nested-list style was the biggest visible difference from the
+// sibling pages, more than the missing photo/big-price treatment was.
+//
+// Like index.html's/lorcana.html's own "ADD ALERT" control, this is a
+// client-side-only toggle (see armedState/targetState below) — it isn't
+// wired to a per-listing threshold on the server. That matches those
+// pages' actual current behavior exactly, not a step behind it: the
+// server-side alert that actually fires (Trigger 2b, MSRP-anchored) is a
+// fixed rule in poll.js, not driven by this input on any of the three
+// pages yet.
+const armedState = {};   // key: `${product.id}:${retailer}` -> boolean
+const targetState = {};  // key: `${product.id}:${retailer}` -> string (input value)
 
 // Mirrors the server-side Trigger 2b logic in server/poller.js — MSRP
 // leads the comparison, TCGPlayer just confirms there's real resale
@@ -223,37 +227,73 @@ function renderGrid() {
 const MIN_MARKUP_OVER_MSRP = 0.25;        // TCGPlayer must be >= 25% over MSRP
 const MAX_RETAIL_PREMIUM_OVER_MSRP = 0.10; // retail price must be <= 10% over MSRP
 
-function bestGoodPriceListing(product) {
-  if (!product.tcgplayer_ref || !product.msrp) return null;
+function isGoodPriceListing(product, l) {
+  if (!product.tcgplayer_ref || !product.msrp || !l.last_purchasable || l.last_price == null) return false;
   const markupOverMsrp = (product.tcgplayer_ref - product.msrp) / product.msrp;
-  if (markupOverMsrp < MIN_MARKUP_OVER_MSRP) return null;
-
-  let best = null;
-  for (const l of product.listings || []) {
-    if (!l.last_purchasable || l.last_price == null) continue;
-    const retailPremiumOverMsrp = (l.last_price - product.msrp) / product.msrp;
-    if (retailPremiumOverMsrp <= MAX_RETAIL_PREMIUM_OVER_MSRP && (!best || retailPremiumOverMsrp < best.retailPremiumOverMsrp)) {
-      best = { listing: l, markupOverMsrp, retailPremiumOverMsrp };
-    }
-  }
-  return best;
+  if (markupOverMsrp < MIN_MARKUP_OVER_MSRP) return false;
+  const retailPremiumOverMsrp = (l.last_price - product.msrp) / product.msrp;
+  return retailPremiumOverMsrp <= MAX_RETAIL_PREMIUM_OVER_MSRP;
 }
 
-function renderCard(product) {
-  const card = document.createElement('div');
-  const good = bestGoodPriceListing(product);
-  card.className = 'card cut' + (good ? ' good-price' : '');
+function renderGrid() {
+  const grid = els.grid;
+  grid.innerHTML = '';
+  const products = state.products.filter((p) => p.game === state.activeGame);
 
-  // Same .artwell photo-placeholder treatment as the dashboards' deal
-  // cards (there's no real product photo here — this is a live-data
-  // scraper, not a CMS — so the placeholder text says so honestly,
-  // exactly like the original's "(official product photo — link out)").
-  const art = document.createElement('div');
-  art.className = 'artwell';
+  // Flatten to one card per listing (see comment above); a product with
+  // no tracked listings yet still gets one card, same as the original
+  // per-product view, so nothing tracked disappears from the grid.
+  const cards = [];
+  for (const product of products) {
+    if (!product.listings || product.listings.length === 0) {
+      cards.push({ product, listing: null });
+    } else {
+      for (const l of product.listings) cards.push({ product, listing: l });
+    }
+  }
+
+  if (cards.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'No tracked products for this game yet.';
+    grid.appendChild(empty);
+    return;
+  }
+
+  for (const { product, listing } of cards) {
+    grid.appendChild(renderCard(product, listing));
+  }
+}
+
+function renderCard(product, l) {
+  const key = `${product.id}:${l ? l.retailer : 'none'}`;
+  const good = l ? isGoodPriceListing(product, l) : false;
+
+  const card = document.createElement('div');
+  card.className = 'card' + (good ? ' good-price' : '');
+
+  const art = document.createElement(l && l.url ? 'a' : 'div');
+  art.className = 'artwell card-art';
+  if (l && l.url) {
+    art.href = l.url;
+    art.target = '_blank';
+    art.rel = 'noopener noreferrer';
+  }
   art.innerHTML = `<div class="mono">${product.name}<br>(official product photo — link out)</div>`;
+  if (l) {
+    const chip = document.createElement('div');
+    chip.className = 'chip tag-chip';
+    chip.style.background = 'rgba(23,10,8,.8)';
+    chip.style.color = 'var(--ink)';
+    chip.innerHTML = `<span>${l.retailer}</span>`;
+    art.appendChild(chip);
+  }
   if (good) {
     const tag = document.createElement('div');
-    tag.className = 'chip tag-chip';
+    tag.className = 'chip';
+    tag.style.position = 'absolute';
+    tag.style.top = '10px';
+    tag.style.right = '10px';
     tag.style.background = 'var(--accent)';
     tag.style.color = 'var(--accent-ink)';
     tag.innerHTML = '<span>GOOD PRICE</span>';
@@ -264,15 +304,29 @@ function renderCard(product) {
   const pad = document.createElement('div');
   pad.className = 'pad';
 
-  const name = document.createElement('div');
-  name.className = 'card-name';
+  const name = document.createElement('a');
+  name.className = 'card-name card-name-link';
   name.textContent = product.name;
+  if (l && l.url) { name.href = l.url; name.target = '_blank'; name.rel = 'noopener noreferrer'; }
   pad.appendChild(name);
 
-  if (product.msrp) {
+  const stock = document.createElement('div');
+  stock.className = 'card-stock';
+  stock.textContent = !l
+    ? 'No retailer link tracked yet for this product.'
+    : (l.last_purchasable ? 'IN STOCK' : (!l.last_stock || l.last_stock === 'unknown' ? 'STATUS UNKNOWN' : l.last_stock === 'account_gated' ? 'ACCOUNT REQUIRED' : 'OUT OF STOCK'));
+  pad.appendChild(stock);
+
+  if (l && l.last_price != null) {
     const row = document.createElement('div');
     row.className = 'card-msrp-row';
-    row.innerHTML = `<span class="num">$${product.msrp.toFixed(2)}</span><span class="mono" style="font-size:12px;color:var(--dim2)">MSRP</span>`;
+    const msrpHtml = product.msrp ? `<span class="strike">$${product.msrp.toFixed(2)}</span>` : '';
+    row.innerHTML = `<span class="num">$${Number(l.last_price).toFixed(2)}</span>${msrpHtml}`;
+    pad.appendChild(row);
+  } else if (product.msrp) {
+    const row = document.createElement('div');
+    row.className = 'card-msrp-row';
+    row.innerHTML = `<span class="mono" style="font-size:13px;color:var(--dim)">MSRP $${product.msrp.toFixed(2)}</span>`;
     pad.appendChild(row);
   }
 
@@ -283,65 +337,35 @@ function renderCard(product) {
     pad.appendChild(ref);
   }
 
-  if (good) {
-    const badge = document.createElement('div');
-    badge.className = 'good-price-badge';
-    badge.textContent = `💰 near MSRP, TCGPlayer +${Math.round(good.markupOverMsrp * 100)}% at ${good.listing.retailer}`;
-    pad.appendChild(badge);
-  }
+  const alertRow = document.createElement('div');
+  alertRow.className = 'alert-row';
 
-  const listingsWrap = document.createElement('div');
-  listingsWrap.className = 'listings';
+  const alertInput = document.createElement('div');
+  alertInput.className = 'alert-input';
+  const defaultTarget = targetState[key] ?? (product.msrp != null ? product.msrp.toFixed(2) : '');
+  alertInput.innerHTML = `<span>ALERT ≤</span><span style="color:#fff">$</span>`;
+  const input = document.createElement('input');
+  input.inputMode = 'decimal';
+  input.value = defaultTarget;
+  input.addEventListener('change', () => { targetState[key] = input.value; });
+  alertInput.appendChild(input);
+  alertRow.appendChild(alertInput);
 
-  if (!product.listings || product.listings.length === 0) {
-    const none = document.createElement('div');
-    none.className = 'no-listings';
-    none.textContent = 'No retailer links tracked yet for this product.';
-    listingsWrap.appendChild(none);
-  } else {
-    for (const l of product.listings) {
-      listingsWrap.appendChild(renderListing(l));
-    }
-  }
-  pad.appendChild(listingsWrap);
+  const btn = document.createElement('div');
+  btn.className = 'alert-btn';
+  const armed = !!armedState[key];
+  btn.dataset.armed = armed ? '1' : '0';
+  btn.textContent = armed ? '✓ ALERT ARMED' : '+ ADD ALERT';
+  btn.addEventListener('click', () => {
+    armedState[key] = !armedState[key];
+    render();
+  });
+  alertRow.appendChild(btn);
+
+  pad.appendChild(alertRow);
   card.appendChild(pad);
 
   return card;
-}
-
-function renderListing(l) {
-  const a = document.createElement('a');
-  a.className = 'listing';
-  a.href = l.url;
-  a.target = '_blank';
-  a.rel = 'noopener noreferrer';
-  // Defensive fallback in case the anchor's default navigation is ever
-  // blocked by an overlay — always force the tab open on click too.
-  a.addEventListener('click', (e) => {
-    if (!l.url) e.preventDefault();
-  });
-
-  const left = document.createElement('div');
-  left.className = 'listing-left';
-  const retailer = document.createElement('span');
-  retailer.className = 'retailer-name';
-  retailer.textContent = l.retailer;
-  left.appendChild(retailer);
-
-  const pill = document.createElement('span');
-  pill.className = 'stock-pill';
-  const ok = l.last_purchasable ? '1' : (l.last_stock ? '0' : 'unknown');
-  pill.dataset.ok = ok;
-  pill.textContent = l.last_purchasable ? 'In stock' : (l.last_stock === 'unknown' || !l.last_stock ? 'Unknown' : 'Out of stock');
-  left.appendChild(pill);
-  a.appendChild(left);
-
-  const price = document.createElement('span');
-  price.className = 'listing-price';
-  price.textContent = l.last_price != null ? `$${Number(l.last_price).toFixed(2)}` : '—';
-  a.appendChild(price);
-
-  return a;
 }
 
 function renderEvents() {

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TCGTracker — Heads Up</title>
+<meta name="theme-color" content="#0b0d10">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<style>
+  body { --tcg-push-accent: #ffb020; --tcg-push-accent-ink: #241800; }
+</style>
+</head>
+<body data-game="headsup">
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span class="brand-word">TCGTRACKER</span>
+      <span class="game-chip">HEADS UP</span>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <a class="tab-btn" href="/">MTG</a>
+    <a class="tab-btn" href="/lorcana">Lorcana</a>
+    <a class="tab-btn" href="/pokemon">Pokémon</a>
+    <a class="tab-btn active" href="/heads-up">🔔 Heads Up</a>
+  </nav>
+
+  <section class="info-section" style="padding-top:20px">
+    <p class="info-note">Early, <strong>unconfirmed</strong> signal from reference sites and Reddit — a possible upcoming drop, drawing, or restock mentioned before it's official anywhere. Every card here is a guess worth reading, not a confirmed fact. Cross-check the link before acting. Confirmed restocks and price alerts live on each game's own page instead.</p>
+  </section>
+
+  <main id="headsUpList" class="grid" style="grid-template-columns:1fr"></main>
+</div>
+<script src="/heads-up-app.js"></script>
+<script src="/push-client.js"></script>
+</body>
+</html>

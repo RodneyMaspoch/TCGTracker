@@ -24,10 +24,16 @@
 // for every page, not just Pokémon's — bumping v3 -> v4 too, so anyone
 // who installed the old version doesn't keep serving a shell that
 // references a file that no longer exists.
-const CACHE = 'tcgtracker-shell-v4';
+// v5 — added the shared Heads Up page (heads-up.html/heads-up-app.js) and
+// site-nav.js (the persistent cross-page nav bar index.html/lorcana.html
+// were missing entirely). Same "keep this list in sync or cache.addAll
+// fails for everyone" reasoning as v4 — bump the version whenever a new
+// shell file is added or removed, not just when one is renamed.
+const CACHE = 'tcgtracker-shell-v5';
 const SHELL_FILES = [
-  '/', '/index.html', '/lorcana.html', '/pokemon.html',
-  '/runtime.js', '/pwa-boot.js', '/pokemon-app.js', '/push-client.js', '/styles.css',
+  '/', '/index.html', '/lorcana.html', '/pokemon.html', '/heads-up.html',
+  '/runtime.js', '/pwa-boot.js', '/pokemon-app.js', '/heads-up-app.js',
+  '/push-client.js', '/site-nav.js', '/styles.css',
   '/manifest.json',
 ];
 
