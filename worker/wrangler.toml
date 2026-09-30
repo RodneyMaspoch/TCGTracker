@@ -35,7 +35,7 @@ SLOW_LANE_EVERY_N_TICKS = "3"
 [[d1_databases]]
 binding = "DB"
 database_name = "tcgtracker-db"
-database_id = ""
+database_id = "a9b101db-55d3-4d53-a41c-5da5d161662a"
 
 # Secrets (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT) are NOT set
 # here — .toml files are meant to be committed to git, and these are
