@@ -20,20 +20,18 @@
 </head>
 <body data-game="headsup">
 <div id="app">
-  <header class="topbar">
-    <div class="brand">
-      <span class="dot"></span>
-      <span class="brand-word">TCGTRACKER</span>
-      <span class="game-chip">HEADS UP</span>
+  <header class="tcg-header">
+    <div class="tcg-brand">
+      <span class="tcg-brand-dot"></span>
+      <span class="tcg-brand-word">TCGTRACKER</span>
     </div>
+    <nav class="tcg-pill-row">
+      <a class="tcg-pill" href="/">MTG</a>
+      <a class="tcg-pill" href="/lorcana">LORCANA</a>
+      <a class="tcg-pill" href="/pokemon">POKÉMON</a>
+      <a class="tcg-pill active" href="/heads-up">HEADS UP</a>
+    </nav>
   </header>
-
-  <nav class="tabs">
-    <a class="tab-btn" href="/">MTG</a>
-    <a class="tab-btn" href="/lorcana">Lorcana</a>
-    <a class="tab-btn" href="/pokemon">Pokémon</a>
-    <a class="tab-btn active" href="/heads-up">🔔 Heads Up</a>
-  </nav>
 
   <section class="info-section" style="padding-top:20px">
     <p class="info-note">Early, <strong>unconfirmed</strong> signal from reference sites and Reddit — a possible upcoming drop, drawing, or restock mentioned before it's official anywhere. Every card here is a guess worth reading, not a confirmed fact. Cross-check the link before acting. Confirmed restocks and price alerts live on each game's own page instead.</p>

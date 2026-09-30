@@ -29,11 +29,18 @@
 // were missing entirely). Same "keep this list in sync or cache.addAll
 // fails for everyone" reasoning as v4 — bump the version whenever a new
 // shell file is added or removed, not just when one is renamed.
-const CACHE = 'tcgtracker-shell-v5';
+// v6 — site-nav.js is dropped (it was a second, visually-different nav
+// bar competing with the real header, which is what made the header look
+// "reduced" — the fix folds page-switching into the existing header pill
+// row instead, now on all 4 pages including a real Heads Up entry).
+// index.html/lorcana.html/pokemon.html/heads-up.html and styles.css all
+// changed this round too — bumping so installed copies actually pick up
+// the fixed header/overflow/alert-card CSS instead of serving stale ones.
+const CACHE = 'tcgtracker-shell-v6';
 const SHELL_FILES = [
   '/', '/index.html', '/lorcana.html', '/pokemon.html', '/heads-up.html',
   '/runtime.js', '/pwa-boot.js', '/pokemon-app.js', '/heads-up-app.js',
-  '/push-client.js', '/site-nav.js', '/styles.css',
+  '/push-client.js', '/styles.css',
   '/manifest.json',
 ];
 

@@ -22,20 +22,18 @@
 </head>
 <body data-game="pokemon">
 <div id="app">
-  <header class="topbar">
-    <div class="brand">
-      <span class="dot"></span>
-      <span class="brand-word">TCGTRACKER</span>
-      <span id="gameChip" class="game-chip"><span>POKÉMON</span></span>
+  <header class="tcg-header">
+    <div class="tcg-brand">
+      <span class="tcg-brand-dot"></span>
+      <span class="tcg-brand-word">DEXWATCH</span>
     </div>
+    <nav class="tcg-pill-row">
+      <a class="tcg-pill" href="/">MTG</a>
+      <a class="tcg-pill" href="/lorcana">LORCANA</a>
+      <a class="tcg-pill active" href="/pokemon">POKÉMON</a>
+      <a class="tcg-pill" href="/heads-up">HEADS UP</a>
+    </nav>
   </header>
-
-  <nav class="tabs">
-    <a class="tab-btn active" data-game="pokemon" href="/pokemon">Pokémon</a>
-    <a class="tab-btn" data-game="mtg" href="/">MTG</a>
-    <a class="tab-btn" data-game="lorcana" href="/lorcana">Lorcana</a>
-    <a class="tab-btn" href="/heads-up">🔔 Heads Up</a>
-  </nav>
 
   <section id="drawingHero" class="hero-band" hidden></section>
 

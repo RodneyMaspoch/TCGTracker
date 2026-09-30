@@ -61,6 +61,13 @@ html, body {
   color: var(--ink);
   font-family: Archivo, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* index.html/lorcana.html set this inline already; styles.css didn't,
+     so pokemon.html/heads-up.html (which only link this file, no inline
+     <style> override) had nothing suppressing the horizontal scrollbar
+     that .hero-band's full-bleed 100vw/-50vw trick introduces. Setting
+     it here once, globally, fixes it for every page that uses this
+     stylesheet instead of needing every page to remember it. */
+  overflow-x: hidden;
 }
 
 a { color: var(--accent); text-decoration: none; }
@@ -196,7 +203,60 @@ button { font: inherit; cursor: pointer; }
   cursor: not-allowed;
 }
 
-/* ---------- Tabs ---------- */
+/* ---------- Shared page header (brand mark + page-switch pills) ----------
+   Used by pokemon.html and heads-up.html, built to match the exact
+   structure/markup MTG (SPELLWATCH) and Lorcana (INKWATCH) already have
+   inline in their runtime.js templates: a colored dot + game codename on
+   the left, a rounded pill-toggle with all 4 pages on the right. Having
+   this as real classes (instead of copy-pasted inline styles) is also
+   what the user asked for previously for the pages that aren't locked
+   into the runtime.js templating engine. ---------- */
+.tcg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 24px 5% 0;
+}
+.tcg-brand { display: flex; align-items: center; gap: 10px; flex: none; }
+.tcg-brand-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 16px var(--accent);
+}
+.tcg-brand-word {
+  font-family: 'Chakra Petch', Archivo, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -.02em;
+  color: #fff;
+  white-space: nowrap;
+}
+.tcg-pill-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  border: 1px solid var(--hair2);
+  flex: none;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.tcg-pill {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+  color: var(--dim);
+  text-decoration: none;
+  padding: 6px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.tcg-pill.active { color: var(--accent-ink); background: var(--accent); }
+
+/* ---------- Tabs (legacy — no longer used by any page; kept so nothing
+   404s if an old cached HTML still references .tab-btn) ---------- */
 .tabs {
   display: flex;
   gap: 6px;
@@ -673,20 +733,31 @@ button { font: inherit; cursor: pointer; }
   gap: 8px;
 }
 
+/* Was: full border + full TEXT colored by --sec/--accent — on Pokémon's
+   theme --sec is #3b82f6 (brand-accurate Poké-ball blue), which made the
+   entire message read as flat blue text with no card treatment at all —
+   i.e. it looked exactly like an unstyled/broken hyperlink instead of an
+   intentional alert. Fixed to a small colored dot + left accent bar (the
+   badge/chip language used everywhere else on the site) so only a tiny
+   accent carries the color and the message itself stays readable ink. */
 .event {
-  font-size: 12px;
-  padding: 10px 12px;
+  font-size: 13px;
+  padding: 11px 14px;
   border-radius: 10px;
   background: var(--surface);
   border: 1px solid var(--hair2);
+  border-left: 3px solid var(--hair2);
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   color: var(--ink);
 }
 
-.event[data-kind="good_price"] { border-color: var(--accent); color: var(--accent); }
-.event[data-kind="restock"] { border-color: var(--sec); color: var(--sec); }
-.event[data-kind="drawing_open"] { border-color: var(--accent); color: var(--accent); }
+.event[data-kind="good_price"] { border-left-color: var(--accent); }
+.event[data-kind="restock"] { border-left-color: var(--sec); }
+.event[data-kind="drawing_open"] { border-left-color: var(--accent); }
+
+.event-msg { color: var(--ink); flex: 1; }
 
 .event-time {
   font-family: 'Roboto Mono', monospace;

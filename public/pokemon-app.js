@@ -386,6 +386,7 @@ function renderEvents() {
     time.className = 'event-time';
     time.textContent = new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const msg = document.createElement('span');
+    msg.className = 'event-msg';
     msg.textContent = ev.message;
     row.appendChild(time);
     row.appendChild(msg);
