@@ -19,6 +19,13 @@ a{color:#8f9df0;text-decoration:none}a:hover{color:#a9b6f2}
 ::-webkit-scrollbar{width:0;height:0}
 @keyframes sw-blink{0%,100%{opacity:1}50%{opacity:.2}}
 @keyframes sw-ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.sw-ticker-wrap:hover .sw-ticker-track{animation-play-state:paused}
+.tt-slider{display:flex!important;grid-template-columns:none!important;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+.tt-slider::-webkit-scrollbar{height:6px}
+.tt-slider::-webkit-scrollbar-thumb{background:rgba(232,236,247,.2);border-radius:999px}
+.tt-slider>*{flex:0 0 262px;width:262px;scroll-snap-align:start}
+.tt-slider.tt-sm>*{flex-basis:190px;width:190px}
+.tt-slider.tt-lg>*{flex-basis:285px;width:285px}
 </style>
 <style id="dc-hover-styles"></style>
 </head>
@@ -136,8 +143,8 @@ radial-gradient(50% 34% at 2% 4%,rgba(92,114,216,.13) 0%,transparent 60%),
 
 <div style="position:fixed;inset:0;z-index:70;pointer-events:none;opacity:.5;mix-blend-mode:overlay;background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27220%27%20height=%27220%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.85%27%20numOctaves=%274%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20type=%27saturate%27%20values=%270%27/%3E%3C/filter%3E%3Crect%20width=%27220%27%20height=%27220%27%20filter=%27url%28%23n%29%27%20opacity=%270.5%27/%3E%3C/svg%3E);background-size:220px 220px"></div>
 
-<div style="background:#0e1732;overflow:hidden;padding:8px 0;border-bottom:1px solid rgba(227,192,127,.28)">
-<div style="display:flex;width:max-content;animation:sw-ticker 34s linear infinite;animation-duration:{{ tickerDur }}">
+<div class="sw-ticker-wrap" style="background:#0e1732;overflow:hidden;padding:8px 0;border-bottom:1px solid rgba(227,192,127,.28)">
+<div class="sw-ticker-track" style="display:flex;width:max-content;animation:sw-ticker 34s linear infinite;animation-duration:{{ tickerDur }}">
 <sc-for list="{{ tickerLoop }}" as="lap" hint-placeholder-count="2">
 <div style="display:flex;gap:34px;flex:0 0 auto;width:max-content;padding-right:34px">
 <sc-for list="{{ tickerItems }}" as="t" hint-placeholder-count="3">
@@ -289,7 +296,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(92,114,216,.13) 0%,transparent 60%),
 <div style="font-size:42px;font-family:Archivo,sans-serif;font-weight:900;font-stretch:118%;line-height:1;letter-spacing:-.03em;color:#fff">WHAT'S HOT</div>
 </div>
 
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr));gap:16px;margin-top:38px">
+<div class="tt-slider tt-sm" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr));gap:16px;margin-top:38px">
 <sc-for list="{{ hot }}" as="h" hint-placeholder-count="4">
 <a href="{{ h.url }}" target="_blank" rel="noopener" style="display:block;text-decoration:none">
 <div style="background:#0e1732;border:1px solid rgba(232,236,247,.1);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer" style-hover="border-color:{{ h.tone }}">
@@ -342,7 +349,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(92,114,216,.13) 0%,transparent 60%),
 </div>
 </div>
 </div>
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,262px),1fr));gap:26px;margin-top:38px">
+<div class="tt-slider" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,262px),1fr));gap:26px;margin-top:38px">
 <sc-for list="{{ deals }}" as="d" hint-placeholder-count="6">
 <div style="background:#0e1732;border:1px solid rgba(232,236,247,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(92,114,216,.55);box-shadow:0 0 28px rgba(92,114,216,.14)">
 <a href="{{ d.url }}" target="_blank" rel="noopener" style="display:block;position:relative;aspect-ratio:5/6;background:#0a1024" title="View at retailer">
@@ -488,7 +495,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(92,114,216,.13) 0%,transparent 60%),
 </div>
 </div>
 
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:26px;margin-top:38px">
+<div class="tt-slider tt-lg" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:26px;margin-top:38px">
 <sc-for list="{{ nearby }}" as="e" hint-placeholder-count="4">
 <div style="background:#0e1732;border:1px solid rgba(232,236,247,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(92,114,216,.5)">
 <div style="position:relative;height:132px;background:#0a1024">
@@ -990,7 +997,7 @@ class Component extends DCLogic {
   }
 }
 
-window.DCRuntime.mount({ templateId: 'dc-template', rootId: 'dc-root', ComponentClass: Component, props: { tickerSpeed: 34 } });
+window.DCRuntime.mount({ templateId: 'dc-template', rootId: 'dc-root', ComponentClass: Component, props: { tickerSpeed: 90 } });
 </script>
 <script src="/push-client.js"></script>
 </body>
