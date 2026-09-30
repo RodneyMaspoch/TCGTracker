@@ -29,6 +29,21 @@ export const PRODUCTS = [
       { retailer: 'gamestop', url: 'https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-30th-celebration-elite-trainer-box/20036324.html' },
     ],
   },
+  // Added 2026-09-30 — coverage-gap fix. This is a DIFFERENT, Pokémon
+  // Center-exclusive SKU from pkm-30th-etb above (distinct TCGplayer
+  // listing "ME: 30th Celebration — 30th Celebration Pokémon Center Elite
+  // Trainer Box"), sold only at pokemoncenter.com — it was never seeded as
+  // its own product before today, which is exactly why a restock there
+  // (caught by a third-party app, missed here) went unnoticed. tcgplayer_ref
+  // sourced via PriceCharting's TCGPlayer comparison line, 2026-09-30
+  // ~16:00 UTC ($310.50) — re-verify periodically like every other
+  // tcgplayer_ref in this file, it will drift.
+  {
+    id: 'pkm-30th-etb-pokemoncenter', game: 'pokemon', name: '30th Celebration — Pokémon Center Elite Trainer Box', msrp: 59.99, poll_tier: 'fast', tcgplayer_ref: 310.50,
+    listings: [
+      { retailer: 'pokemoncenter', url: 'https://www.pokemoncenter.com/product/10-10447-111/pokemon-tcg-30th-celebration-pokemon-center-elite-trainer-box' },
+    ],
+  },
   {
     id: 'pkm-30th-upc-day', game: 'pokemon', name: '30th Celebration — Ultra Premium Collection (Day)', msrp: 179.99, poll_tier: 'fast', tcgplayer_ref: 566.23,
     listings: [],
