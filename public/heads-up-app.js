@@ -76,8 +76,20 @@ function renderCard(row) {
 }
 
 async function load() {
+  // Was: any failure here (network error, or the API returning a
+  // non-JSON error body) landed in the catch block and did NOTHING to
+  // the page — no card, no empty-state, no error, just a blank list
+  // forever. That's indistinguishable from "the feature is broken" even
+  // when the real cause is something fixable (most likely: the
+  // heads_up table doesn't exist yet because migration 0002 hasn't been
+  // applied in D1). Now every outcome puts SOME visible text in the list.
   try {
-    const rows = await fetch('/api/heads-up?limit=50').then((r) => r.json());
+    const res = await fetch('/api/heads-up?limit=50');
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`API returned ${res.status}${body ? ` — ${body.slice(0, 200)}` : ''}`);
+    }
+    const rows = await res.json();
     list.innerHTML = '';
     if (!rows || rows.length === 0) {
       const empty = document.createElement('div');
@@ -89,6 +101,11 @@ async function load() {
     for (const row of rows) list.appendChild(renderCard(row));
   } catch (err) {
     console.error('[heads-up] load failed', err);
+    list.innerHTML = '';
+    const errBox = document.createElement('div');
+    errBox.className = 'empty-state';
+    errBox.textContent = `Couldn't load heads-up data (${err.message || 'unknown error'}). If you just deployed this, make sure migration 0002_heads_up.sql has been applied in D1 — this page depends on that table existing.`;
+    list.appendChild(errBox);
   }
 }
 

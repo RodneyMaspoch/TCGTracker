@@ -78,8 +78,18 @@ app.post('/api/admin/set-tier', async (c) => {
 // is a separate table and endpoint from /api/events (confirmed alerts).
 app.get('/api/heads-up', async (c) => {
   const limit = c.req.query('limit') || '50';
-  const rows = await getHeadsUp(c.env, limit);
-  return c.json(rows);
+  try {
+    const rows = await getHeadsUp(c.env, limit);
+    return c.json(rows);
+  } catch (err) {
+    // Most likely cause: migration 0002_heads_up.sql hasn't been applied
+    // to this D1 database yet, so the `heads_up` table doesn't exist.
+    // Returning a clear JSON error (instead of letting D1's raw error
+    // bubble up as an opaque 500) means the frontend can actually show
+    // the person something useful instead of a silent blank page.
+    console.error('[api/heads-up] query failed', err);
+    return c.json({ error: 'heads_up_query_failed', message: String(err && err.message || err) }, 500);
+  }
 });
 
 app.get('/api/health', (c) => c.json({ ok: true, time: new Date().toISOString() }));
