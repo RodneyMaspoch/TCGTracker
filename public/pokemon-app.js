@@ -72,7 +72,6 @@ const els = {
   eventsList: document.getElementById('eventsList'),
   eventsUpcomingList: document.getElementById('eventsUpcomingList'),
   alertServicesList: document.getElementById('alertServicesList'),
-  notifyBtn: document.getElementById('notifyBtn'),
   gameChip: document.getElementById('gameChip'),
   tabs: Array.from(document.querySelectorAll('.tab-btn')),
 };
@@ -148,10 +147,12 @@ function renderTabs() {
   }
 }
 
-// Same shape as the dashboards' Walmart Drawing hero: status chip, big
-// headline with an accent-colored word, a paragraph, a CTA row, and an
-// artwell + price panel below. Only shown on the Pokémon tab, same as
-// the original (this is a Pokémon-specific program).
+// Pokémon's "big live moment" — same role as MTG's Reality Fracture
+// countdown or Lorcana's Hyperia City hero: a full-bleed hero band using
+// the SAME .hero-band/.hero-headline/.hero-panel classes those pages use
+// (see styles.css), built around the Walmart Collectibles Drawing status
+// instead of a set-release countdown, since that's this game's real
+// time-sensitive event. Only shown on the Pokémon tab.
 function renderDrawingHero() {
   const el = els.drawingHero;
   if (!el) return;
@@ -167,25 +168,29 @@ function renderDrawingHero() {
     : 'not yet checked';
 
   el.innerHTML = `
-    <div class="chip"><span class="dotpulse"></span><span>${isOpen ? 'DRAWING OPEN RIGHT NOW' : 'NO DRAWING OPEN RIGHT NOW'}</span></div>
-    <h1>Skip the refresh.<br><span class="hl">${isOpen ? 'Enter' : 'Wait for'}</span> the drawing${isOpen ? ' instead.' : '.'}</h1>
-    <p>Walmart sells its hottest Pokémon sealed product through a free-to-enter drawing, not a first-come race: sign in, pick an eligible item, submit before the window closes, and Walmart auto-charges and ships if you're randomly selected. No advantage to fast fingers. ${isOpen ? '<strong>A window is open right now.</strong>' : '<strong>Nothing is open to enter right now</strong> — this card updates the moment a window opens.'} See "Restock alert services" below for how to catch it early.</p>
-    <div class="cta-row">
-      <a class="btn cta-secondary" href="https://www.walmart.com/shop/collectibles/draw" target="_blank" rel="noopener noreferrer">OPEN THE DRAWING PAGE →</a>
-    </div>
-    <div class="drawing-panel">
-      <div class="artwell cut-sm">
-        <div class="mono">${WALMART_DRAWING_REF.itemName}<br>(official product photo — link out)</div>
-      </div>
-      <div class="drawing-panel-body">
-        <div class="drawing-panel-title">${WALMART_DRAWING_REF.itemName} (last drawing price)</div>
-        <div class="drawing-panel-prices">
-          <div><div class="label mono">Drawing price</div><div class="num" style="font-size:24px;color:#fff">$${WALMART_DRAWING_REF.drawingPrice.toFixed(2)}</div></div>
-          <div><div class="label mono">General MSRP</div><div class="num" style="font-size:24px;color:var(--dim)">$${WALMART_DRAWING_REF.msrp.toFixed(2)}</div></div>
+    <div class="hero-band-bg"></div>
+    <div class="hero-band-inner">
+      <div>
+        <div class="hero-badge"><span class="dotpulse"></span><span>${isOpen ? 'DRAWING OPEN RIGHT NOW' : 'NO DRAWING OPEN RIGHT NOW'}</span></div>
+        <div class="hero-headline">Skip the refresh.<br><span class="hl">${isOpen ? 'Enter' : 'Wait for'}</span> the drawing${isOpen ? ' instead' : ''}.</div>
+        <p class="hero-sub">Walmart sells its hottest Pokémon sealed product through a free-to-enter drawing, not a first-come race: sign in, pick an eligible item, submit before the window closes, and Walmart auto-charges and ships if you're randomly selected. No advantage to fast fingers. ${isOpen ? '<strong>A window is open right now.</strong>' : '<strong>Nothing is open to enter right now</strong> — this updates the moment a window opens.'}</p>
+        <div class="hero-cta-row">
+          <a class="btn hero-cta-secondary" href="https://www.walmart.com/shop/collectibles/draw" target="_blank" rel="noopener noreferrer">OPEN THE DRAWING PAGE →</a>
         </div>
-        <div class="drawing-panel-status">${isOpen ? 'OPEN · ENTRIES BEING ACCEPTED NOW' : 'CLOSED · ENTRIES NO LONGER ACCEPTED FOR THIS WINDOW'}</div>
-        <div class="mono" style="font-size:12px;color:var(--dim2);margin-top:14px;padding-top:14px;border-top:1px solid var(--hair);line-height:1.6">Last confirmed window (re-verified directly against the drawing page): ${WALMART_DRAWING_REF.lastWindow} ${WALMART_DRAWING_REF.rumor}</div>
-        <div class="mono" style="font-size:11px;color:var(--dim2);margin-top:10px">This app's own last check: ${checked}. It polls roughly every 90s and pushes an alert the moment the state above flips to OPEN.</div>
+      </div>
+      <div class="hero-panel">
+        <div class="artwell cut-sm">
+          <div class="mono">${WALMART_DRAWING_REF.itemName}<br>(official product photo — link out)</div>
+        </div>
+        <div class="hero-panel-body">
+          <div class="hero-panel-title">${WALMART_DRAWING_REF.itemName} (last drawing price)</div>
+          <div class="hero-panel-prices">
+            <div><div class="label mono">Drawing price</div><div class="num" style="color:#fff">$${WALMART_DRAWING_REF.drawingPrice.toFixed(2)}</div></div>
+            <div><div class="label mono">General MSRP</div><div class="num" style="color:var(--dim)">$${WALMART_DRAWING_REF.msrp.toFixed(2)}</div></div>
+          </div>
+          <div class="hero-panel-status">${isOpen ? 'OPEN · ENTRIES BEING ACCEPTED NOW' : 'CLOSED · ENTRIES NO LONGER ACCEPTED FOR THIS WINDOW'}</div>
+          <div class="hero-panel-footnote">Last confirmed window (re-verified directly against the drawing page): ${WALMART_DRAWING_REF.lastWindow} ${WALMART_DRAWING_REF.rumor}<br><br>This app's own last check: ${checked}. It polls roughly every 90s and pushes an alert the moment the state above flips to OPEN.</div>
+        </div>
       </div>
     </div>
   `;
@@ -373,90 +378,9 @@ for (const btn of els.tabs) {
 }
 
 // ---------- Push subscription ----------
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
-  return outputArray;
-}
-
-function setNotifyState(stateName, label) {
-  els.notifyBtn.dataset.state = stateName;
-  els.notifyBtn.textContent = label;
-}
-
-async function refreshNotifyButton() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    setNotifyState('unsupported', 'Alerts unsupported');
-    els.notifyBtn.disabled = true;
-    return;
-  }
-  try {
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (sub) {
-      setNotifyState('on', 'Alerts on');
-    } else {
-      setNotifyState('off', 'Enable alerts');
-    }
-  } catch (_) {
-    setNotifyState('off', 'Enable alerts');
-  }
-}
-
-async function subscribeToPush() {
-  const keyRes = await fetch('/api/push/public-key').then((r) => r.json());
-  if (!keyRes.configured || !keyRes.publicKey) {
-    alert('Push isn’t configured on the server yet (missing VAPID keys). See the README for the one-time `npm run generate-vapid` step.');
-    return;
-  }
-  const permission = await Notification.requestPermission();
-  if (permission !== 'granted') {
-    setNotifyState('off', 'Enable alerts');
-    return;
-  }
-  const reg = await navigator.serviceWorker.ready;
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(keyRes.publicKey),
-  });
-  await fetch('/api/push/subscribe', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(sub),
-  });
-  setNotifyState('on', 'Alerts on');
-}
-
-async function unsubscribeFromPush() {
-  const reg = await navigator.serviceWorker.ready;
-  const sub = await reg.pushManager.getSubscription();
-  if (sub) {
-    await fetch('/api/push/unsubscribe', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ endpoint: sub.endpoint }),
-    });
-    await sub.unsubscribe();
-  }
-  setNotifyState('off', 'Enable alerts');
-}
-
-els.notifyBtn.addEventListener('click', async () => {
-  if (els.notifyBtn.disabled) return;
-  try {
-    if (els.notifyBtn.dataset.state === 'on') {
-      await unsubscribeFromPush();
-    } else {
-      await subscribeToPush();
-    }
-  } catch (err) {
-    console.error('[app] push toggle failed', err);
-    alert('Something went wrong enabling alerts. Check the console for details.');
-  }
-});
+// Handled by push-client.js, shared with index.html and lorcana.html —
+// see that file. Previously this page had its own copy of this logic;
+// consolidated to one place so a future fix only needs to happen once.
 
 // ---------- Boot ----------
 (async function init() {
@@ -467,7 +391,6 @@ els.notifyBtn.addEventListener('click', async () => {
       console.error('[app] service worker registration failed', err);
     }
   }
-  await refreshNotifyButton();
   await loadAll();
   setInterval(loadAll, REFRESH_MS);
 })();

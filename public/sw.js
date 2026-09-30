@@ -17,10 +17,17 @@
 // (index.html, lorcana.html, pokemon.html + their own scripts/styles),
 // replacing the old single-page app.js/styles.css. Bumping v2 -> v3 also
 // forces any previously-installed service worker to drop its old cache.
-const CACHE = 'tcgtracker-shell-v3';
+// v4 — pokemon.html moved onto the same shared styles.css as index.html/
+// lorcana.html (the old pokemon-styles.css was a byte-identical duplicate,
+// now removed) and gained push-client.js. cache.addAll fails ENTIRELY if
+// any one URL in this list 404s, so a stale filename here breaks install
+// for every page, not just Pokémon's — bumping v3 -> v4 too, so anyone
+// who installed the old version doesn't keep serving a shell that
+// references a file that no longer exists.
+const CACHE = 'tcgtracker-shell-v4';
 const SHELL_FILES = [
   '/', '/index.html', '/lorcana.html', '/pokemon.html',
-  '/runtime.js', '/pwa-boot.js', '/pokemon-app.js', '/pokemon-styles.css',
+  '/runtime.js', '/pwa-boot.js', '/pokemon-app.js', '/push-client.js', '/styles.css',
   '/manifest.json',
 ];
 

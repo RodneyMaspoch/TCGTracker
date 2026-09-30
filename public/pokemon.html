@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>TCGTracker</title>
-<meta name="theme-color" content="#08060e">
+<title>TCGTracker — Pokémon</title>
+<meta name="theme-color" content="#170a08">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
@@ -13,9 +13,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/pokemon-styles.css">
+<link rel="stylesheet" href="/styles.css">
+<style>
+  /* --tcg-push-accent/-ink feed push-client.js's floating "Enable alerts"
+     button so it matches this page's theme instead of MTG's default green. */
+  body { --tcg-push-accent: #FFCB05; --tcg-push-accent-ink: #241300; }
+</style>
 </head>
-<body>
+<body data-game="pokemon">
 <div id="app">
   <header class="topbar">
     <div class="brand">
@@ -23,24 +28,22 @@
       <span class="brand-word">TCGTRACKER</span>
       <span id="gameChip" class="game-chip"><span>POKÉMON</span></span>
     </div>
-    <button id="notifyBtn" class="btn-notify">Enable alerts</button>
   </header>
 
-  <!-- NOTE (for whoever reads this later): this page still uses the
-       card-grid design I built before finding out the real dashboards —
-       index.html (MTG) and lorcana.html — already existed with real
-       product photos and a richer layout. This is a working bridge so
-       Pokémon isn't just missing, not the final design; see the chat for
-       the open question about rebuilding this page to match. -->
   <nav class="tabs">
-    <a class="tab-btn active" data-game="pokemon" href="/pokemon.html">Pokémon</a>
-    <a class="tab-btn" data-game="mtg" href="/index.html">MTG</a>
-    <a class="tab-btn" data-game="lorcana" href="/lorcana.html">Lorcana</a>
+    <a class="tab-btn active" data-game="pokemon" href="/pokemon">Pokémon</a>
+    <a class="tab-btn" data-game="mtg" href="/">MTG</a>
+    <a class="tab-btn" data-game="lorcana" href="/lorcana">Lorcana</a>
   </nav>
 
-  <section id="drawingHero" class="drawing-hero cut" hidden></section>
+  <section id="drawingHero" class="hero-band" hidden></section>
 
-  <main id="productGrid" class="grid"></main>
+  <main>
+    <div style="padding:20px 16px 0">
+      <div class="h2">Tracking now</div>
+    </div>
+    <div id="productGrid" class="grid"></div>
+  </main>
 
   <section class="events">
     <div class="h2">Recent alerts</div>
@@ -63,5 +66,6 @@
   </section>
 </div>
 <script src="/pokemon-app.js"></script>
+<script src="/push-client.js"></script>
 </body>
 </html>

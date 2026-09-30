@@ -106,7 +106,7 @@ button { font: inherit; cursor: pointer; }
 }
 
 #app {
-  max-width: 720px;
+  max-width: 1180px;
   margin: 0 auto;
   min-height: 100dvh;
   padding-bottom: 48px;
@@ -322,8 +322,129 @@ button { font: inherit; cursor: pointer; }
 /* ---------- Product grid — the real dashboards' .card.cut / .artwell / .pad ---------- */
 .grid {
   display: grid;
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 262px), 1fr));
+  gap: 20px;
   padding: 4px 16px 20px;
+}
+
+/* ---------- Hero band — matches index.html/lorcana.html's full-bleed hero
+   treatment (big headline, badge chip, CTA row) instead of the boxed
+   .drawing-hero card style above. Used for Pokémon's Walmart Drawing
+   status, the one "big live moment" this page has, same role as MTG's
+   Reality Fracture countdown or Lorcana's Hyperia City countdown. ---------- */
+.hero-band {
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--hero-base);
+}
+
+.hero-band-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(62% 40% at 88% -6%, color-mix(in srgb, var(--sec) 30%, transparent) 0%, transparent 62%),
+    radial-gradient(50% 34% at 2% 4%, color-mix(in srgb, var(--accent) 13%, transparent) 0%, transparent 60%);
+}
+
+.hero-band-inner {
+  position: relative;
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr);
+  gap: 32px;
+  align-items: center;
+  padding: 48px 16px;
+}
+
+@media (max-width: 860px) {
+  .hero-band-inner { grid-template-columns: 1fr; padding: 32px 16px; }
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+  border-radius: 999px;
+  padding: 7px 17px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+  letter-spacing: .08em;
+  color: var(--warn);
+  white-space: nowrap;
+}
+.hero-band[data-state="open"] .hero-badge {
+  background: color-mix(in srgb, var(--sec) 14%, transparent);
+  border-color: color-mix(in srgb, var(--sec) 45%, transparent);
+  color: var(--sec);
+}
+.hero-badge .dotpulse { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: sw-blink 1.2s infinite; }
+@keyframes sw-blink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+
+.hero-headline {
+  font-weight: 900;
+  font-size: clamp(28px, 3.4vw, 48px);
+  line-height: .98;
+  letter-spacing: -.03em;
+  color: #fff;
+  margin-top: 18px;
+  text-transform: uppercase;
+}
+.hero-headline .hl { color: var(--accent); }
+
+.hero-sub {
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: 14px;
+  max-width: 620px;
+}
+.hero-sub strong { color: #fff; }
+
+.hero-cta-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
+.hero-cta-primary { background: var(--accent); color: var(--accent-ink); }
+.hero-cta-secondary {
+  display: inline-block;
+  border-radius: 999px;
+  border: 1px solid var(--hair2);
+  color: var(--ink);
+  font-family: Archivo, sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 11px 22px;
+}
+
+.hero-panel {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--hair2);
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.45);
+}
+.hero-panel .artwell { border-radius: 14px; aspect-ratio: 16/10; }
+.hero-panel-body { padding: 16px 6px 4px; }
+.hero-panel-title { font-size: 19px; font-weight: 800; color: #fff; line-height: 1.15; }
+.hero-panel-prices { display: flex; gap: 24px; margin-top: 12px; }
+.hero-panel-prices .label { font-size: 12px; color: var(--dim); }
+.hero-panel-prices .num { font-size: 24px; }
+.hero-panel-status { font-size: 12px; color: var(--warn); margin-top: 12px; letter-spacing: .03em; }
+.hero-band[data-state="open"] .hero-panel-status { color: var(--sec); }
+.hero-panel-footnote {
+  font-size: 11px;
+  color: var(--dim2);
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hair);
+  line-height: 1.6;
 }
 
 .card {

@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-body{margin:0;background:#060b1a;color:#e8ecf7;font-family:Archivo,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-wrap:pretty;overflow-x:hidden}
+body{margin:0;background:#060b1a;color:#e8ecf7;font-family:Archivo,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-wrap:pretty;overflow-x:hidden;--tcg-push-accent:#8f9df0;--tcg-push-accent-ink:#141a44}
 a{color:#8f9df0;text-decoration:none}a:hover{color:#a9b6f2}
 ::-webkit-scrollbar{width:0;height:0}
 @keyframes sw-blink{0%,100%{opacity:1}50%{opacity:.2}}
@@ -345,12 +345,12 @@ radial-gradient(50% 34% at 2% 4%,rgba(92,114,216,.13) 0%,transparent 60%),
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,262px),1fr));gap:26px;margin-top:38px">
 <sc-for list="{{ deals }}" as="d" hint-placeholder-count="6">
 <div style="background:#0e1732;border:1px solid rgba(232,236,247,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(92,114,216,.55);box-shadow:0 0 28px rgba(92,114,216,.14)">
-<div style="position:relative;aspect-ratio:5/6;background:#0a1024">
+<a href="{{ d.url }}" target="_blank" rel="noopener" style="display:block;position:relative;aspect-ratio:5/6;background:#0a1024" title="View at retailer">
 <image-slot id="{{ d.slot }}" shape="rect" placeholder="{{ d.slotHint }}" src="{{ d.art }}"></image-slot>
 <div style="position:absolute;top:0;left:0;pointer-events:none;background:{{ d.chipBg }};color:{{ d.chipFg }};font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:5px 12px;border-radius:999px;white-space:nowrap;font-size:14px">{{ d.retailer }}</div>
-</div>
+</a>
 <div style="padding:18px 18px 20px;display:flex;flex-direction:column;flex:1">
-<div style="font-size:15px;font-weight:700;letter-spacing:-.005em;line-height:1.2;color:#fff">{{ d.name }}</div>
+<a href="{{ d.url }}" target="_blank" rel="noopener" style="font-size:15px;font-weight:700;letter-spacing:-.005em;line-height:1.2;color:#fff;text-decoration:none" style-hover="text-decoration:underline">{{ d.name }}</a>
 <div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(232,236,247,.62);margin-top:7px">{{ d.stock }}</div>
 <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-top:14px">
 <span style="font-family:Archivo,sans-serif;font-weight:700;font-size:26px;color:{{ d.priceColor }};line-height:1">{{ d.price }}</span>
@@ -992,5 +992,6 @@ class Component extends DCLogic {
 
 window.DCRuntime.mount({ templateId: 'dc-template', rootId: 'dc-root', ComponentClass: Component, props: { tickerSpeed: 34 } });
 </script>
+<script src="/push-client.js"></script>
 </body>
 </html>
