@@ -15,6 +15,7 @@ import {
   saveSubscription,
   removeSubscription,
   setProductTier,
+  getHeadsUp,
 } from './db.js';
 import { notifyAll, pushConfigured } from './push.js';
 import { tick } from './poll.js';
@@ -71,6 +72,14 @@ app.post('/api/admin/set-tier', async (c) => {
   }
   await setProductTier(c.env, product_id, tier);
   return c.json({ ok: true });
+});
+
+// Early-signal / unconfirmed tier — see worker/src/headsup.js for why this
+// is a separate table and endpoint from /api/events (confirmed alerts).
+app.get('/api/heads-up', async (c) => {
+  const limit = c.req.query('limit') || '50';
+  const rows = await getHeadsUp(c.env, limit);
+  return c.json(rows);
 });
 
 app.get('/api/health', (c) => c.json({ ok: true, time: new Date().toISOString() }));

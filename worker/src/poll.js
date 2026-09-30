@@ -23,6 +23,7 @@
 
 import { scrapeGeneric, scrapeWalmartDrawing } from './scrapers.js';
 import { notifyAll } from './push.js';
+import { runHeadsUpCheck, HEADS_UP_CHECK_COUNT } from './headsup.js';
 import {
   getListingsForLane,
   updateListing,
@@ -145,6 +146,16 @@ export async function tick(env) {
   if (slowListings.length > 0 && tickCount % slowEveryN === 0) {
     slowIdx = (state.slow_idx + 1) % slowListings.length;
     await pollOneListing(env, slowListings[slowIdx]);
+  }
+
+  // Heads-up (early signal) lane: one source every HEADS_UP_EVERY_N_TICKS
+  // ticks, rotating through TrackaLacker/TCG Drop Radar/autoqueue/Reddit.
+  // Stateless on purpose (derived from tick_count, no extra column) — see
+  // headsup.js for why these are checked at all and how they're labeled.
+  const headsUpEveryN = parseInt(env.HEADS_UP_EVERY_N_TICKS || '5', 10);
+  if (tickCount % headsUpEveryN === 0) {
+    const headsUpIdx = Math.floor(tickCount / headsUpEveryN) % HEADS_UP_CHECK_COUNT;
+    await runHeadsUpCheck(env, headsUpIdx);
   }
 
   await setPollState(env, { fast_idx: fastIdx, slow_idx: slowIdx, tick_count: tickCount });

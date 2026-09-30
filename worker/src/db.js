@@ -94,3 +94,24 @@ export async function allSubscriptions(env) {
 export async function setProductTier(env, productId, tier) {
   await env.DB.prepare('UPDATE products SET poll_tier = ? WHERE id = ?').bind(tier, productId).run();
 }
+
+// ---------------- heads_up (early signal / unconfirmed tier) ----------------
+
+// Returns true only if this was a genuinely NEW row (not a duplicate of an
+// already-seen source+dedupe_key) — callers use this to decide whether to
+// fire a push notification, so re-checking unchanged content doesn't spam.
+export async function insertHeadsUp(env, row) {
+  const { results } = await env.DB.prepare(
+    `INSERT INTO heads_up (source, game, title, snippet, url, discovered_at, dedupe_key)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(source, dedupe_key) DO NOTHING
+     RETURNING id`
+  ).bind(row.source, row.game ?? null, row.title, row.snippet ?? null, row.url ?? null, row.discovered_at, row.dedupe_key).all();
+  return results.length > 0;
+}
+
+export async function getHeadsUp(env, limit = 50) {
+  const capped = Math.min(parseInt(limit, 10) || 50, 200);
+  const { results } = await env.DB.prepare('SELECT * FROM heads_up ORDER BY id DESC LIMIT ?').bind(capped).all();
+  return results;
+}
