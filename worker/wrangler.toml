@@ -25,16 +25,9 @@ crons = ["* * * * *"]
 # retailers), lower it to check more often (closer to, but still slower
 # than, the fast lane).
 [vars]
-{
-  // ...
-  "vars": {
-    "SLOW_LANE_EVERY_N_TICKS": "3",
-    "VAPID_PRIVATE_KEY": "KRXgOCxGULU8OgilnQNZ-aMmwVHG8K005m8FEwfg54",
-    "VAPID_PUBLIC_KEY": "BNivxQj3iFv4bbyOGjD7mMIloCvMCvnHd5CFTPfSKi5jNnAm_73DphOqwR3f39hPDMbnAvma6BapE5wKj8ngz0U",
-    "VAPID_SUBJECT": "mailto:stuffiliked@gmail.com"
-  },
-  // ...
-}
+SLOW_LANE_EVERY_N_TICKS = "3"
+VAPID_PUBLIC_KEY = "BNivxQj3iFv4bbyOGjD7mMIloCvMCvnHd5CFTPfSKi5jNnAm_73DphOqwR3f39hPDMbnAvma6BapE5wKj8ngz0U"
+VAPID_SUBJECT = "mailto:stuffiliked@gmail.com"
 
 # D1 database binding. Run `wrangler d1 create tcgtracker-db` once, then
 # paste the database_id it prints below (see worker/README.md for the full
