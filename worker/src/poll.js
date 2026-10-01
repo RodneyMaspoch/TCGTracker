@@ -1,25 +1,29 @@
-// poll.js — the staggered rotation that replaces the Node version's
-// setInterval-based poller.js. Why staggered instead of "check the whole
-// tier every tick": Cloudflare Workers' free plan caps a single Cron
-// Trigger invocation at 10ms of CPU time. Looping through all ~16 tracked
-// listings and parsing each page in one tick (the Node version's design)
-// risks blowing that budget in one invocation. Instead, this Worker fires
-// every minute and checks only ONE (sometimes two) listing per tick,
-// rotating through a fixed order — same total coverage, spread out over
-// time instead of bursted into one invocation.
+// poll.js — staggered rotation for the slow lane, parallel full-sweep for
+// the fast lane. Cloudflare Workers' free plan caps a single Cron Trigger
+// invocation at 10ms of CPU TIME — but CPU time is actual compute, not
+// wall-clock: time spent awaiting fetch() doesn't count against it. That
+// means running every fast-lane listing's fetch concurrently (Promise.all)
+// and doing their (cheap, regex-only) parsing afterward comfortably fits
+// the budget, since 5-6 small HTML parses add up to a fraction of a
+// millisecond of real CPU work — it's the SEQUENTIAL "one every tick"
+// rotation that was wasting most of the available speed, not a CPU limit.
 //
-// Fast lane: the 4 Pokémon listings + a Walmart-drawing check, one slot
-//   advanced every tick (every 1 min) — full cycle every ~5 minutes.
-// Slow lane: the 12 MTG + Lorcana listings, one slot advanced only every
-//   SLOW_LANE_EVERY_N_TICKS ticks — at the default of 3, a full cycle is
-//   ~36 minutes, in the same ballpark as the Node version's 30min tier.
+// Fast lane: every Pokémon listing + the Walmart-drawing check, ALL
+//   checked every single tick (every 1 min) — full coverage every ~60s,
+//   not a ~5min rotation. This was changed specifically to compete with
+//   (or beat) third-party restock-alert apps/services that check more
+//   often than once-every-several-minutes per item.
+// Slow lane: the 12 MTG + Lorcana listings, still staggered — one slot
+//   advanced only every SLOW_LANE_EVERY_N_TICKS ticks, since there's no
+//   reason those need Pokémon's level of urgency and keeping them
+//   staggered leaves more subrequest/CPU headroom for the fast lane.
 //
 // Retune by changing SLOW_LANE_EVERY_N_TICKS (env var, see wrangler.toml)
 // or by moving products between poll_tier 'fast'/'slow' — see
-// /api/admin/set-tier in index.js. Moving more products into 'fast'
-// lengthens the fast lane's own full-cycle time in exchange for reacting
-// to unlisted products sooner; there's no free way to check everything
-// every 90s on the free plan, this is the real tradeoff being made.
+// /api/admin/set-tier in index.js. Moving more products into 'fast' adds
+// more concurrent fetches to every tick (still well under the 50-
+// subrequest-per-invocation limit at current tracked-product counts, but
+// worth watching if the fast lane grows a lot).
 
 import { scrapeGeneric, scrapeWalmartDrawing } from './scrapers.js';
 import { notifyAll } from './push.js';
@@ -52,6 +56,7 @@ const RETAILER_LABELS = {
   miniaturemarket: 'Miniature Market',
   disneylorcana: 'Disney Lorcana',
   ravensburger: 'Ravensburger',
+  pokemoncenter: 'Pokémon Center',
 };
 function retailerLabel(slug) {
   return RETAILER_LABELS[slug] || slug;
@@ -153,15 +158,17 @@ export async function tick(env) {
   const slowListings = await getListingsForLane(env, 'slow');
   const state = await getPollState(env);
 
-  // Fast lane: fastListings.length real listings + 1 pseudo-slot for the
-  // Walmart drawing check, advanced every single tick.
-  const fastLaneLength = fastListings.length + 1;
-  const fastIdx = fastLaneLength > 0 ? (state.fast_idx + 1) % fastLaneLength : -1;
-  if (fastIdx >= 0 && fastIdx < fastListings.length) {
-    await pollOneListing(env, fastListings[fastIdx]);
-  } else if (fastIdx === fastListings.length) {
-    await pollWalmartDrawing(env);
-  }
+  // Fast lane: EVERY listing (not one-at-a-time) checked concurrently,
+  // every tick — see the top-of-file comment for why this is safe under
+  // the 10ms CPU budget (fetch() wait time is free; it's sequential
+  // rotation that was slow, not a CPU ceiling). fast_idx is no longer
+  // used to pick a slot, but is still written back as 0 so the
+  // poll_state row's schema/shape doesn't need a migration.
+  await Promise.all([
+    ...fastListings.map((row) => pollOneListing(env, row)),
+    pollWalmartDrawing(env),
+  ]);
+  const fastIdx = 0;
 
   const tickCount = state.tick_count + 1;
 
