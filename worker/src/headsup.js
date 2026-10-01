@@ -190,6 +190,59 @@ async function checkRestockd(env) {
   }
 }
 
+// autoqueue.app keeps a public "last 90 days" log of Pokémon Center drop
+// alerts it sent its own subscribers — exactly the "a drop happened at
+// this time" signal needed here, and the closest thing to a real-time
+// Pokémon Center status this project can read without defeating
+// pokemoncenter.com's own Incapsula bot-protection (which this project
+// won't do — see poll.js's retailerLabel comment / the PerimeterX
+// write-up on Target's Redsky API for why). Explicit ask: "I just need
+// to know so I can run to it" — a recent log entry here answers exactly
+// that, even without the specific product.
+const AUTOQUEUE_PC_URL = 'https://autoqueue.app/drops/pokemon-center';
+// "Sep 30, 2026 | 11:59 AM | Browser alert sent and email alert accepted by provider"
+const AUTOQUEUE_PC_ENTRY_RE = /([A-Z][a-z]{2}\s+\d{1,2},\s*\d{4})\s*\|\s*(\d{1,2}:\d{2}\s*[AP]M)\s*\|\s*([^\n|]{5,120}?)(?=[A-Z][a-z]{2}\s+\d{1,2},\s*\d{4}\s*\||$)/g;
+
+async function checkAutoqueuePokemonCenter(env) {
+  let text;
+  try {
+    text = stripToText(await fetchText(AUTOQUEUE_PC_URL));
+  } catch (err) {
+    console.warn(`[headsup] fetch failed for autoqueue-pc: ${err.message}`);
+    return;
+  }
+  const re = new RegExp(AUTOQUEUE_PC_ENTRY_RE.source, 'g');
+  let match;
+  let count = 0;
+  while ((match = re.exec(text)) !== null && count < 10) {
+    const [, dateStr, timeStr, statusRaw] = match;
+    const parsed = new Date(`${dateStr} ${timeStr}`);
+    if (isNaN(parsed.getTime())) continue;
+    // Only a genuinely recent entry is worth surfacing as "go now" — this
+    // page's log goes back 90 days, and almost all of those rows are
+    // stale history, not something to alert on.
+    if (Date.now() - parsed.getTime() > 36 * 60 * 60 * 1000) continue;
+    const status = statusRaw.trim().replace(/\s+/g, ' ');
+    const row = {
+      source: 'autoqueue-pc',
+      game: 'pokemon',
+      title: `Pokémon Center drop signal — ${dateStr} ${timeStr}`,
+      snippet: status,
+      // Points at Pokémon Center itself, not autoqueue's page — the
+      // explicit ask was "clicking the alert opens the Pokémon Center
+      // site so I can join the queue immediately." This log doesn't say
+      // which product, so this links to the general shop rather than
+      // guessing a specific (possibly wrong) product URL.
+      url: 'https://www.pokemoncenter.com/',
+      discovered_at: parsed.toISOString(),
+      dedupe_key: `${dateStr}|${timeStr}`,
+    };
+    const isNew = await insertHeadsUp(env, row);
+    if (isNew) await notifyHeadsUp(env, row);
+    count++;
+  }
+}
+
 // Reddit's own search JSON is public and needs no API key for this volume
 // of use — same "read a public page" boundary as everything else here.
 async function checkReddit(env) {
@@ -236,6 +289,13 @@ const CHECKERS = [
 ];
 
 export async function runHeadsUpCheck(env, index) {
+  // Pokémon Center is checked on EVERY heads-up tick (not rotated in with
+  // the others) — explicit priority: "this should be the most important
+  // thing," and a signal that only refreshes every ~30 minutes (if it
+  // shared a slot with 5 other sources) isn't fast enough to "run there
+  // immediately." The rotation below still covers the other sources at
+  // the original cadence alongside it.
+  await checkAutoqueuePokemonCenter(env);
   const checker = CHECKERS[index % CHECKERS.length];
   await checker(env);
 }
