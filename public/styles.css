@@ -727,40 +727,60 @@ button { font: inherit; cursor: pointer; }
 
 .events .h2, .info-section .h2 { margin-bottom: 14px; }
 
+/* Was a single-column list of full-width rows — reads like a log file,
+   not like anything else on this site (everything else is a card grid).
+   Switched to a real responsive card grid, same auto-fill pattern the
+   product grid uses, so this finally looks like it belongs on the same
+   page as the rest of MTG/Lorcana/Pokémon. */
 .events-list, .info-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
 }
 
 /* Was: full border + full TEXT colored by --sec/--accent — on Pokémon's
    theme --sec is #3b82f6 (brand-accurate Poké-ball blue), which made the
    entire message read as flat blue text with no card treatment at all —
    i.e. it looked exactly like an unstyled/broken hyperlink instead of an
-   intentional alert. Fixed to a small colored dot + left accent bar (the
+   intentional alert. Fixed to a small colored left accent bar (the
    badge/chip language used everywhere else on the site) so only a tiny
    accent carries the color and the message itself stays readable ink. */
 .event {
   font-size: 13px;
-  padding: 11px 14px;
+  padding: 13px 14px;
   border-radius: 10px;
   background: var(--surface);
   border: 1px solid var(--hair2);
   border-left: 3px solid var(--hair2);
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
   color: var(--ink);
+  text-decoration: none;
 }
 
 .event[data-kind="good_price"] { border-left-color: var(--accent); }
 .event[data-kind="restock"] { border-left-color: var(--sec); }
 .event[data-kind="drawing_open"] { border-left-color: var(--accent); }
 
-.event-msg { color: var(--ink); flex: 1; }
+/* A real retailer URL exists for this event → it's rendered as <a class="event">
+   instead of <div class="event"> — give it an actual clickable affordance
+   instead of looking identical to the non-clickable ones. */
+a.event { cursor: pointer; }
+a.event:hover { border-color: var(--accent); }
+a.event::after {
+  content: 'View at retailer →';
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  margin-top: 2px;
+}
+
+.event-msg { color: var(--ink); }
 
 .event-time {
   font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
   color: var(--dim);
   white-space: nowrap;
 }
@@ -772,12 +792,17 @@ button { font: inherit; cursor: pointer; }
   line-height: 1.4;
 }
 
+/* Was a horizontal row (name+sub on the left, date/price pinned right) —
+   converted to a stacked card to match the grid layout above. Still a
+   real <a href> when the item has a url (ALERT_SERVICES always does;
+   EVENTS_BY_GAME currently doesn't carry a per-event source link, so
+   those render as plain (non-clickable) cards rather than linking
+   somewhere made up). */
 .info-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 13px 14px;
   background: var(--surface);
   border: 1px solid var(--hair2);
   border-radius: 10px;
@@ -786,14 +811,20 @@ button { font: inherit; cursor: pointer; }
   color: var(--ink);
 }
 
+.info-row-link { cursor: pointer; }
 .info-row-link:hover { border-color: var(--accent); }
+.info-row-link::after {
+  content: 'Visit site →';
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+}
 
 .info-row-main {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  flex: 1 1 auto;
 }
 
 .info-row-main strong { font-size: 13px; color: var(--ink); }
@@ -803,9 +834,6 @@ button { font: inherit; cursor: pointer; }
   font-family: 'Roboto Mono', monospace;
   font-size: 11px;
   color: var(--accent);
-  text-align: right;
-  flex: none;
-  max-width: 40%;
 }
 
 /* ---------- Heads-up cards — bold/loud on purpose (per explicit request:

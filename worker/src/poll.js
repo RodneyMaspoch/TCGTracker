@@ -37,6 +37,26 @@ import {
 const MIN_MARKUP_OVER_MSRP = 0.25; // TCGPlayer must be >= 25% over MSRP
 const MAX_RETAIL_PREMIUM_OVER_MSRP = 0.10; // retail price must be <= 10% over MSRP
 
+// Retailer slugs (see seed-data.js) are DB/URL-safe identifiers —
+// 'target', 'walmart_marketplace', 'bestbuy' — never meant to be shown to
+// a person. Every event message was interpolating the raw slug directly
+// ("...purchasable at target"), which is why it never capitalized. This
+// is the one place that turns a slug into the name a person should see.
+const RETAILER_LABELS = {
+  target: 'Target',
+  walmart: 'Walmart',
+  walmart_marketplace: 'Walmart Marketplace',
+  bestbuy: 'Best Buy',
+  gamestop: 'GameStop',
+  secretlair: 'Secret Lair',
+  miniaturemarket: 'Miniature Market',
+  disneylorcana: 'Disney Lorcana',
+  ravensburger: 'Ravensburger',
+};
+function retailerLabel(slug) {
+  return RETAILER_LABELS[slug] || slug;
+}
+
 async function pollOneListing(env, row) {
   let result;
   try {
@@ -76,8 +96,13 @@ async function pollOneListing(env, row) {
 
   // Trigger 4 — restock.
   if (!wasPurchasable && nowPurchasable) {
-    const msg = `RESTOCK: ${row.product_name} is now purchasable at ${row.retailer}` + (result.price ? ` — $${result.price}` : '');
-    await insertEvent(env, { created_at: now, kind: 'restock', product_id: row.product_id, message: msg, data_json: JSON.stringify(result) });
+    const msg = `RESTOCK: ${row.product_name} is now purchasable at ${retailerLabel(row.retailer)}` + (result.price ? ` — $${result.price}` : '');
+    // row.url is the actual retailer product page being polled — it was
+    // never carried into data_json before, so the "Recent Alerts" list
+    // had a real restock event but nothing to link out to (the user
+    // asked for these to be clickable, same as the restock alert
+    // services list already is).
+    await insertEvent(env, { created_at: now, kind: 'restock', product_id: row.product_id, message: msg, data_json: JSON.stringify({ ...result, url: row.url }) });
     await notifyAll(env, { title: '🟢 Restock', body: msg, url: '/', tag: `${row.product_id}-${row.retailer}` });
   }
 
@@ -89,13 +114,13 @@ async function pollOneListing(env, row) {
     const retailPremiumOverMsrp = (result.price - row.msrp) / row.msrp;
 
     if (markupOverMsrp >= MIN_MARKUP_OVER_MSRP && retailPremiumOverMsrp <= MAX_RETAIL_PREMIUM_OVER_MSRP) {
-      const msg = `GOOD PRICE: ${row.product_name} — MSRP $${row.msrp.toFixed(2)}, TCGPlayer $${row.tcgplayer_ref.toFixed(2)} (+${Math.round(markupOverMsrp * 100)}% over MSRP) — purchasable now at ${row.retailer} for $${result.price.toFixed(2)}`;
+      const msg = `GOOD PRICE: ${row.product_name} — MSRP $${row.msrp.toFixed(2)}, TCGPlayer $${row.tcgplayer_ref.toFixed(2)} (+${Math.round(markupOverMsrp * 100)}% over MSRP) — purchasable now at ${retailerLabel(row.retailer)} for $${result.price.toFixed(2)}`;
       await insertEvent(env, {
         created_at: now,
         kind: 'good_price',
         product_id: row.product_id,
         message: msg,
-        data_json: JSON.stringify({ ...result, msrp: row.msrp, tcgplayer_ref: row.tcgplayer_ref, markupOverMsrp, retailPremiumOverMsrp }),
+        data_json: JSON.stringify({ ...result, url: row.url, msrp: row.msrp, tcgplayer_ref: row.tcgplayer_ref, markupOverMsrp, retailPremiumOverMsrp }),
       });
       await notifyAll(env, { title: '💰 Good price vs. MSRP/TCGPlayer', body: msg, url: '/', tag: `${row.product_id}-goodprice` });
     }

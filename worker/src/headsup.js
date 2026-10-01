@@ -97,6 +97,24 @@ const SOURCES = [
   },
 ];
 
+// Restockd (restockd.app) — a real restock-alert app (free tier, iOS/
+// Android, Discord + X community) the user says has been the most
+// reliably early of anything they've used, including Walmart lottery
+// windows and Pokémon Center queue activity. It has no public API, but
+// its "live tracker" page is a public, no-login, server-rendered page
+// listing recent detections (product, retailer, price, date) — same
+// "read a public page, no key needed" shape as the other 3 sources
+// above, just with structured entries instead of prose. Pokémon-only;
+// restockd.app has no equivalent MTG/Lorcana tracker page (checked —
+// only /brands/pokemon and /brands/needoh exist).
+const RESTOCKD_URL = 'https://restockd.app/brands/pokemon';
+// Matches entries shaped like "<Product Name><Retailer>·$<Price>·<Mon D, YYYY>"
+// — product name and retailer often render with no space between them
+// once the page's HTML collapses to plain text, so this doesn't assume
+// a separator, just that one of these retailer names appears right
+// before the price/date pair.
+const RESTOCKD_ENTRY_RE = /([A-Z][^$\n]{5,120}?)(Target|Walmart|GameStop|Pok[ée]mon Center|Best ?Buy|Dollar General)[\s·•\-|]*\$(\d+(?:\.\d{2})?)[\s·•\-|]*([A-Z][a-z]{2}\.?\s+\d{1,2},?\s+\d{4})/g;
+
 async function notifyHeadsUp(env, row) {
   await notifyAll(env, {
     title: '🔔 Heads up',
@@ -130,6 +148,45 @@ async function checkWebSource(env, source) {
     };
     const isNew = await insertHeadsUp(env, row);
     if (isNew) await notifyHeadsUp(env, row);
+  }
+}
+
+// Restockd's page lists actual detections, not speculative prose, so
+// this skips the keyword/date-proximity heuristic extractSnippets() uses
+// for the other 3 sources and parses the structured entries directly.
+// These still land in the same "unconfirmed" heads_up tier rather than
+// being upgraded to a confirmed event, because it's Restockd's
+// detection, not one this app verified itself against the retailer page.
+async function checkRestockd(env) {
+  let html;
+  try {
+    html = await fetchText(RESTOCKD_URL);
+  } catch (err) {
+    console.warn(`[headsup] fetch failed for restockd: ${err.message}`);
+    return;
+  }
+  const text = stripToText(html);
+  const re = new RegExp(RESTOCKD_ENTRY_RE.source, 'g');
+  const now = new Date().toISOString();
+  let match;
+  let count = 0;
+  while ((match = re.exec(text)) !== null && count < 20) {
+    const [, rawName, retailer, price, date] = match;
+    const name = rawName.trim().replace(/\s+/g, ' ');
+    if (name.length < 4) continue; // too short to be a real product name — likely a bad match
+    const title = `${name} — ${retailer} $${price} (${date})`;
+    const row = {
+      source: 'restockd',
+      game: 'pokemon',
+      title,
+      snippet: null,
+      url: RESTOCKD_URL,
+      discovered_at: now,
+      dedupe_key: hashText(`${name}|${retailer}|${price}|${date}`),
+    };
+    const isNew = await insertHeadsUp(env, row);
+    if (isNew) await notifyHeadsUp(env, row);
+    count++;
   }
 }
 
@@ -175,6 +232,7 @@ const CHECKERS = [
   (env) => checkWebSource(env, SOURCES[1]),
   (env) => checkWebSource(env, SOURCES[2]),
   (env) => checkReddit(env),
+  (env) => checkRestockd(env),
 ];
 
 export async function runHeadsUpCheck(env, index) {

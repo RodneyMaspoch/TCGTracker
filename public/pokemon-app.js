@@ -52,6 +52,7 @@ const WALMART_DRAWING_REF = {
 };
 
 const ALERT_SERVICES = [
+  { name: 'Restockd', kind: 'App + Discord + X', price: 'Free tier', note: 'Mobile app (iOS/Android) — Pokémon cards, Pokémon Center queue activity, Walmart lottery/drawing windows, Target, GameStop, Dollar General', url: 'https://restockd.app/brands/pokemon' },
   { name: 'PokeNotify', kind: 'App + Discord', price: 'Free tier / $7.99/mo', note: 'Pokémon/MTG/Lorcana/One Piece/Yu-Gi-Oh across Walmart, Target, Costco, Best Buy, Pokémon Center, GameStop, Amazon', url: 'https://www.pokenotify.com/' },
   { name: 'PokeRestock', kind: 'App + Discord', price: 'Freemium', note: 'Pokémon-focused restock alerts', url: 'https://discord.com/invite/pkmnalerts' },
   { name: 'TCG Drop Radar', kind: 'Web + rankings', price: 'Free', note: 'Ranks the restock Discords, dedicated Walmart Pokémon page', url: 'https://tcgdropradar.com/' },
@@ -379,9 +380,18 @@ function renderEvents() {
     return;
   }
   for (const ev of state.events) {
-    const row = document.createElement('div');
+    // ev.url (the actual retailer page the poller checked) is now sent
+    // by the API for restock/good_price events — render a real <a> when
+    // it's there instead of a plain <div>, per the explicit ask that
+    // these be clickable.
+    const row = document.createElement(ev.url ? 'a' : 'div');
     row.className = 'event';
     row.dataset.kind = ev.kind;
+    if (ev.url) {
+      row.href = ev.url;
+      row.target = '_blank';
+      row.rel = 'noopener noreferrer';
+    }
     const time = document.createElement('span');
     time.className = 'event-time';
     time.textContent = new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

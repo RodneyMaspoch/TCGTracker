@@ -46,6 +46,18 @@ export async function insertEvent(env, row) {
 export async function getEvents(env, limit = 50) {
   const capped = Math.min(parseInt(limit, 10) || 50, 200);
   const { results } = await env.DB.prepare('SELECT * FROM events ORDER BY id DESC LIMIT ?').bind(capped).all();
+  // data_json is stored as a raw string; lift its `url` (the actual
+  // retailer page the poller checked) up to a top-level field so the
+  // frontend can render a real link without having to JSON.parse a blob
+  // it was never guaranteed to understand the shape of.
+  for (const row of results) {
+    if (row.data_json) {
+      try {
+        const parsed = JSON.parse(row.data_json);
+        if (parsed && parsed.url) row.url = parsed.url;
+      } catch (_) { /* leave row.url unset if data_json isn't valid JSON */ }
+    }
+  }
   return results;
 }
 
