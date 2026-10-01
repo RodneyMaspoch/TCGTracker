@@ -21,7 +21,7 @@
 // to unlisted products sooner; there's no free way to check everything
 // every 90s on the free plan, this is the real tradeoff being made.
 
-import { scrapeGeneric, scrapeWalmartDrawing, checkTargetRedsky, extractTargetTcin } from './scrapers.js';
+import { scrapeGeneric, scrapeWalmartDrawing } from './scrapers.js';
 import { notifyAll } from './push.js';
 import { runHeadsUpCheck, HEADS_UP_CHECK_COUNT } from './headsup.js';
 import {
@@ -37,61 +37,10 @@ import {
 const MIN_MARKUP_OVER_MSRP = 0.25; // TCGPlayer must be >= 25% over MSRP
 const MAX_RETAIL_PREMIUM_OVER_MSRP = 0.10; // retail price must be <= 10% over MSRP
 
-// Target listings: prefer the Redsky API for purchasable/stock (see the
-// long comment on checkTargetRedsky in scrapers.js for why — it's Target's
-// own intentionally-public fulfillment endpoint, more reliable than HTML
-// scraping and much less likely to hit a bot-block). Redsky doesn't return
-// price, so price still comes from the generic scrape when available.
-// Falls back to generic-scrape-only (the old behavior) if Redsky fails
-// for any reason — same "degrade, don't break" posture as every other
-// retailer here.
-async function resolveListingResult(row) {
-  if (row.retailer !== 'target') {
-    return scrapeGeneric(row.url);
-  }
-
-  const tcin = extractTargetTcin(row.url);
-  if (!tcin) {
-    console.warn(`[poll] target listing ${row.product_id} has no TCIN in its URL (${row.url}) — falling back to generic scrape`);
-    return scrapeGeneric(row.url);
-  }
-
-  let redsky;
-  try {
-    redsky = await checkTargetRedsky(tcin);
-  } catch (err) {
-    console.warn(`[poll] Redsky check failed for ${row.product_id} (tcin ${tcin}): ${err.message} — falling back to generic scrape`);
-    return scrapeGeneric(row.url);
-  }
-
-  // Redsky succeeded — it's authoritative for stock/purchasable. Still try
-  // the generic scrape too, just for price; a failure there shouldn't
-  // throw away the Redsky result, it just means no price this cycle.
-  // Keep `source` as whatever the generic scrape's own price extraction
-  // used ('json-ld' or 'text-heuristic') rather than a Target-specific
-  // label — pollOneListing's suspicious-price sanity check below keys off
-  // `source === 'text-heuristic'` and still needs to catch a garbage
-  // text-heuristic price here too, even though Redsky (not this price)
-  // decides purchasable.
-  let price = null;
-  let source = 'redsky-no-price';
-  try {
-    const generic = await scrapeGeneric(row.url);
-    if (generic.price != null) {
-      price = generic.price;
-      source = generic.source;
-    }
-  } catch (err) {
-    console.warn(`[poll] generic scrape for price failed for ${row.product_id} (Redsky stock check still used): ${err.message}`);
-  }
-
-  return { price, stock: redsky.stock, purchasable: redsky.purchasable, source };
-}
-
 async function pollOneListing(env, row) {
   let result;
   try {
-    result = await resolveListingResult(row);
+    result = await scrapeGeneric(row.url);
   } catch (err) {
     console.warn(`[poll] fetch failed for ${row.retailer}/${row.product_id}: ${err.message}`);
     return;
