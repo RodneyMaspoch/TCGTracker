@@ -211,20 +211,24 @@ button { font: inherit; cursor: pointer; }
    this as real classes (instead of copy-pasted inline styles) is also
    what the user asked for previously for the pages that aren't locked
    into the runtime.js templating engine. ---------- */
-/* Full-bleed + sticky, same trick .hero-band uses (and the MTG/Lorcana
-   header now also uses): #app caps content at 1180px, so a plain sticky
-   bar here would float as a narrow centered box with empty gutters
-   instead of a true full-width top bar. -inner re-applies #app's own
-   max-width so the brand/pills still line up with everything below. */
+/* Full-bleed + sticky. NOTE: the usual "left:50%;right:50%;margin:-50vw"
+   breakout trick only works on position:relative — on position:sticky,
+   left/right are also the stick-threshold properties, and setting both
+   produced a badly over-constrained box (verified: it rendered the bar
+   670px off to the right, pushing the search icon fully off-screen).
+   Fixed by using ONLY margin (calc(50% - 50vw)), which achieves the same
+   full-bleed effect without touching left/right at all — safe under any
+   position scheme. #app caps content at 1180px, so a plain sticky bar
+   here would float as a narrow centered box with empty gutters instead
+   of a true full-width top bar. -inner re-applies #app's own max-width
+   so the brand/pills still line up with everything below. */
 .tcg-header {
   position: sticky;
   top: 0;
   z-index: 85;
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw;
-  margin-right: -50vw;
   width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
   background: var(--bg);
   border-bottom: 1px solid var(--hair2);
 }
@@ -878,6 +882,13 @@ a.event::after {
   font-size: 13px;
   color: var(--accent);
 }
+
+/* Urgent cross-game ticker: its CSS is now injected directly by
+   urgent-ticker.js (not here) — index.html/lorcana.html never link this
+   stylesheet at all, so a copy here would have been invisible on those
+   two pages while silently "working" on Pokémon/Heads Up only. Keeping
+   the component's CSS in one self-contained place (the script itself)
+   avoids that trap entirely. See urgent-ticker.js. */
 
 /* ---------- Heads-up cards — bold/loud on purpose (per explicit request:
    "should also be bold alerts"), but always carries the game + source +

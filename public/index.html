@@ -29,7 +29,7 @@ a{color:#b0ff36;text-decoration:none}a:hover{color:#cbff7a}
 </style>
 <style id="dc-hover-styles"></style>
 </head>
-<body>
+<body data-game="mtg">
 <div id="dc-root"></div>
 <template id="dc-template">
 
@@ -168,7 +168,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
      max-width/padding as the rest of the page so the logo/pills/icons
      still line up with everything below instead of hugging the true
      viewport edge. -->
-<div style="position:sticky;top:0;z-index:85;left:50%;right:50%;margin-left:-50vw;margin-right:-50vw;width:100vw;background:#08060e;border-bottom:1px solid rgba(233,230,223,.1)">
+<div style="position:sticky;top:0;z-index:85;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);background:#08060e;border-bottom:1px solid rgba(233,230,223,.1)">
 <div style="max-width:1340px;margin:0 auto;padding:14px 40px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
 <div style="display:flex;align-items:center;gap:10px;flex:none">
 <div style="width:10px;height:10px;border-radius:50%;background:#b0ff36;box-shadow:0 0 16px rgba(176,255,54,.7)"></div>
@@ -1021,6 +1021,7 @@ class Component extends DCLogic {
 
 window.DCRuntime.mount({ templateId: 'dc-template', rootId: 'dc-root', ComponentClass: Component, props: { tickerSpeed: 90 } });
 </script>
+<script src="/urgent-ticker.js"></script>
 <script src="/push-client.js"></script>
 </body>
 </html>

@@ -1,18 +1,16 @@
-// push-client.js — shared "Enable alerts" push-subscribe control, used by
-// index.html (MTG), lorcana.html, and pokemon.html so this logic lives in
-// ONE place instead of being copy-pasted three times. Renders a small
-// fixed-position pill button, independent of each page's own template
-// engine (runtime.js) — this way it can't be broken by, or interfere
-// with, the game-specific hero/card rendering on each page.
+// push-client.js — shared push-subscribe logic, used by index.html (MTG),
+// lorcana.html, and pokemon.html so it lives in ONE place instead of
+// being copy-pasted three times.
 //
-// Why a fixed floating button instead of wiring into each page's own nav:
-// index.html/lorcana.html's header controls (search, hamburger menu) are
-// rendered by runtime.js from a <template>, re-created on every state
-// change (e.g. opening/closing the menu). Attaching this to a node inside
-// that template risks it vanishing or double-binding on re-render. A
-// plain element appended once, outside that template's root, sidesteps
-// that entirely — same reasoning pwa-boot.js already uses for the service
-// worker registration.
+// Used to also render a permanent floating "Enable alerts" pill button —
+// removed per explicit feedback that arming any price alert should be
+// what turns push on, not a separate always-visible button/indicator
+// sitting on top of the header. The subscribe/unsubscribe/state logic
+// below is unchanged and still works exactly the same; it's just not
+// wired to a visible button anymore. It's triggered instead by
+// window.tcgEnsurePushEnabled(), called from each page's own "Add
+// Alert"/"Arm"/"Arm All" handlers (see pokemon-app.js, index.html,
+// lorcana.html).
 //
 // NOTE ON TESTING IN INCOGNITO: Chrome restricts/auto-denies the
 // Notification permission prompt in Incognito windows by default, often
@@ -131,8 +129,15 @@
     }
   });
 
+  // No longer appended to the page — arming an alert (see
+  // tcgEnsurePushEnabled below) is now the thing that turns push on, so a
+  // permanently-visible floating "Enable alerts"/"Alerts on" pill sitting
+  // on top of the header all the time is redundant UI, not a needed
+  // control. `btn` is kept (in memory only) purely because subscribe()/
+  // unsubscribe()/setState() below still read and write its properties —
+  // refresh() still runs so that internal state is correct the moment
+  // tcgEnsurePushEnabled is first called.
   document.addEventListener('DOMContentLoaded', () => {
-    document.body.appendChild(btn);
     refresh();
   });
 

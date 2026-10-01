@@ -41,11 +41,18 @@
 // left-border accent for a proper badge chip and much bigger text;
 // arming an alert now also triggers the push-permission flow instead of
 // requiring a separate "Enable alerts" click.
-const CACHE = 'tcgtracker-shell-v7';
+// v8 — the sticky header's full-bleed trick was broken (left:50%/right:50%
+// don't mean what they mean on position:relative when the element is
+// position:sticky — verified it was rendering 670px off-screen, pushing
+// the search icon fully off the page). Fixed to a margin-only version of
+// the breakout that doesn't touch left/right at all. Also added
+// urgent-ticker.js, the cross-game "something just happened" bar shown
+// on every page above everything else.
+const CACHE = 'tcgtracker-shell-v8';
 const SHELL_FILES = [
   '/', '/index.html', '/lorcana.html', '/pokemon.html', '/heads-up.html',
   '/runtime.js', '/pwa-boot.js', '/pokemon-app.js', '/heads-up-app.js',
-  '/push-client.js', '/styles.css',
+  '/push-client.js', '/urgent-ticker.js', '/styles.css',
   '/manifest.json',
 ];
 
