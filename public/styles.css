@@ -211,13 +211,32 @@ button { font: inherit; cursor: pointer; }
    this as real classes (instead of copy-pasted inline styles) is also
    what the user asked for previously for the pages that aren't locked
    into the runtime.js templating engine. ---------- */
+/* Full-bleed + sticky, same trick .hero-band uses (and the MTG/Lorcana
+   header now also uses): #app caps content at 1180px, so a plain sticky
+   bar here would float as a narrow centered box with empty gutters
+   instead of a true full-width top bar. -inner re-applies #app's own
+   max-width so the brand/pills still line up with everything below. */
 .tcg-header {
+  position: sticky;
+  top: 0;
+  z-index: 85;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  width: 100vw;
+  background: var(--bg);
+  border-bottom: 1px solid var(--hair2);
+}
+.tcg-header-inner {
+  max-width: 1180px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 24px 5% 0;
+  padding: 14px 5%;
 }
 .tcg-brand { display: flex; align-items: center; gap: 10px; flex: none; }
 .tcg-brand-dot {
@@ -738,58 +757,76 @@ button { font: inherit; cursor: pointer; }
   gap: 10px;
 }
 
-/* Was: full border + full TEXT colored by --sec/--accent — on Pokémon's
-   theme --sec is #3b82f6 (brand-accurate Poké-ball blue), which made the
-   entire message read as flat blue text with no card treatment at all —
-   i.e. it looked exactly like an unstyled/broken hyperlink instead of an
-   intentional alert. Fixed to a small colored left accent bar (the
-   badge/chip language used everywhere else on the site) so only a tiny
-   accent carries the color and the message itself stays readable ink. */
+/* Was a colored left border stripe carrying the "kind" — replaced with
+   the same small pill/badge language used everywhere else on this site
+   (hero-badge, chip, game-chip) instead of inventing yet another accent
+   device. Font sizes bumped up across the board — 11-13px read as fine
+   print next to everything else on the page, which is a readability bug
+   more than a style choice. */
 .event {
-  font-size: 13px;
-  padding: 13px 14px;
-  border-radius: 10px;
+  font-size: 15px;
+  line-height: 1.4;
+  padding: 16px 18px;
+  border-radius: 12px;
   background: var(--surface);
   border: 1px solid var(--hair2);
-  border-left: 3px solid var(--hair2);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   color: var(--ink);
   text-decoration: none;
 }
 
-.event[data-kind="good_price"] { border-left-color: var(--accent); }
-.event[data-kind="restock"] { border-left-color: var(--sec); }
-.event[data-kind="drawing_open"] { border-left-color: var(--accent); }
+.event-kind {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hair2) 60%, transparent);
+  color: var(--dim);
+}
+.event[data-kind="good_price"] .event-kind { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.event[data-kind="restock"] .event-kind { background: color-mix(in srgb, var(--sec) 16%, transparent); color: var(--sec); }
+.event[data-kind="drawing_open"] .event-kind { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
 
-/* A real retailer URL exists for this event → it's rendered as <a class="event">
-   instead of <div class="event"> — give it an actual clickable affordance
-   instead of looking identical to the non-clickable ones. */
+/* A real retailer URL exists for this event → it's rendered as
+   <a class="event"> instead of <div class="event"> — a visible pill
+   button instead of a border-color hover, so it reads as clickable at a
+   glance instead of needing to be discovered by hovering. */
 a.event { cursor: pointer; }
 a.event:hover { border-color: var(--accent); }
 a.event::after {
   content: 'View at retailer →';
+  align-self: flex-start;
   font-family: 'Roboto Mono', monospace;
-  font-size: 11px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
-  margin-top: 2px;
 }
 
-.event-msg { color: var(--ink); }
+.event-msg { color: var(--ink); font-size: 15px; }
 
 .event-time {
   font-family: 'Roboto Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--dim);
   white-space: nowrap;
 }
 
 .info-note {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dim);
   margin: -6px 0 4px;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 /* Was a horizontal row (name+sub on the left, date/price pinned right) —
@@ -801,12 +838,13 @@ a.event::after {
 .info-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 13px 14px;
+  gap: 8px;
+  padding: 16px 18px;
   background: var(--surface);
   border: 1px solid var(--hair2);
-  border-radius: 10px;
-  font-size: 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.4;
   text-decoration: none;
   color: var(--ink);
 }
@@ -815,24 +853,29 @@ a.event::after {
 .info-row-link:hover { border-color: var(--accent); }
 .info-row-link::after {
   content: 'Visit site →';
+  align-self: flex-start;
   font-family: 'Roboto Mono', monospace;
-  font-size: 11px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
 }
 
 .info-row-main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
 }
 
-.info-row-main strong { font-size: 13px; color: var(--ink); }
-.info-row-sub { color: var(--dim); font-size: 11px; }
+.info-row-main strong { font-size: 16px; color: var(--ink); }
+.info-row-sub { color: var(--dim); font-size: 13px; line-height: 1.4; }
 
 .info-row-when {
   font-family: 'Roboto Mono', monospace;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--accent);
 }
 

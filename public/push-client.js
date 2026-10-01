@@ -135,4 +135,27 @@
     document.body.appendChild(btn);
     refresh();
   });
+
+  // Exposed so an "Add Alert"/"Arm" button elsewhere on the page can
+  // piggyback on this same subscribe flow instead of making the person
+  // find and click "Enable alerts" separately — per explicit ask:
+  // arming a price alert should be the thing that turns push on, not a
+  // second, easy-to-miss step. Browsers still require the permission
+  // prompt to come from a real user gesture (a click), so this can't be
+  // silent — it just means the Add Alert button's own click is what
+  // triggers it, instead of a dedicated button. Safe to call repeatedly:
+  // no-ops once already subscribed.
+  window.tcgEnsurePushEnabled = async function () {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) return true;
+      await subscribe();
+      return btn.dataset.state === 'on';
+    } catch (err) {
+      console.error('[push-client] tcgEnsurePushEnabled failed', err);
+      return false;
+    }
+  };
 })();

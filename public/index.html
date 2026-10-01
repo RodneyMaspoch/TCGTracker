@@ -159,7 +159,17 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 
 <div style="max-width:1340px;margin:0 auto;padding:0 40px 150px">
 
-<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:24px 0">
+<!-- Sticky header: full-bleed (same left:50%/-50vw/100vw trick as the
+     hero band below) so it stays a true full-width bar even though it's
+     nested inside this max-width:1340px content column, then stays
+     pinned via position:sticky so it's reachable while scrolling a long
+     page — explicitly asked for, and lost when site-nav.js was removed
+     without replacing what it did. The inner div re-applies the same
+     max-width/padding as the rest of the page so the logo/pills/icons
+     still line up with everything below instead of hugging the true
+     viewport edge. -->
+<div style="position:sticky;top:0;z-index:85;left:50%;right:50%;margin-left:-50vw;margin-right:-50vw;width:100vw;background:#08060e;border-bottom:1px solid rgba(233,230,223,.1)">
+<div style="max-width:1340px;margin:0 auto;padding:14px 40px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
 <div style="display:flex;align-items:center;gap:10px;flex:none">
 <div style="width:10px;height:10px;border-radius:50%;background:#b0ff36;box-shadow:0 0 16px rgba(176,255,54,.7)"></div>
 <div style="font-family:'Chakra Petch',sans-serif;font-style:italic;font-weight:700;font-size:22px;letter-spacing:-.02em;color:#fff;text-shadow:0 0 26px rgba(176,255,54,.4);white-space:nowrap">SPELLWATCH</div>
@@ -184,6 +194,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 <div onClick="{{ armAllFromMenu }}" style="cursor:pointer;text-align:center;margin-top:8px;background:#b0ff36;color:#14210a;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:14px;padding:11px 16px;border-radius:999px;white-space:nowrap">ARM ALL</div>
 </div>
 </sc-if>
+</div>
 </div>
 </div>
 </div>
@@ -652,7 +663,13 @@ class Component extends DCLogic {
   componentWillUnmount() { clearInterval(this.t); clearInterval(this.liveInterval); }
 
   toggle(id) {
-    this.setState(s => ({ armed: { ...s.armed, [id]: !s.armed[id] } }));
+    this.setState(s => {
+      const nowArmed = !s.armed[id];
+      // Same reasoning as Pokémon's Add Alert button: arming is what
+      // should turn push on, not a separate "Enable alerts" click.
+      if (nowArmed && window.tcgEnsurePushEnabled) window.tcgEnsurePushEnabled();
+      return { armed: { ...s.armed, [id]: nowArmed } };
+    });
   }
 
   btn(on, onLabel, offLabel) {
@@ -797,6 +814,7 @@ class Component extends DCLogic {
         CONS.forEach(c => { all[c.id] = true; });
         ['hot-1', 'hot-2', 'hot-3'].forEach(k => { all[k] = true; });
         all.hero = true;
+        if (window.tcgEnsurePushEnabled) window.tcgEnsurePushEnabled();
         this.setState({ armed: all, menuOpen: false });
       },
       menuItems: [

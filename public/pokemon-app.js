@@ -51,6 +51,8 @@ const WALMART_DRAWING_REF = {
   rumor: 'A Prismatic Evolutions double-drawing was rumored "in ~5 days" as of a Sep-26 social post — not independently confirmed, treat as tentative, not live.',
 };
 
+const EVENT_KIND_LABELS = { restock: 'Restock', good_price: 'Good Price', drawing_open: 'Drawing Open' };
+
 const ALERT_SERVICES = [
   { name: 'Restockd', kind: 'App + Discord + X', price: 'Free tier', note: 'Mobile app (iOS/Android) — Pokémon cards, Pokémon Center queue activity, Walmart lottery/drawing windows, Target, GameStop, Dollar General', url: 'https://restockd.app/brands/pokemon' },
   { name: 'PokeNotify', kind: 'App + Discord', price: 'Free tier / $7.99/mo', note: 'Pokémon/MTG/Lorcana/One Piece/Yu-Gi-Oh across Walmart, Target, Costco, Best Buy, Pokémon Center, GameStop, Amazon', url: 'https://www.pokenotify.com/' },
@@ -358,7 +360,15 @@ function renderCard(product, l) {
   btn.dataset.armed = armed ? '1' : '0';
   btn.textContent = armed ? '✓ ALERT ARMED' : '+ ADD ALERT';
   btn.addEventListener('click', () => {
-    armedState[key] = !armedState[key];
+    const nowArmed = !armedState[key];
+    armedState[key] = nowArmed;
+    // Arming an alert is the thing that should turn push notifications
+    // on — not a separate "Enable alerts" button a person has to go
+    // find. window.tcgEnsurePushEnabled (push-client.js) no-ops if
+    // already subscribed, and the browser's own permission prompt still
+    // has to appear on a real click like this one — that part can't be
+    // skipped, but requiring a SECOND click elsewhere on the page can.
+    if (nowArmed && window.tcgEnsurePushEnabled) window.tcgEnsurePushEnabled();
     render();
   });
   alertRow.appendChild(btn);
@@ -392,14 +402,21 @@ function renderEvents() {
       row.target = '_blank';
       row.rel = 'noopener noreferrer';
     }
+    // The kind used to be communicated only by a border color (removed —
+    // see styles.css) — now it's an actual readable label, same badge
+    // language as the rest of the site.
+    const kind = document.createElement('span');
+    kind.className = 'event-kind';
+    kind.textContent = EVENT_KIND_LABELS[ev.kind] || ev.kind;
     const time = document.createElement('span');
     time.className = 'event-time';
     time.textContent = new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const msg = document.createElement('span');
     msg.className = 'event-msg';
     msg.textContent = ev.message;
-    row.appendChild(time);
+    row.appendChild(kind);
     row.appendChild(msg);
+    row.appendChild(time);
     wrap.appendChild(row);
   }
 }

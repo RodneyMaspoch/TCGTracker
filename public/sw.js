@@ -36,7 +36,12 @@
 // index.html/lorcana.html/pokemon.html/heads-up.html and styles.css all
 // changed this round too — bumping so installed copies actually pick up
 // the fixed header/overflow/alert-card CSS instead of serving stale ones.
-const CACHE = 'tcgtracker-shell-v6';
+// v7 — header is now sticky (full-bleed trick, same one .hero-band uses)
+// on all 4 pages instead of scrolling away; alert/event cards dropped the
+// left-border accent for a proper badge chip and much bigger text;
+// arming an alert now also triggers the push-permission flow instead of
+// requiring a separate "Enable alerts" click.
+const CACHE = 'tcgtracker-shell-v7';
 const SHELL_FILES = [
   '/', '/index.html', '/lorcana.html', '/pokemon.html', '/heads-up.html',
   '/runtime.js', '/pwa-boot.js', '/pokemon-app.js', '/heads-up-app.js',
