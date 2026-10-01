@@ -168,7 +168,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
      max-width/padding as the rest of the page so the logo/pills/icons
      still line up with everything below instead of hugging the true
      viewport edge. -->
-<div style="position:sticky;top:0;z-index:85;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);background:#08060e;border-bottom:1px solid rgba(233,230,223,.1)">
+<div data-tcg-sticky-header style="position:sticky;top:0;z-index:85;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);background:#08060e;border-bottom:1px solid rgba(233,230,223,.1)">
 <div style="max-width:1340px;margin:0 auto;padding:14px 40px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
 <div style="display:flex;align-items:center;gap:10px;flex:none">
 <div style="width:10px;height:10px;border-radius:50%;background:#b0ff36;box-shadow:0 0 16px rgba(176,255,54,.7)"></div>
@@ -883,11 +883,14 @@ class Component extends DCLogic {
         const on = !!armed[h.slot];
         return { ...h, toggle: (ev) => { if (ev && ev.stopPropagation) ev.stopPropagation(); this.toggle(h.slot); }, ...this.btn(on, '✓ ALERT ARMED', '+ ADD ALERT') };
       }),
+      // Alternating category-secretlair.jpg / secretlair-alt.jpg (the two
+      // Secret Lair logo images) so five back-to-back cards don't show
+      // the exact same image five times in a row.
       lairs: [
         { slot: 'lair-1', art: './img/category-secretlair.jpg', name: 'By the Power of Grayskull!', price: '$29.99' },
-        { slot: 'lair-2', art: './img/category-secretlair.jpg', name: 'Nyah-ha-ha!', price: '$29.99' },
+        { slot: 'lair-2', art: './img/secretlair-alt.jpg', name: 'Nyah-ha-ha!', price: '$29.99' },
         { slot: 'lair-3', art: './img/category-secretlair.jpg', name: 'She-Ra, Princess of Power', price: '$29.99' },
-        { slot: 'lair-4', art: './img/category-secretlair.jpg', name: 'Allies and Enemies of Eternia', price: '$29.99' },
+        { slot: 'lair-4', art: './img/secretlair-alt.jpg', name: 'Allies and Enemies of Eternia', price: '$29.99' },
         { slot: 'lair-5', art: './img/category-secretlair.jpg', name: 'Sold Separately', price: '$29.99' },
       ],
       howShots: [
