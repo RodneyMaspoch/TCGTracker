@@ -67,6 +67,7 @@ let state = {
   drawing: null,
   events: [],
   activeGame: 'pokemon',
+  categoryFilter: 'all',
 };
 
 const els = {
@@ -77,7 +78,60 @@ const els = {
   alertServicesList: document.getElementById('alertServicesList'),
   gameChip: document.getElementById('gameChip'),
   tabs: Array.from(document.querySelectorAll('.tab-btn')),
+  hotSection: document.getElementById('hotSection'),
+  hotGrid: document.getElementById('hotGrid'),
+  categoryFilters: document.getElementById('categoryFilters'),
 };
+
+// "Shop by category" (2026-10-02, user request — see the comment in
+// pokemon.html for why this is a filter bar, not icon art). Categories
+// are derived from each product's own real name, never invented: this is
+// just pattern-matching on text that's already true about the product,
+// same spirit as the "no fake/static data" rule (2026-09-28) applied to
+// a grouping instead of a number. Order matters — first match wins, most
+// specific patterns first (e.g. "Elite Trainer Box" before the bare
+// "Box" that would otherwise also match a Booster Box).
+const CATEGORY_RULES = [
+  [/elite\s*trainer\s*box|\betb\b/i, 'Elite Trainer Box'],
+  [/premium\s*collection/i, 'Premium Collection'],
+  [/build\s*(&|and)\s*battle/i, 'Build & Battle'],
+  [/collection\s*box|\bcollection\b/i, 'Collection Box'],
+  [/booster\s*bundle/i, 'Booster Bundle'],
+  [/booster\s*box/i, 'Booster Box'],
+  [/booster\s*pack|3[\s-]?pack|blister/i, 'Booster Pack'],
+  [/\btin\b/i, 'Tin'],
+  [/mini\s*portfolio|binder/i, 'Binder'],
+];
+function categorize(name) {
+  for (const [re, label] of CATEGORY_RULES) {
+    if (re.test(name)) return label;
+  }
+  return 'Other';
+}
+
+function renderCategoryFilters() {
+  const wrap = els.categoryFilters;
+  if (!wrap) return;
+  const products = state.products.filter((p) => p.game === state.activeGame);
+  const cats = Array.from(new Set(products.map((p) => categorize(p.name)))).sort();
+  if (cats.length <= 1) {
+    wrap.innerHTML = '';
+    return;
+  }
+  wrap.innerHTML = '';
+  const allBtn = document.createElement('div');
+  allBtn.className = 'cat-filter' + (state.categoryFilter === 'all' ? ' active' : '');
+  allBtn.textContent = 'ALL';
+  allBtn.addEventListener('click', () => { state.categoryFilter = 'all'; render(); });
+  wrap.appendChild(allBtn);
+  for (const cat of cats) {
+    const btn = document.createElement('div');
+    btn.className = 'cat-filter' + (state.categoryFilter === cat ? ' active' : '');
+    btn.textContent = cat.toUpperCase();
+    btn.addEventListener('click', () => { state.categoryFilter = cat; render(); });
+    wrap.appendChild(btn);
+  }
+}
 
 const GAME_LABELS = { pokemon: 'POKÉMON', mtg: 'MTG', lorcana: 'LORCANA' };
 
@@ -104,10 +158,54 @@ function render() {
   if (els.gameChip) els.gameChip.innerHTML = `<span>${GAME_LABELS[state.activeGame] || state.activeGame}</span>`;
   renderTabs();
   renderDrawingHero();
+  renderHot();
+  renderCategoryFilters();
   renderGrid();
   renderEvents();
   renderUpcomingEvents();
   renderAlertServices();
+}
+
+// "What's hot" / signal-check strip (2026-10-02, user request for section
+// parity with index.html's/lorcana.html's own "What's Hot" section): real
+// derived signal, not a separate data source — a card qualifies if it's
+// already flagged isGoodPriceListing() below, or if a real restock event
+// for that product fired in the last 24h (state.events, same feed
+// "Recent alerts" renders from). Capped at 8 cards so it reads as a
+// highlights strip, not a second copy of the full grid.
+const HOT_RESTOCK_WINDOW_MS = 24 * 60 * 60 * 1000;
+function renderHot() {
+  const section = els.hotSection;
+  const grid = els.hotGrid;
+  if (!section || !grid) return;
+
+  const products = state.products.filter((p) => p.game === state.activeGame);
+  const recentRestockProductIds = new Set(
+    state.events
+      .filter((ev) => ev.kind === 'restock' && Date.now() - new Date(ev.created_at).getTime() <= HOT_RESTOCK_WINDOW_MS)
+      .map((ev) => ev.product_id)
+      .filter(Boolean)
+  );
+
+  const hotCards = [];
+  for (const product of products) {
+    for (const l of product.listings || []) {
+      if (isGoodPriceListing(product, l) || (l.last_purchasable && recentRestockProductIds.has(product.id))) {
+        hotCards.push({ product, listing: l });
+      }
+    }
+  }
+
+  if (hotCards.length === 0) {
+    section.hidden = true;
+    grid.innerHTML = '';
+    return;
+  }
+  section.hidden = false;
+  grid.innerHTML = '';
+  for (const { product, listing } of hotCards.slice(0, 8)) {
+    grid.appendChild(renderCard(product, listing));
+  }
 }
 
 // One-time-ish static content — game-filtered like everything else, so
@@ -241,7 +339,10 @@ function isGoodPriceListing(product, l) {
 function renderGrid() {
   const grid = els.grid;
   grid.innerHTML = '';
-  const products = state.products.filter((p) => p.game === state.activeGame);
+  let products = state.products.filter((p) => p.game === state.activeGame);
+  if (state.categoryFilter !== 'all') {
+    products = products.filter((p) => categorize(p.name) === state.categoryFilter);
+  }
 
   // Flatten to one card per listing (see comment above); a product with
   // no tracked listings yet still gets one card, same as the original

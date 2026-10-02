@@ -277,6 +277,69 @@ button { font: inherit; cursor: pointer; }
   white-space: nowrap;
 }
 .tcg-pill.active { color: var(--accent-ink); background: var(--accent); }
+/* .tcg-pill-row/.tcg-pill above are legacy — superseded by the
+   centered, icon-only .tcg-nav below (2026-10-02, user request: nav must
+   be centered and icon-only on both mobile AND desktop, with a hover
+   tooltip for the name). Kept so nothing breaks if an old cached HTML
+   still references them. */
+
+/* ---------- Centered icon-only game nav + hover tooltip ----------
+   Absolutely centered within .tcg-header-inner (which needs
+   position:relative — set inline on each page's header markup) rather
+   than a flex middle column, so it stays dead-center regardless of how
+   wide the brand or the right-side icons are. Every game page uses the
+   SAME markup/classes; colors come from each page's own --accent/--hair2
+   custom properties (see the body[data-game=...] blocks above), so this
+   one block re-themes itself automatically per game. */
+.tcg-nav {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  z-index: 1;
+}
+.tcg-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--hair2);
+  text-decoration: none;
+  flex: none;
+  color: var(--ink);
+}
+.tcg-nav-item.active { border-color: var(--accent); background: rgba(255, 255, 255, .08); }
+.tcg-nav-icon { width: 19px; height: 19px; border-radius: 6px; object-fit: cover; display: block; }
+.tcg-nav-item svg { display: block; }
+.tcg-nav-tip {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%) translateY(2px);
+  background: var(--surface);
+  color: #fff;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .04em;
+  padding: 5px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  border: 1px solid var(--hair2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease, transform .15s ease;
+  z-index: 6;
+}
+.tcg-nav-item:hover .tcg-nav-tip,
+.tcg-nav-item:focus-visible .tcg-nav-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (max-width: 680px) { .tcg-brand-word { display: none; } }
+@media (max-width: 480px) { .tcg-header-inner { padding-left: 14px !important; padding-right: 14px !important; } }
 
 /* ---------- Tabs (legacy — no longer used by any page; kept so nothing
    404s if an old cached HTML still references .tab-btn) ---------- */
@@ -747,6 +810,25 @@ button { font: inherit; cursor: pointer; }
 .events, .info-section {
   padding: 20px 16px 0;
 }
+
+/* ---------- Category filter pills (pokemon.html's "Shop by category" —
+   see the comment above #categoryFilters in pokemon.html for why this is
+   a filter bar instead of index.html's/lorcana.html's circular icon-art
+   section). Same pill shape as the legacy .tcg-pill, kept as its own
+   class since this one is clickable app state, not a page link. ---------- */
+.cat-filter {
+  cursor: pointer;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  letter-spacing: .03em;
+  color: var(--dim);
+  background: transparent;
+  border: 1px solid var(--hair2);
+  padding: 7px 13px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.cat-filter.active { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
 
 .events .h2, .info-section .h2 { margin-bottom: 14px; }
 
