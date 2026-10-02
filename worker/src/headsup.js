@@ -27,20 +27,68 @@ const RETAILER_RE = /(walmart|target|best ?buy|gamestop)/i;
 // a snippet is *worth surfacing*, not what the date actually is.
 const DATE_RE = /(today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december)\s*\d{0,2}/i;
 
+// Canonical display name for whatever RETAILER_RE actually matched —
+// shared by the prose-snippet sources below and checkRestockd(), so
+// "Best Buy"/"bestbuy"/"best  buy" and "Pokemon Center"/"Pokémon Center"
+// all collapse to the one spelling the frontend's retailer chip shows.
+function normalizeRetailer(raw) {
+  if (!raw) return null;
+  const low = raw.toLowerCase().replace(/\s+/g, ' ').trim();
+  if (low.includes('walmart')) return 'Walmart';
+  if (low.includes('target')) return 'Target';
+  if (low.includes('gamestop')) return 'GameStop';
+  if (low.replace(/\s/g, '').includes('bestbuy')) return 'Best Buy';
+  if (low.includes('pok')) return 'Pokémon Center';
+  return raw.trim();
+}
+
+// 2026-10-02 fix: a real page's nav/footer/sidebar legitimately repeats
+// the same boilerplate sentence ("Get Restock Alerts → ... When does
+// Walmart restock Pokémon cards? ...") near several unrelated headings —
+// the keyword regex used to treat each of those as a fresh, distinct
+// signal, which is exactly what produced 3 near-identical
+// "tcgdropradar" cards in a row (same text, three slightly different
+// truncation points). Now a candidate window is rejected if (a) it
+// overlaps the previous ACCEPTED window's position, or (b) its
+// normalized text is one already accepted this pass — either one on its
+// own would have caught this specific case; both together also catch
+// the same boilerplate recurring in two genuinely different places on
+// the page.
 function extractSnippets(text, maxSnippets = 3) {
   const clean = text.replace(/\s+/g, ' ').trim();
   const snippets = [];
+  const seenSignatures = new Set();
+  let lastEnd = -Infinity;
   const re = new RegExp(KEYWORD_RE.source, 'gi');
   let match;
   while ((match = re.exec(clean)) !== null && snippets.length < maxSnippets) {
+    if (match.index < lastEnd) continue;
     const start = Math.max(0, match.index - 160);
     const end = Math.min(clean.length, match.index + 220);
     const window = clean.slice(start, end);
-    if (RETAILER_RE.test(window) && DATE_RE.test(window)) {
-      snippets.push((start > 0 ? '…' : '') + window + (end < clean.length ? '…' : ''));
-    }
+    if (!RETAILER_RE.test(window) || !DATE_RE.test(window)) continue;
+    const signature = window.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 120);
+    if (seenSignatures.has(signature)) continue;
+    seenSignatures.add(signature);
+    lastEnd = end;
+    snippets.push({
+      text: (start > 0 ? '…' : '') + window + (end < clean.length ? '…' : ''),
+      retailer: normalizeRetailer((window.match(RETAILER_RE) || [])[0]),
+    });
   }
   return snippets;
+}
+
+// Distinct, scannable titles per snippet instead of the one fixed
+// generic sentence every snippet from a given source used to get
+// ("Possible upcoming pokemon drawing/restock — tcgdropradar" x3 in the
+// screenshot that triggered this fix) — derived from the snippet's own
+// first clause, never invented.
+function titleFromSnippet(snippetText, game) {
+  const core = snippetText.replace(/^…/, '').replace(/…$/, '').trim();
+  const firstClause = (core.split(/(?<=[.?!])\s/)[0] || core).trim();
+  if (!firstClause) return `Possible upcoming ${game} drawing/restock`;
+  return firstClause.length > 90 ? firstClause.slice(0, 87) + '…' : firstClause;
 }
 
 function stripToText(html) {
@@ -136,15 +184,16 @@ async function checkWebSource(env, source) {
   const snippets = extractSnippets(text);
   const now = new Date().toISOString();
 
-  for (const snippet of snippets) {
+  for (const snip of snippets) {
     const row = {
       source: source.key,
       game: source.game,
-      title: `Possible upcoming ${source.game} drawing/restock — ${source.key}`,
-      snippet,
+      title: titleFromSnippet(snip.text, source.game),
+      snippet: snip.text,
       url: source.url,
+      retailer: snip.retailer,
       discovered_at: now,
-      dedupe_key: hashText(snippet),
+      dedupe_key: hashText(snip.text),
     };
     const isNew = await insertHeadsUp(env, row);
     if (isNew) await notifyHeadsUp(env, row);
@@ -174,13 +223,18 @@ async function checkRestockd(env) {
     const [, rawName, retailer, price, date] = match;
     const name = rawName.trim().replace(/\s+/g, ' ');
     if (name.length < 4) continue; // too short to be a real product name — likely a bad match
-    const title = `${name} — ${retailer} $${price} (${date})`;
+    // Retailer is now its own column (see migration 0005) instead of only
+    // living inside the title string, so the frontend can render it as a
+    // real chip — kept in the title too (with the price/date) since there's
+    // no dedicated price/date column yet.
+    const title = `${name} — $${price} (${date})`;
     const row = {
       source: 'restockd',
       game: 'pokemon',
       title,
       snippet: null,
       url: RESTOCKD_URL,
+      retailer: normalizeRetailer(retailer),
       discovered_at: now,
       dedupe_key: hashText(`${name}|${retailer}|${price}|${date}`),
     };
@@ -234,6 +288,7 @@ async function checkAutoqueuePokemonCenter(env) {
       // which product, so this links to the general shop rather than
       // guessing a specific (possibly wrong) product URL.
       url: 'https://www.pokemoncenter.com/',
+      retailer: 'Pokémon Center',
       discovered_at: parsed.toISOString(),
       dedupe_key: `${dateStr}|${timeStr}`,
     };
@@ -267,6 +322,7 @@ async function checkReddit(env) {
       source: 'reddit',
       game: 'pokemon',
       title: d.title,
+      retailer: normalizeRetailer((d.title.match(RETAILER_RE) || [])[0]),
       snippet: (d.selftext || '').slice(0, 300) || d.title,
       url: `https://www.reddit.com${d.permalink}`,
       discovered_at: new Date(d.created_utc * 1000).toISOString(),
@@ -280,11 +336,20 @@ async function checkReddit(env) {
 // Called from poll.js's tick — one heads-up source per call, rotated, to
 // keep each Cron tick cheap (same reasoning as the fast/slow lane
 // staggering for retailer checks).
+// Rotation weighted toward Restockd + TrackaLacker (2026-10-02, explicit
+// user feedback: "Restockd and Trackalacker apps have been the best"
+// sources so far). Restockd gets 3 of 8 slots, TrackaLacker 2 of 8;
+// tcgdropradar/autoqueue's blog/Reddit stay in the rotation at their old
+// single-slot cadence rather than being dropped outright — they're lower
+//-confidence per the user's own read, not worthless.
 const CHECKERS = [
-  (env) => checkWebSource(env, SOURCES[0]),
-  (env) => checkWebSource(env, SOURCES[1]),
-  (env) => checkWebSource(env, SOURCES[2]),
+  (env) => checkWebSource(env, SOURCES[0]), // trackalacker
+  (env) => checkRestockd(env),
+  (env) => checkWebSource(env, SOURCES[1]), // tcgdropradar
+  (env) => checkRestockd(env),
+  (env) => checkWebSource(env, SOURCES[0]), // trackalacker
   (env) => checkReddit(env),
+  (env) => checkWebSource(env, SOURCES[2]), // autoqueue blog
   (env) => checkRestockd(env),
 ];
 

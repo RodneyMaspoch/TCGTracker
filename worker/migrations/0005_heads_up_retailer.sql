@@ -1,0 +1,12 @@
+-- 0005_heads_up_retailer.sql — adds a real, parsed `retailer` column to
+-- heads_up (2026-10-02, user request: Heads Up cards should show "the
+-- store/shop it's an alert for" as its own field instead of buried inside
+-- a sentence). Populated by headsup.js wherever a retailer name can
+-- actually be parsed out of the source text (Restockd's structured
+-- entries already name one explicitly; the prose sources match it via
+-- the same RETAILER_RE already used to decide a snippet is worth
+-- surfacing at all) — never guessed when it can't be determined, so
+-- existing/old rows and any future row without a clear match just have
+-- retailer = NULL and the frontend omits the chip rather than showing
+-- something invented.
+ALTER TABLE heads_up ADD COLUMN retailer TEXT;

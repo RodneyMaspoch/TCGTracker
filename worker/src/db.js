@@ -120,11 +120,11 @@ export async function setProductTier(env, productId, tier) {
 // fire a push notification, so re-checking unchanged content doesn't spam.
 export async function insertHeadsUp(env, row) {
   const { results } = await env.DB.prepare(
-    `INSERT INTO heads_up (source, game, title, snippet, url, discovered_at, dedupe_key)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO heads_up (source, game, title, snippet, url, discovered_at, dedupe_key, retailer)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(source, dedupe_key) DO NOTHING
      RETURNING id`
-  ).bind(row.source, row.game ?? null, row.title, row.snippet ?? null, row.url ?? null, row.discovered_at, row.dedupe_key).all();
+  ).bind(row.source, row.game ?? null, row.title, row.snippet ?? null, row.url ?? null, row.discovered_at, row.dedupe_key, row.retailer ?? null).all();
   return results.length > 0;
 }
 

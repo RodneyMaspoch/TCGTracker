@@ -203,6 +203,66 @@ button { font: inherit; cursor: pointer; }
   cursor: not-allowed;
 }
 
+/* ---------- Decorative market ticker (pokemon.html) ----------
+   2026-10-02 request: "there should be a marquee for pokemon" — index.html/
+   lorcana.html already have one (scrolling deal/countdown strip above the
+   header), pokemon.html had none. Built from REAL state at render time in
+   pokemon-app.js's renderTicker() — a good-price listing, a restock in the
+   last 24h, or the Walmart Drawing actually being open right now — never
+   static/invented copy, and the whole wrap hides itself when nothing
+   currently qualifies rather than showing an empty or fake-looking bar.
+   Pauses on hover (same as index.html's/lorcana.html's own ticker), and
+   uses the same bigger gap + dot separator fix applied to those two after
+   the first version read like a run-on sentence. */
+.mkt-ticker-wrap {
+  position: relative;
+  overflow: hidden;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  background: var(--surface);
+  border-bottom: 1px solid var(--hair2);
+  padding: 8px 0;
+  box-sizing: border-box;
+}
+.mkt-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: mkt-ticker-scroll 34s linear infinite;
+}
+.mkt-ticker-wrap:hover .mkt-ticker-track { animation-play-state: paused; }
+@keyframes mkt-ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+.mkt-ticker-lap {
+  display: flex;
+  gap: 56px;
+  flex: 0 0 auto;
+  width: max-content;
+  padding-right: 56px;
+}
+.mkt-ticker-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 14px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.mkt-ticker-item:hover { color: var(--accent); }
+.mkt-ticker-item:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  left: -28px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--hair2);
+  transform: translateY(-50%);
+}
+
 /* ---------- Shared page header (brand mark + page-switch pills) ----------
    Used by pokemon.html and heads-up.html, built to match the exact
    structure/markup MTG (SPELLWATCH) and Lorcana (INKWATCH) already have
@@ -306,8 +366,8 @@ button { font: inherit; cursor: pointer; }
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid var(--hair2);
   text-decoration: none;
@@ -315,7 +375,7 @@ button { font: inherit; cursor: pointer; }
   color: var(--ink);
 }
 .tcg-nav-item.active { border-color: var(--accent); background: rgba(255, 255, 255, .08); }
-.tcg-nav-icon { width: 19px; height: 19px; border-radius: 6px; object-fit: cover; display: block; }
+.tcg-nav-icon { width: 100%; height: auto; border-radius: 6px; object-fit: cover; display: block; }
 .tcg-nav-item svg { display: block; }
 .tcg-nav-tip {
   position: absolute;
@@ -976,22 +1036,55 @@ a.event::after {
    "should also be bold alerts"), but always carries the game + source +
    "UNCONFIRMED" label so it's never mistaken for a confirmed alert (see
    headsup.js for why this stays a separate, honestly-labeled tier). ---------- */
+/* Rebuilt 2026-10-02 as a real card (was a text row with a long italic
+   snippet + a separate "View source →" link) — explicit user request:
+   cards, no description, whole card is the link. One honest limitation,
+   said here rather than silently worked around: these signals come from
+   blog prose/Reddit/Restockd's own detections, not this app's own
+   retailer scrape, so there is no real product photo to show — the art
+   band below shows the per-game icon on a tinted background, which is
+   plainly a game indicator, never presented as a product photo. Same
+   reason the link isn't always a specific retailer product page: it's
+   whatever URL that source actually provides (a Reddit post is its own
+   permalink; the prose/Restockd sources only expose the page they were
+   read from) — never a guessed/invented product URL. */
 .headsup-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px 18px;
+  text-decoration: none;
   background: color-mix(in srgb, var(--warn) 10%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
   border-left: 4px solid var(--warn);
   border-radius: 12px;
+  overflow: hidden;
+  transition: border-color .15s, box-shadow .15s;
+}
+.headsup-card:hover {
+  box-shadow: 0 0 0 1px var(--warn) inset, 0 0 18px color-mix(in srgb, var(--warn) 18%, transparent);
+}
+
+.headsup-art {
+  position: relative;
+  aspect-ratio: 5/6;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--warn) 24%, var(--well)), var(--well));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.headsup-art-icon { width: 25%; height: auto; border-radius: 14px; object-fit: cover; opacity: .92; }
+
+.headsup-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 16px;
+  flex: 1;
 }
 
 .headsup-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -1018,18 +1111,26 @@ a.event::after {
   text-transform: uppercase;
 }
 
+/* The "store/shop it's an alert for" (2026-10-02 request) — only shown
+   when a retailer was actually parsed out of the source text (see
+   headsup.js's normalizeRetailer()); never shown as a guess. */
+.headsup-retailer-chip {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
 .headsup-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
   color: #fff;
   line-height: 1.3;
-}
-
-.headsup-snippet {
-  font-size: 13px;
-  color: var(--dim);
-  line-height: 1.6;
-  font-style: italic;
+  flex: 1;
 }
 
 .headsup-meta {
@@ -1038,18 +1139,10 @@ a.event::after {
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  margin-top: 4px;
 }
 
 .headsup-source {
   font-family: 'Roboto Mono', monospace;
   font-size: 11px;
   color: var(--dim2);
-}
-
-.headsup-link {
-  font-family: 'Roboto Mono', monospace;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--sec);
 }

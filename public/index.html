@@ -26,10 +26,12 @@ a{color:#e8402a;text-decoration:none}a:hover{color:#cbff7a}
 .tt-slider>*{flex:0 0 262px;width:262px;scroll-snap-align:start}
 .tt-slider.tt-sm>*{flex-basis:190px;width:190px}
 .tt-slider.tt-lg>*{flex-basis:285px;width:285px}
+.sw-ticker-lap a:not(:first-child){position:relative}
+.sw-ticker-lap a:not(:first-child)::before{content:'';position:absolute;left:-28px;top:50%;width:4px;height:4px;border-radius:50%;background:rgba(233,230,223,.3);transform:translateY(-50%)}
 .tcg-nav{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;z-index:1}
-.tcg-nav-item{position:relative;display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:1px solid rgba(233,230,223,.18);text-decoration:none;flex:none;color:#e9e6df}
+.tcg-nav-item{position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;border:1px solid rgba(233,230,223,.18);text-decoration:none;flex:none;color:#e9e6df}
 .tcg-nav-item.active{border-color:#e8402a;background:rgba(232,64,42,.16)}
-.tcg-nav-icon{width:19px;height:19px;border-radius:6px;object-fit:cover;display:block}
+.tcg-nav-icon{width:100%;height:auto;border-radius:6px;object-fit:cover;display:block}
 .tcg-nav-item svg{display:block}
 .tcg-nav-tip{position:absolute;top:calc(100% + 9px);left:50%;transform:translateX(-50%) translateY(2px);background:#17101d;color:#fff;font-family:'Roboto Mono',monospace;font-size:11px;letter-spacing:.04em;padding:5px 10px;border-radius:8px;white-space:nowrap;border:1px solid rgba(233,230,223,.18);opacity:0;pointer-events:none;transition:opacity .15s ease,transform .15s ease;z-index:6}
 .tcg-nav-item:hover .tcg-nav-tip,.tcg-nav-item:focus-visible .tcg-nav-tip{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -39,7 +41,7 @@ a{color:#e8402a;text-decoration:none}a:hover{color:#cbff7a}
 .sw-hero-grid>*:first-child{width:100%}
 .sw-hero-grid>*:last-child{width:100%;max-width:420px}
 @media (min-width:860px){
-.sw-hero-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:40px;align-items:center;padding:0 40px;min-height:100vh}
+.sw-hero-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:10%;align-items:center;padding:0 40px;min-height:100vh}
 .sw-hero-grid>*:last-child{max-width:none}
 }
 </style>
@@ -162,7 +164,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(232,64,42,.13) 0%,transparent 60%),
 <div class="sw-ticker-wrap" style="background:#100b1b;overflow:hidden;padding:8px 0;border-bottom:1px solid rgba(232,178,61,.28)">
 <div class="sw-ticker-track" style="display:flex;width:max-content;animation:sw-ticker 34s linear infinite;animation-duration:{{ tickerDur }}">
 <sc-for list="{{ tickerLoop }}" as="lap" hint-placeholder-count="2">
-<div style="display:flex;gap:34px;flex:0 0 auto;width:max-content;padding-right:34px">
+<div class="sw-ticker-lap" style="display:flex;gap:56px;flex:0 0 auto;width:max-content;padding-right:56px">
 <sc-for list="{{ tickerItems }}" as="t" hint-placeholder-count="3">
 <a href="{{ t.url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.62);white-space:nowrap" style-hover="color:#e8402a">
 <span style="color:{{ t.tone }}">{{ t.glyph }}</span>{{ t.label }}

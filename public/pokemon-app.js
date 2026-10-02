@@ -81,6 +81,7 @@ const els = {
   hotSection: document.getElementById('hotSection'),
   hotGrid: document.getElementById('hotGrid'),
   categoryFilters: document.getElementById('categoryFilters'),
+  marketTicker: document.getElementById('marketTicker'),
 };
 
 // "Shop by category" (2026-10-02, user request — see the comment in
@@ -158,12 +159,65 @@ function render() {
   if (els.gameChip) els.gameChip.innerHTML = `<span>${GAME_LABELS[state.activeGame] || state.activeGame}</span>`;
   renderTabs();
   renderDrawingHero();
+  renderTicker();
   renderHot();
   renderCategoryFilters();
   renderGrid();
   renderEvents();
   renderUpcomingEvents();
   renderAlertServices();
+}
+
+// Decorative market ticker (2026-10-02 request — see the comment on
+// .mkt-ticker-wrap in styles.css). Built fresh each render from the exact
+// same real signals renderHot() uses (good-price listings, restocks in
+// the last 24h) plus the Walmart Drawing actually being open right now —
+// hides itself entirely when none of that currently applies, rather than
+// showing an empty or invented bar.
+function renderTicker() {
+  const wrap = els.marketTicker;
+  if (!wrap) return;
+  const track = wrap.querySelector('.mkt-ticker-track');
+
+  const items = [];
+  if (state.drawing && state.drawing.is_open) {
+    items.push({ glyph: '🎟️', label: 'WALMART COLLECTIBLES DRAWING OPEN RIGHT NOW — ENTER →', url: 'https://www.walmart.com/shop/collectibles/draw' });
+  }
+  const recentRestockProductIds = new Set(
+    state.events
+      .filter((ev) => ev.kind === 'restock' && Date.now() - new Date(ev.created_at).getTime() <= HOT_RESTOCK_WINDOW_MS)
+      .map((ev) => ev.product_id)
+      .filter(Boolean)
+  );
+  for (const product of state.products.filter((p) => p.game === 'pokemon')) {
+    for (const l of product.listings || []) {
+      if (isGoodPriceListing(product, l)) {
+        items.push({ glyph: '💰', label: `${product.name.toUpperCase()} — GOOD PRICE AT ${(l.retailer || '').toUpperCase()}`, url: l.url });
+      } else if (l.last_purchasable && recentRestockProductIds.has(product.id)) {
+        items.push({ glyph: '🟢', label: `${product.name.toUpperCase()} RESTOCKED — ${(l.retailer || '').toUpperCase()}`, url: l.url });
+      }
+    }
+  }
+
+  if (items.length === 0) {
+    wrap.hidden = true;
+    track.innerHTML = '';
+    return;
+  }
+  wrap.hidden = false;
+  track.innerHTML = '';
+  for (let lap = 0; lap < 2; lap++) {
+    const lapEl = document.createElement('div');
+    lapEl.className = 'mkt-ticker-lap';
+    for (const item of items) {
+      const a = document.createElement('a');
+      a.className = 'mkt-ticker-item';
+      if (item.url) { a.href = item.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      a.innerHTML = `<span>${item.glyph}</span><span>${item.label}</span>`;
+      lapEl.appendChild(a);
+    }
+    track.appendChild(lapEl);
+  }
 }
 
 // "What's hot" / signal-check strip (2026-10-02, user request for section

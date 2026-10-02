@@ -10,8 +10,15 @@ const SOURCE_LABELS = {
   trackalacker: 'TrackaLacker',
   tcgdropradar: 'TCG Drop Radar',
   autoqueue: 'autoqueue.app',
+  'autoqueue-pc': 'autoqueue.app',
   reddit: 'Reddit — r/PokemonTCG',
+  restockd: 'Restockd',
 };
+// Real per-game icon files (see /public/icons/*.png) — shown in the card's
+// art band as a plain game indicator, never as a stand-in for a product
+// photo (see the comment on .headsup-card in styles.css for why there
+// isn't a real one here).
+const GAME_ICONS = { pokemon: '/icons/pokemon.png', mtg: '/icons/mtg.png', lorcana: '/icons/lorcana.png' };
 
 const list = document.getElementById('headsUpList');
 
@@ -25,9 +32,40 @@ function timeAgo(iso) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// Cards, not rows (2026-10-02 request): image/icon band, name, store chip,
+// the whole card is the link — no separate description paragraph and no
+// separate "View source" sub-link, since the card itself already is that
+// link. A plain https link to a retailer's own product page already opens
+// that retailer's installed app instead of the browser on a phone (iOS
+// Universal Links / Android App Links — the OS does this automatically
+// for any normal link, nothing extra to build here); "add to cart" isn't
+// something a link to someone else's site can do without that retailer's
+// own authenticated API, which isn't publicly available, so that part
+// really does depend on Restockd's/TrackaLacker's own apps, not this page.
 function renderCard(row) {
-  const card = document.createElement('div');
+  const hasLink = !!row.url;
+  const card = document.createElement(hasLink ? 'a' : 'div');
   card.className = 'headsup-card';
+  if (hasLink) {
+    card.href = row.url;
+    card.target = '_blank';
+    card.rel = 'noopener noreferrer';
+  }
+
+  const art = document.createElement('div');
+  art.className = 'headsup-art';
+  const iconSrc = GAME_ICONS[row.game];
+  if (iconSrc) {
+    const icon = document.createElement('img');
+    icon.className = 'headsup-art-icon';
+    icon.src = iconSrc;
+    icon.alt = '';
+    art.appendChild(icon);
+  }
+  card.appendChild(art);
+
+  const body = document.createElement('div');
+  body.className = 'headsup-body';
 
   const top = document.createElement('div');
   top.className = 'headsup-top';
@@ -35,25 +73,24 @@ function renderCard(row) {
   badge.className = 'headsup-badge';
   badge.textContent = 'UNCONFIRMED';
   top.appendChild(badge);
+  if (row.retailer) {
+    const retailerChip = document.createElement('span');
+    retailerChip.className = 'headsup-retailer-chip';
+    retailerChip.textContent = row.retailer;
+    top.appendChild(retailerChip);
+  }
   if (row.game) {
     const chip = document.createElement('span');
     chip.className = 'headsup-game-chip';
     chip.textContent = GAME_LABELS[row.game] || row.game;
     top.appendChild(chip);
   }
-  card.appendChild(top);
+  body.appendChild(top);
 
   const title = document.createElement('div');
   title.className = 'headsup-title';
   title.textContent = row.title;
-  card.appendChild(title);
-
-  if (row.snippet && row.snippet !== row.title) {
-    const snippet = document.createElement('div');
-    snippet.className = 'headsup-snippet';
-    snippet.textContent = `"${row.snippet}"`;
-    card.appendChild(snippet);
-  }
+  body.appendChild(title);
 
   const meta = document.createElement('div');
   meta.className = 'headsup-meta';
@@ -61,17 +98,9 @@ function renderCard(row) {
   source.className = 'headsup-source';
   source.textContent = `${SOURCE_LABELS[row.source] || row.source} · ${timeAgo(row.discovered_at)}`;
   meta.appendChild(source);
-  if (row.url) {
-    const link = document.createElement('a');
-    link.className = 'headsup-link';
-    link.href = row.url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = 'View source →';
-    meta.appendChild(link);
-  }
-  card.appendChild(meta);
+  body.appendChild(meta);
 
+  card.appendChild(body);
   return card;
 }
 
