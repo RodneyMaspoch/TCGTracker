@@ -1,0 +1,13 @@
+-- 0004_listing_image_url.sql — adds a column to store a real product photo
+-- URL scraped directly off each retailer's own listing page, so the
+-- frontend can show an actual image instead of a text placeholder without
+-- anyone having to upload or hand-maintain photos (products/SKUs change
+-- too often for that to stay accurate). Paired with the scraper change in
+-- worker/src/scrapers.js (pulls `image` off the same schema.org JSON-LD
+-- block already used for price/stock, falls back to an <meta
+-- property="og:image"> read when no JSON-LD product is found) and
+-- worker/src/poll.js (persists it alongside price/stock on every poll).
+--
+-- Nullable, no default: an existing row simply has no image until its next
+-- successful poll finds one — never backfilled with a guess.
+ALTER TABLE retailer_listings ADD COLUMN image_url TEXT;

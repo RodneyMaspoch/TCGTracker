@@ -282,7 +282,27 @@ function renderCard(product, l) {
     art.target = '_blank';
     art.rel = 'noopener noreferrer';
   }
-  art.innerHTML = `<div class="mono">${product.name}<br>(official product photo — link out)</div>`;
+  const placeholderHtml = `<div class="mono">${product.name}<br>(official product photo — link out)</div>`;
+  // Real photo, pulled live off the retailer's own listing page by the
+  // poller (see worker/src/scrapers.js) — not uploaded/maintained by hand,
+  // since these products and their listings change too often for that to
+  // stay accurate. Built as a real <img> (not a template-literal string)
+  // so its error handler is a real function, not a fragile string that
+  // would break on a product name containing a quote. Falls back to the
+  // honest text placeholder when a listing has no scraped image yet
+  // (brand-new product, or a retailer page with neither a schema.org
+  // Product block nor an og:image tag), or if the image URL 404s later.
+  if (l && l.image_url) {
+    const img = document.createElement('img');
+    img.src = l.image_url;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+    img.onerror = () => { art.innerHTML = placeholderHtml; };
+    art.appendChild(img);
+  } else {
+    art.innerHTML = placeholderHtml;
+  }
   if (l) {
     const chip = document.createElement('div');
     chip.className = 'chip tag-chip';

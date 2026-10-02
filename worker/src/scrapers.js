@@ -83,6 +83,34 @@ function priceFromText(text) {
   return m ? parseFloat(m[1]) : null;
 }
 
+// Pulls a product photo straight off the retailer's own page — no manual
+// upload, no hand-maintained map, because these are live products that
+// change/go out of print. Two ways in, cheapest first:
+//  1. schema.org Product JSON-LD's own `image` field — already being
+//     parsed for price/availability in extractJsonLdProduct below, so this
+//     just reads one more field off the same object. `image` can be a
+//     plain string, an array of strings, or (rarely) an array of
+//     ImageObject records with a `.url` — handle all three.
+//  2. <meta property="og:image" content="..."> — a near-universal fallback
+//     for pages with no JSON-LD Product block at all. One regex over the
+//     raw HTML, same cost profile as the rest of this file (no DOM parse).
+// Returns null (not a guess) if neither is present — the frontend already
+// has an honest "no photo yet" placeholder for exactly this case.
+function imageFromJsonLdProduct(product) {
+  if (!product || !product.image) return null;
+  const img = Array.isArray(product.image) ? product.image[0] : product.image;
+  if (!img) return null;
+  if (typeof img === 'string') return img;
+  if (typeof img === 'object' && img.url) return img.url;
+  return null;
+}
+
+function imageFromOgTag(html) {
+  const m = html.match(/<meta[^>]+property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+    || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+  return m ? m[1] : null;
+}
+
 function stockFromText(text) {
   const t = text.toLowerCase();
   if (/sold out|out of stock|currently unavailable|no longer available/.test(t)) return { stock: 'oos', purchasable: false };
@@ -106,10 +134,12 @@ export async function scrapeGeneric(url) {
     const price = offers && offers.price ? parseFloat(offers.price) : null;
     const availability = (offers && offers.availability || '').toLowerCase();
     const purchasable = availability.includes('instock');
+    const image = imageFromJsonLdProduct(product) || imageFromOgTag(html);
     return {
       price,
       stock: purchasable ? 'in_stock' : (availability ? 'oos' : 'unknown'),
       purchasable,
+      image,
       source: 'json-ld',
     };
   }
@@ -117,7 +147,8 @@ export async function scrapeGeneric(url) {
   const bodyText = stripToText(html);
   const price = priceFromText(bodyText);
   const { stock, purchasable } = stockFromText(bodyText);
-  return { price, stock, purchasable, source: 'text-heuristic' };
+  const image = imageFromOgTag(html);
+  return { price, stock, purchasable, image, source: 'text-heuristic' };
 }
 
 // ---------------------------------------------------------------------

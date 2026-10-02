@@ -30,11 +30,17 @@ export async function getListingsForLane(env, tier) {
 }
 
 export async function updateListing(env, row) {
+  // image_url uses COALESCE(new, existing): a poll that didn't find an
+  // image this time (page layout hiccup, block page, retailer briefly has
+  // none) should never erase a real photo found on a previous poll. It
+  // only ever moves from empty -> a real URL, or real URL -> a newer real
+  // URL — never back to empty while listing data otherwise keeps updating.
   await env.DB.prepare(
     `UPDATE retailer_listings
-     SET last_price = ?, last_stock = ?, last_purchasable = ?, last_checked_at = ?
+     SET last_price = ?, last_stock = ?, last_purchasable = ?, last_checked_at = ?,
+         image_url = COALESCE(?, image_url)
      WHERE product_id = ? AND retailer = ?`
-  ).bind(row.last_price, row.last_stock, row.last_purchasable, row.last_checked_at, row.product_id, row.retailer).run();
+  ).bind(row.last_price, row.last_stock, row.last_purchasable, row.last_checked_at, row.image_url ?? null, row.product_id, row.retailer).run();
 }
 
 export async function insertEvent(env, row) {

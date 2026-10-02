@@ -14,8 +14,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Archivo:wdth,wght@62..125,400..900&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-body{margin:0;background:#08060e;color:#e9e6df;font-family:Archivo,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-wrap:pretty;overflow-x:hidden;--tcg-push-accent:#b0ff36;--tcg-push-accent-ink:#14210a}
-a{color:#b0ff36;text-decoration:none}a:hover{color:#cbff7a}
+body{margin:0;background:#08060e;color:#e9e6df;font-family:Archivo,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-wrap:pretty;overflow-x:hidden;--tcg-push-accent:#e8402a;--tcg-push-accent-ink:#fff}
+a{color:#e8402a;text-decoration:none}a:hover{color:#cbff7a}
 ::-webkit-scrollbar{width:0;height:0}
 @keyframes sw-blink{0%,100%{opacity:1}50%{opacity:.2}}
 @keyframes sw-ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
@@ -41,7 +41,7 @@ a{color:#b0ff36;text-decoration:none}a:hover{color:#cbff7a}
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:20px 22px 0">
 <div>
 <div style="display:flex;align-items:center;gap:8px">
-<div onClick="{{ openSearch }}" title="Search" style="cursor:pointer;flex:none;width:36px;height:36px;border-radius:50%;border:1px solid rgba(233,230,223,.2);display:flex;align-items:center;justify-content:center" style-hover="border-color:#b0ff36">
+<div onClick="{{ openSearch }}" title="Search" style="cursor:pointer;flex:none;width:36px;height:36px;border-radius:50%;border:1px solid rgba(233,230,223,.2);display:flex;align-items:center;justify-content:center" style-hover="border-color:#e8402a">
 <svg width="16" height="17" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="6" stroke="currentColor" stroke-width="1.8" style="color:#e9e6df"></circle><line x1="13" y1="13" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:#e9e6df"></line></svg>
 </div>
 <div style="position:relative">
@@ -55,7 +55,7 @@ a{color:#b0ff36;text-decoration:none}a:hover{color:#cbff7a}
 <sc-for list="{{ menuItems }}" as="m" hint-placeholder-count="5">
 <a href="{{ m.href }}" onClick="{{ closeMenu }}" style="display:block;text-decoration:none;font-family:'Roboto Mono',monospace;font-size:14px;color:{{ m.fg }};padding:11px 14px;border-radius:10px;white-space:nowrap" style-hover="background:rgba(255,255,255,.06)">{{ m.label }}</a>
 </sc-for>
-<div onClick="{{ armAllFromMenu }}" style="cursor:pointer;text-align:center;margin-top:8px;background:#b0ff36;color:#14210a;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:14px;padding:11px 16px;border-radius:999px;white-space:nowrap">ARM ALL</div>
+<div onClick="{{ armAllFromMenu }}" style="cursor:pointer;text-align:center;margin-top:8px;background:#e8402a;color:#fff;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:14px;padding:11px 16px;border-radius:999px;white-space:nowrap">ARM ALL</div>
 </div>
 </sc-if>
 </div>
@@ -63,7 +63,7 @@ a{color:#b0ff36;text-decoration:none}a:hover{color:#cbff7a}
 </div>
 <div style="font-size:26px;font-weight:900;font-stretch:112%;letter-spacing:-.02em;color:#fff;margin-top:9px;line-height:1.1">{{ histName }}</div>
 </div>
-<div onClick="{{ closeHistory }}" style="cursor:pointer;flex:none;width:32px;height:32px;border-radius:50%;border:1px solid rgba(233,230,223,.2);display:flex;align-items:center;justify-content:center;font-size:15px;color:#e9e6df" style-hover="border-color:#b0ff36;color:#b0ff36">✕</div>
+<div onClick="{{ closeHistory }}" style="cursor:pointer;flex:none;width:32px;height:32px;border-radius:50%;border:1px solid rgba(233,230,223,.2);display:flex;align-items:center;justify-content:center;font-size:15px;color:#e9e6df" style-hover="border-color:#e8402a;color:#e8402a">✕</div>
 </div>
 
 <div style="display:flex;gap:26px;flex-wrap:wrap;padding:18px 22px 0">
@@ -80,7 +80,7 @@ a{color:#b0ff36;text-decoration:none}a:hover{color:#cbff7a}
 <svg viewBox="0 0 640 200" width="100%" height="200" preserveAspectRatio="none" style="display:block;pointer-events:none">
 <polyline points="{{ histArea }}" fill="{{ histFill }}" stroke="none"></polyline>
 <polyline points="{{ histLine }}" fill="none" stroke="{{ histColor }}" stroke-width="2"></polyline>
-<line x1="0" y1="{{ histMsrpY }}" x2="640" y2="{{ histMsrpY }}" stroke="#a855f7" stroke-width="1" stroke-dasharray="5 5"></line>
+<line x1="0" y1="{{ histMsrpY }}" x2="640" y2="{{ histMsrpY }}" stroke="#e8b23d" stroke-width="1" stroke-dasharray="5 5"></line>
 </svg>
 <sc-if value="{{ histHover }}" hint-placeholder-val="{{ false }}">
 <div style="position:absolute;top:0;bottom:0;width:1px;background:rgba(233,230,223,.45);pointer-events:none;left:{{ histHoverX }}"></div>
@@ -92,12 +92,12 @@ a{color:#b0ff36;text-decoration:none}a:hover{color:#cbff7a}
 </sc-if>
 </div>
 <div style="display:flex;justify-content:space-between;font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.55);margin-top:6px">
-<span>{{ histStartDate }}</span><span style="color:#a855f7">— — MSRP {{ histMsrp }}</span><span>{{ histEndDate }}</span>
+<span>{{ histStartDate }}</span><span style="color:#e8b23d">— — MSRP {{ histMsrp }}</span><span>{{ histEndDate }}</span>
 </div>
 </div>
 
 <div style="padding:18px 22px 22px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-<div onClick="{{ histToggle }}" style="cursor:pointer;background:{{ histBtnBg }};color:{{ histBtnFg }};border:1px solid #b0ff36;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:14px;padding:11px 24px;border-radius:999px">{{ histBtnLabel }}</div>
+<div onClick="{{ histToggle }}" style="cursor:pointer;background:{{ histBtnBg }};color:{{ histBtnFg }};border:1px solid #e8402a;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:14px;padding:11px 24px;border-radius:999px">{{ histBtnLabel }}</div>
 <div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.62)">{{ histNote }}</div>
 </div>
 </div>
@@ -105,15 +105,15 @@ a{color:#b0ff36;text-decoration:none}a:hover{color:#cbff7a}
 </sc-if>
 
 <div style="position:relative;background:
-radial-gradient(62% 40% at 88% -6%,rgba(168,85,247,.30) 0%,transparent 62%),
-radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
+radial-gradient(62% 40% at 88% -6%,rgba(232,178,61,.30) 0%,transparent 62%),
+radial-gradient(50% 34% at 2% 4%,rgba(232,64,42,.13) 0%,transparent 60%),
 #08060e">
 <sc-if value="{{ searchOpen }}" hint-placeholder-val="{{ false }}">
 <div style="position:fixed;inset:0;z-index:80;background:rgba(4,3,9,.94);backdrop-filter:blur(10px);display:flex;flex-direction:column;padding:34px 40px">
 <div style="display:flex;align-items:center;gap:18px;max-width:900px;width:100%;margin:0 auto;padding-bottom:22px;border-bottom:1px solid rgba(233,230,223,.2)">
-<svg width="22" height="22" viewBox="0 0 20 20" fill="none" style="flex:none"><circle cx="8.5" cy="8.5" r="6" stroke="#b0ff36" stroke-width="1.8"></circle><line x1="13" y1="13" x2="18" y2="18" stroke="#b0ff36" stroke-width="1.8" stroke-linecap="round"></line></svg>
+<svg width="22" height="22" viewBox="0 0 20 20" fill="none" style="flex:none"><circle cx="8.5" cy="8.5" r="6" stroke="#e8402a" stroke-width="1.8"></circle><line x1="13" y1="13" x2="18" y2="18" stroke="#e8402a" stroke-width="1.8" stroke-linecap="round"></line></svg>
 <input value="{{ q }}" onChange="{{ setQ }}" autoFocus="{{ true }}" placeholder="Search sets, precons, Secret Lair…" style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:#fff;font-family:Archivo,sans-serif;font-weight:700;font-stretch:108%;font-size:34px">
-<div onClick="{{ closeSearch }}" style="cursor:pointer;flex:none;width:40px;height:40px;border-radius:50%;border:1px solid rgba(233,230,223,.2);display:flex;align-items:center;justify-content:center;color:#e9e6df;font-size:16px" style-hover="border-color:#b0ff36;color:#b0ff36">✕</div>
+<div onClick="{{ closeSearch }}" style="cursor:pointer;flex:none;width:40px;height:40px;border-radius:50%;border:1px solid rgba(233,230,223,.2);display:flex;align-items:center;justify-content:center;color:#e9e6df;font-size:16px" style-hover="border-color:#e8402a;color:#e8402a">✕</div>
 </div>
 
 <div style="max-width:900px;width:100%;margin:0 auto;overflow:auto;padding-top:26px">
@@ -143,12 +143,12 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 
 <div style="position:fixed;inset:0;z-index:70;pointer-events:none;opacity:.5;mix-blend-mode:overlay;background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27220%27%20height=%27220%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.85%27%20numOctaves=%274%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20type=%27saturate%27%20values=%270%27/%3E%3C/filter%3E%3Crect%20width=%27220%27%20height=%27220%27%20filter=%27url%28%23n%29%27%20opacity=%270.5%27/%3E%3C/svg%3E);background-size:220px 220px"></div>
 
-<div class="sw-ticker-wrap" style="background:#100b1b;overflow:hidden;padding:8px 0;border-bottom:1px solid rgba(168,85,247,.28)">
+<div class="sw-ticker-wrap" style="background:#100b1b;overflow:hidden;padding:8px 0;border-bottom:1px solid rgba(232,178,61,.28)">
 <div class="sw-ticker-track" style="display:flex;width:max-content;animation:sw-ticker 34s linear infinite;animation-duration:{{ tickerDur }}">
 <sc-for list="{{ tickerLoop }}" as="lap" hint-placeholder-count="2">
 <div style="display:flex;gap:34px;flex:0 0 auto;width:max-content;padding-right:34px">
 <sc-for list="{{ tickerItems }}" as="t" hint-placeholder-count="3">
-<a href="{{ t.url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.62);white-space:nowrap" style-hover="color:#b0ff36">
+<a href="{{ t.url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.62);white-space:nowrap" style-hover="color:#e8402a">
 <span style="color:{{ t.tone }}">{{ t.glyph }}</span>{{ t.label }}
 </a>
 </sc-for>
@@ -171,13 +171,13 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 <div data-tcg-sticky-header style="position:sticky;top:0;z-index:85;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);background:#08060e;border-bottom:1px solid rgba(233,230,223,.1)">
 <div style="max-width:1340px;margin:0 auto;padding:14px 40px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
 <div style="display:flex;align-items:center;gap:10px;flex:none">
-<div style="width:10px;height:10px;border-radius:50%;background:#b0ff36;box-shadow:0 0 16px rgba(176,255,54,.7)"></div>
-<div style="font-family:'Chakra Petch',sans-serif;font-style:italic;font-weight:700;font-size:22px;letter-spacing:-.02em;color:#fff;text-shadow:0 0 26px rgba(176,255,54,.4);white-space:nowrap">SPELLWATCH</div>
-<div style="display:flex;align-items:center;gap:2px;padding:2px;border-radius:999px;border:1px solid rgba(233,230,223,.18);flex:none"><span style="font-family:'Roboto Mono',monospace;font-size:14px;color:#14210a;background:#b0ff36;padding:6px 11px;border-radius:999px;white-space:nowrap">MTG</span><a href="lorcana.html" style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.55);text-decoration:none;padding:6px 11px;border-radius:999px;white-space:nowrap">LORCANA</a><a href="pokemon.html" style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.55);text-decoration:none;padding:6px 11px;border-radius:999px;white-space:nowrap">POKÉMON</a><a href="/heads-up" style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.55);text-decoration:none;padding:6px 11px;border-radius:999px;white-space:nowrap">HEADS UP</a></div>
+<img src="data:image/png;base64,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" alt="" style="width:28px;height:28px;border-radius:8px;object-fit:cover;flex:none">
+<div style="font-family:'Chakra Petch',sans-serif;font-style:italic;font-weight:700;font-size:22px;letter-spacing:-.02em;color:#fff;text-shadow:0 0 26px rgba(232,64,42,.4);white-space:nowrap">TCGTRACKER</div>
+<div style="display:flex;align-items:center;gap:2px;padding:2px;border-radius:999px;border:1px solid rgba(233,230,223,.18);flex:none"><span style="font-family:'Roboto Mono',monospace;font-size:14px;color:#fff;background:#e8402a;padding:6px 11px;border-radius:999px;white-space:nowrap">MTG</span><a href="lorcana.html" style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.55);text-decoration:none;padding:6px 11px;border-radius:999px;white-space:nowrap">LORCANA</a><a href="pokemon.html" style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.55);text-decoration:none;padding:6px 11px;border-radius:999px;white-space:nowrap">POKÉMON</a><a href="/heads-up" style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.55);text-decoration:none;padding:6px 11px;border-radius:999px;white-space:nowrap">HEADS UP</a></div>
 </div>
 
 <div style="display:flex;align-items:center;gap:8px">
-<div onClick="{{ openSearch }}" title="Search" style="cursor:pointer;flex:none;width:36px;height:36px;border-radius:50%;border:1px solid rgba(233,230,223,.2);display:flex;align-items:center;justify-content:center" style-hover="border-color:#b0ff36">
+<div onClick="{{ openSearch }}" title="Search" style="cursor:pointer;flex:none;width:36px;height:36px;border-radius:50%;border:1px solid rgba(233,230,223,.2);display:flex;align-items:center;justify-content:center" style-hover="border-color:#e8402a">
 <svg width="16" height="17" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="6" stroke="currentColor" stroke-width="1.8" style="color:#e9e6df"></circle><line x1="13" y1="13" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:#e9e6df"></line></svg>
 </div>
 <div style="position:relative">
@@ -191,7 +191,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 <sc-for list="{{ menuItems }}" as="m" hint-placeholder-count="5">
 <a href="{{ m.href }}" onClick="{{ closeMenu }}" style="display:block;text-decoration:none;font-family:'Roboto Mono',monospace;font-size:14px;color:{{ m.fg }};padding:11px 14px;border-radius:10px;white-space:nowrap" style-hover="background:rgba(255,255,255,.06)">{{ m.label }}</a>
 </sc-for>
-<div onClick="{{ armAllFromMenu }}" style="cursor:pointer;text-align:center;margin-top:8px;background:#b0ff36;color:#14210a;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:14px;padding:11px 16px;border-radius:999px;white-space:nowrap">ARM ALL</div>
+<div onClick="{{ armAllFromMenu }}" style="cursor:pointer;text-align:center;margin-top:8px;background:#e8402a;color:#fff;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:14px;padding:11px 16px;border-radius:999px;white-space:nowrap">ARM ALL</div>
 </div>
 </sc-if>
 </div>
@@ -201,15 +201,15 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 
 <div style="position:relative;left:50%;right:50%;margin-left:-50vw;margin-right:-50vw;width:100vw;margin-top:14px;overflow:hidden;background:#0d0918">
 <div style="position:absolute;inset:0"><image-slot id="sw-hero" shape="rect" placeholder="Drop Secret Lair key art — full bleed, 2400×1300" src="https://images.ctfassets.net/s5n2t79q9icq/4lKNbmHND3dpAmIAVOQZBg/f9f1d9ef5271e195c111d6422aca615a/SL_The_Most_Powerful_Superdrop_in_the_Universe_960x540.jpg"></image-slot></div>
-<div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,rgba(8,6,14,.97) 0%,rgba(8,6,14,.9) 42%,rgba(38,12,72,.72) 72%,rgba(168,85,247,.42) 100%)"></div>
+<div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,rgba(8,6,14,.97) 0%,rgba(8,6,14,.9) 42%,rgba(38,12,72,.72) 72%,rgba(232,178,61,.42) 100%)"></div>
 <div style="position:absolute;inset:0;pointer-events:none;opacity:.6;mix-blend-mode:soft-light;background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27220%27%20height=%27220%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.85%27%20numOctaves=%274%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20type=%27saturate%27%20values=%270%27/%3E%3C/filter%3E%3Crect%20width=%27220%27%20height=%27220%27%20filter=%27url%28%23n%29%27%20opacity=%270.5%27/%3E%3C/svg%3E);background-size:200px 200px"></div>
 
 <div style="position:relative;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:40px;align-items:center;padding:0;min-height:100vh;box-sizing:border-box">
 <div>
-<div style="display:inline-flex;align-items:center;gap:11px;background:rgba(176,255,54,.12);border:1px solid rgba(176,255,54,.4);border-radius:999px;padding:7px 17px;font-family:'Roboto Mono',monospace;font-size:14px;letter-spacing:.1em;color:#b0ff36;white-space:nowrap">
-<span style="width:7px;height:7px;border-radius:50%;background:#b0ff36;animation:sw-blink 1.2s infinite"></span>REALITY FRACTURE · PRERELEASE TOMORROW
+<div style="display:inline-flex;align-items:center;gap:11px;background:rgba(232,64,42,.12);border:1px solid rgba(232,64,42,.4);border-radius:999px;padding:7px 17px;font-family:'Roboto Mono',monospace;font-size:14px;letter-spacing:.1em;color:#e8402a;white-space:nowrap">
+<span style="width:7px;height:7px;border-radius:50%;background:#e8402a;animation:sw-blink 1.2s infinite"></span>REALITY FRACTURE · PRERELEASE TOMORROW
 </div>
-<div style="font-weight:900;font-stretch:120%;font-size:clamp(30px,3.6vw,52px);line-height:.95;letter-spacing:-.03em;color:#fff;margin-top:18px;text-transform:uppercase">Don't miss the <span style="color:#b0ff36">Reality Fracture</span> prerelease</div>
+<div style="font-weight:900;font-stretch:120%;font-size:clamp(30px,3.6vw,52px);line-height:.95;letter-spacing:-.03em;color:#fff;margin-top:18px;text-transform:uppercase">Don't miss the <span style="color:#e8402a">Reality Fracture</span> prerelease</div>
 
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:30px">
 <div onClick="{{ armHero }}" style="cursor:pointer;background:{{ heroBg }};color:{{ heroFg }};border:1px solid {{ heroBd }};font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:16px;padding:15px 34px;border-radius:999px;box-shadow:{{ heroGlow }}">{{ heroLabel }}</div>
@@ -221,7 +221,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 <div style="background:rgba(12,8,23,.72);backdrop-filter:blur(14px);border:1px solid rgba(233,230,223,.16);border-radius:24px;padding:16px;box-shadow:0 30px 80px rgba(0,0,0,.5)">
 <div style="position:relative;border-radius:16px;overflow:hidden;aspect-ratio:16/10;background:#0c0817">
 <image-slot id="sw-hero-card" shape="rect" placeholder="Featured drop art — 800×1000" src="https://images.ctfassets.net/s5n2t79q9icq/7MfIs9WdOlc9pELBQPdNLK/a87bf4a0fe51ae9f18205f7122b5111f/jace-main.jpg"></image-slot>
-<div style="position:absolute;top:12px;left:12px;pointer-events:none;background:#a855f7;color:#fff;font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:5px 13px;border-radius:999px;white-space:nowrap">{{ heroSource }}</div>
+<div style="position:absolute;top:12px;left:12px;pointer-events:none;background:#e8b23d;color:#fff;font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:5px 13px;border-radius:999px;white-space:nowrap">{{ heroSource }}</div>
 </div>
 <div style="padding:18px 6px 4px">
 <div style="font-size:21px;font-weight:800;font-stretch:110%;letter-spacing:-.02em;color:#fff;line-height:1.15">Reality Fracture — Play Booster Box</div>
@@ -232,7 +232,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 </div>
 <div>
 <div style="font-size:14px;font-weight:600;color:rgba(233,230,223,.6)">Bundle</div>
-<div style="font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:28px;line-height:1.1;color:#b0ff36">$57.99</div>
+<div style="font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:28px;line-height:1.1;color:#e8402a">$57.99</div>
 </div>
 </div>
 <div style="display:flex;align-items:baseline;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid rgba(233,230,223,.14)">
@@ -243,25 +243,25 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 </div>
 </sc-for>
 </div>
-<div style="font-family:'Roboto Mono',monospace;font-size:14px;letter-spacing:.1em;color:#b0ff36;margin-top:10px">UNTIL PRERELEASE (SEP 25)</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;letter-spacing:.1em;color:#e8402a;margin-top:10px">UNTIL PRERELEASE (SEP 25)</div>
 </div>
 </div>
 </div>
 
 <div style="position:relative;border-top:1px solid rgba(233,230,223,.14);padding:34px 40px 42px">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-<div style="font-family:'Roboto Mono',monospace;font-size:14px;letter-spacing:.12em;color:#b0ff36;white-space:nowrap">SECRET LAIR × MASTERS OF THE UNIVERSE — ON SALE NOW</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;letter-spacing:.12em;color:#e8402a;white-space:nowrap">SECRET LAIR × MASTERS OF THE UNIVERSE — ON SALE NOW</div>
 <a href="#tracking" style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.62);white-space:nowrap">SEE EVERYTHING TRACKED →</a>
 </div>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,164px),1fr));gap:18px;margin-top:18px">
 <sc-for list="{{ lairs }}" as="l" hint-placeholder-count="7">
 <a href="#tracking" style="display:block;text-decoration:none">
-<div style="position:relative;border-radius:16px;overflow:hidden;aspect-ratio:5/7;background:#0c0817;border:1px solid rgba(233,230,223,.14)" style-hover="border-color:#b0ff36">
+<div style="position:relative;border-radius:16px;overflow:hidden;aspect-ratio:5/7;background:#0c0817;border:1px solid rgba(233,230,223,.14)" style-hover="border-color:#e8402a">
 <image-slot id="{{ l.slot }}" shape="rect" placeholder=" " src="{{ l.art }}"></image-slot>
 <div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(transparent 44%,rgba(8,6,14,.94))"></div>
 <div style="position:absolute;left:16px;right:16px;bottom:14px;pointer-events:none">
 <div style="font-size:16px;font-weight:700;font-stretch:108%;color:#fff;line-height:1.25">{{ l.name }}</div>
-<div style="font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:16px;color:#b0ff36;margin-top:5px">{{ l.price }}</div>
+<div style="font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:16px;color:#e8402a;margin-top:5px">{{ l.price }}</div>
 </div>
 </div>
 </a>
@@ -270,7 +270,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 </div>
 </div>
 
-<div style="margin-top:56px;background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27220%27%20height=%27220%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.85%27%20numOctaves=%274%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20type=%27saturate%27%20values=%270%27/%3E%3C/filter%3E%3Crect%20width=%27220%27%20height=%27220%27%20filter=%27url%28%23n%29%27%20opacity=%270.5%27/%3E%3C/svg%3E),linear-gradient(100deg,#7c3aed,#a855f7 58%,#c084fc);background-size:200px 200px,auto;background-blend-mode:soft-light,normal;display:flex;align-items:center;gap:34px;flex-wrap:wrap;padding:72px 56px;border-radius:22px">
+<div style="margin-top:56px;background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27220%27%20height=%27220%27%3E%3Cfilter%20id=%27n%27%3E%3CfeTurbulence%20type=%27fractalNoise%27%20baseFrequency=%270.85%27%20numOctaves=%274%27%20stitchTiles=%27stitch%27/%3E%3CfeColorMatrix%20type=%27saturate%27%20values=%270%27/%3E%3C/filter%3E%3Crect%20width=%27220%27%20height=%27220%27%20filter=%27url%28%23n%29%27%20opacity=%270.5%27/%3E%3C/svg%3E),linear-gradient(100deg,#8a6400,#e8b23d 58%,#f2c14e);background-size:200px 200px,auto;background-blend-mode:soft-light,normal;display:flex;align-items:center;gap:34px;flex-wrap:wrap;padding:72px 56px;border-radius:22px">
 <div style="flex:1 1 340px;min-width:280px">
 <div style="font-size:42px;font-weight:900;font-stretch:112%;line-height:.98;letter-spacing:-.03em;color:#fff;margin-top:12px">REALITY<br>FRACTURE</div>
 <div style="display:flex;gap:30px;margin-top:24px">
@@ -280,11 +280,11 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 </div>
 <div>
 <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,.72)">Collector Booster Box</div>
-<div style="font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:30px;line-height:1.1;color:#b0ff36">$323.88</div>
+<div style="font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:30px;line-height:1.1;color:#e8402a">$323.88</div>
 </div>
 </div>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:30px">
-<a href="https://magic.wizards.com/en/products/reality-fracture" target="_blank" rel="noopener" style="text-decoration:none;background:#fff;color:#3b1170;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:15px;padding:13px 26px;border-radius:999px;white-space:nowrap">VIEW ON WIZARDS.COM →</a>
+<a href="https://magic.wizards.com/en/products/reality-fracture" target="_blank" rel="noopener" style="text-decoration:none;background:#fff;color:#5c3d00;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:15px;padding:13px 26px;border-radius:999px;white-space:nowrap">VIEW ON WIZARDS.COM →</a>
 <div onClick="{{ armHero }}" style="cursor:pointer;border:1px solid rgba(255,255,255,.55);color:#fff;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:15px;padding:12px 24px;border-radius:999px;white-space:nowrap">{{ heroLabel }}</div>
 </div>
 </div>
@@ -355,13 +355,13 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 <option value="{{ o.k }}" style="background:#100b1b;color:#e9e6df">{{ o.label }}</option>
 </sc-for>
 </select>
-<svg width="12" height="8" viewBox="0 0 12 8" fill="none" style="position:absolute;right:15px;pointer-events:none"><path d="M1 1.5L6 6.5L11 1.5" stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"></path></svg>
+<svg width="12" height="8" viewBox="0 0 12 8" fill="none" style="position:absolute;right:15px;pointer-events:none"><path d="M1 1.5L6 6.5L11 1.5" stroke="#e8b23d" stroke-width="1.6" stroke-linecap="round"></path></svg>
 </div>
 </div>
 </div>
 <div class="tt-slider" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,262px),1fr));gap:26px;margin-top:38px">
 <sc-for list="{{ deals }}" as="d" hint-placeholder-count="6">
-<div style="background:#100b1b;border:1px solid rgba(233,230,223,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(176,255,54,.55);box-shadow:0 0 28px rgba(176,255,54,.14)">
+<div style="background:#100b1b;border:1px solid rgba(233,230,223,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(232,64,42,.55);box-shadow:0 0 28px rgba(232,64,42,.14)">
 <a href="{{ d.url }}" target="_blank" rel="noopener" style="display:block;position:relative;aspect-ratio:5/6;background:#0c0817" title="View at retailer">
 <image-slot id="{{ d.slot }}" shape="rect" placeholder="{{ d.slotHint }}" src="{{ d.art }}"></image-slot>
 <div style="position:absolute;top:0;left:0;pointer-events:none;background:{{ d.chipBg }};color:{{ d.chipFg }};font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:5px 12px;border-radius:999px;white-space:nowrap;font-size:14px">{{ d.retailer }}</div>
@@ -393,11 +393,11 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 
 <sc-if value="{{ dealPages }}" hint-placeholder-val="{{ false }}">
 <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:48px">
-<div onClick="{{ dealPrev }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(233,230,223,.2);color:#e9e6df;font-size:14px" style-hover="border-color:#b0ff36;color:#b0ff36">‹</div>
+<div onClick="{{ dealPrev }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(233,230,223,.2);color:#e9e6df;font-size:14px" style-hover="border-color:#e8402a;color:#e8402a">‹</div>
 <sc-for list="{{ dealDots }}" as="p" hint-placeholder-count="2">
 <div onClick="{{ p.pick }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 12px;border-radius:999px;background:{{ p.bg }};color:{{ p.fg }};border:1px solid {{ p.bd }};font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:14px">{{ p.n }}</div>
 </sc-for>
-<div onClick="{{ dealNext }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(233,230,223,.2);color:#e9e6df;font-size:14px" style-hover="border-color:#b0ff36;color:#b0ff36">›</div>
+<div onClick="{{ dealNext }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(233,230,223,.2);color:#e9e6df;font-size:14px" style-hover="border-color:#e8402a;color:#e8402a">›</div>
 </div>
 </sc-if>
 
@@ -406,7 +406,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:22px;margin-top:58px">
 <sc-for list="{{ cats }}" as="k" hint-placeholder-count="6">
 <div onClick="{{ k.pick }}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:14px">
-<div style="position:relative;width:132px;aspect-ratio:1/1;border-radius:50%;overflow:hidden;border:1px solid {{ k.bd }}" style-hover="border-color:rgba(176,255,54,.6)"><image-slot id="{{ k.slot }}" shape="circle" placeholder=" " src="{{ k.art }}"></image-slot></div>
+<div style="position:relative;width:132px;aspect-ratio:1/1;border-radius:50%;overflow:hidden;border:1px solid {{ k.bd }}" style-hover="border-color:rgba(232,64,42,.6)"><image-slot id="{{ k.slot }}" shape="circle" placeholder=" " src="{{ k.art }}"></image-slot></div>
 <div style="font-size:16px;font-weight:700;font-stretch:108%;line-height:1.2;color:#fff;text-align:center">{{ k.name }}</div>
 </div>
 </sc-for>
@@ -421,7 +421,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,262px),1fr));gap:26px;margin-top:38px">
 <sc-for list="{{ upcoming }}" as="u" hint-placeholder-count="4">
-<div style="background:#100b1b;border:1px solid rgba(233,230,223,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(168,85,247,.6)">
+<div style="background:#100b1b;border:1px solid rgba(233,230,223,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(232,178,61,.6)">
 <div style="position:relative;aspect-ratio:5/6;background:#0c0817">
 <image-slot id="{{ u.slot }}" shape="rect" placeholder="{{ u.slotHint }}" src="{{ u.art }}"></image-slot>
 <div style="position:absolute;left:0;bottom:0;pointer-events:none;background:rgba(8,6,14,.86);padding:7px 14px 7px 10px;border-radius:999px;display:flex;align-items:baseline;gap:7px">
@@ -442,11 +442,11 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 
 <sc-if value="{{ upPages }}" hint-placeholder-val="{{ false }}">
 <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:48px">
-<div onClick="{{ upPrev }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(233,230,223,.2);color:#e9e6df;font-size:14px" style-hover="border-color:#b0ff36;color:#b0ff36">‹</div>
+<div onClick="{{ upPrev }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(233,230,223,.2);color:#e9e6df;font-size:14px" style-hover="border-color:#e8402a;color:#e8402a">‹</div>
 <sc-for list="{{ upDots }}" as="p" hint-placeholder-count="2">
 <div onClick="{{ p.pick }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 12px;border-radius:999px;background:{{ p.bg }};color:{{ p.fg }};border:1px solid {{ p.bd }};font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:14px">{{ p.n }}</div>
 </sc-for>
-<div onClick="{{ upNext }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(233,230,223,.2);color:#e9e6df;font-size:14px" style-hover="border-color:#b0ff36;color:#b0ff36">›</div>
+<div onClick="{{ upNext }}" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(233,230,223,.2);color:#e9e6df;font-size:14px" style-hover="border-color:#e8402a;color:#e8402a">›</div>
 </div>
 </sc-if>
 
@@ -484,13 +484,13 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:132px">
 <div>
-<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:#a855f7;margin-bottom:8px">EVENTS &amp; CONVENTIONS NEAR YOU</div>
+<div style="font-family:'Roboto Mono',monospace;font-size:14px;color:#e8b23d;margin-bottom:8px">EVENTS &amp; CONVENTIONS NEAR YOU</div>
 <div style="font-size:42px;font-weight:900;font-stretch:118%;line-height:1;letter-spacing:-.03em;color:#fff" id="events">WHAT'S IN RANGE</div>
 </div>
 <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
 <div>
 <div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.62);margin-bottom:6px">ZIP CODE</div>
-<input value="{{ zip }}" onChange="{{ setZip }}" inputMode="numeric" maxLength="5" placeholder="78701" style="width:118px;background:#100b1b;border-radius:12px;border:1px solid rgba(176,255,54,.5);color:#fff;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:20px;letter-spacing:.06em;padding:9px 12px;outline:none">
+<input value="{{ zip }}" onChange="{{ setZip }}" inputMode="numeric" maxLength="5" placeholder="78701" style="width:118px;background:#100b1b;border-radius:12px;border:1px solid rgba(232,64,42,.5);color:#fff;font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:20px;letter-spacing:.06em;padding:9px 12px;outline:none">
 </div>
 <div>
 <div style="font-family:'Roboto Mono',monospace;font-size:14px;color:rgba(233,230,223,.62);margin-bottom:6px">RADIUS</div>
@@ -507,7 +507,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 
 <div class="tt-slider tt-lg" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:26px;margin-top:38px">
 <sc-for list="{{ nearby }}" as="e" hint-placeholder-count="4">
-<div style="background:#100b1b;border:1px solid rgba(233,230,223,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(176,255,54,.5)">
+<div style="background:#100b1b;border:1px solid rgba(233,230,223,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(232,64,42,.5)">
 <div style="position:relative;height:132px;background:#0c0817">
 <image-slot id="{{ e.slot }}" shape="rect" placeholder="{{ e.slotHint }}"></image-slot>
 <div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(transparent 40%,rgba(8,6,14,.9))"></div>
@@ -534,10 +534,10 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,262px),1fr));gap:26px;margin-top:38px">
 <sc-for list="{{ cons }}" as="c" hint-placeholder-count="3">
-<div style="background:#100b1b;border:1px solid rgba(233,230,223,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(168,85,247,.6)">
+<div style="background:#100b1b;border:1px solid rgba(233,230,223,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:rgba(232,178,61,.6)">
 <div style="position:relative;aspect-ratio:5/6;background:#0c0817">
 <image-slot id="{{ c.slot }}" shape="rect" placeholder="{{ c.slotHint }}"></image-slot>
-<div style="position:absolute;top:0;left:0;pointer-events:none;background:#a855f7;color:#fff;font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:4px 13px;border-radius:999px;white-space:nowrap">{{ c.tag }}</div>
+<div style="position:absolute;top:0;left:0;pointer-events:none;background:#e8b23d;color:#fff;font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;padding:4px 13px;border-radius:999px;white-space:nowrap">{{ c.tag }}</div>
 <div style="position:absolute;bottom:0;left:0;right:0;pointer-events:none;background:linear-gradient(transparent,rgba(8,6,14,.94));padding:26px 14px 12px">
 <div style="font-size:22px;font-weight:900;font-stretch:112%;line-height:1;letter-spacing:-.02em;color:#fff">{{ c.name }}</div>
 </div>
@@ -565,7 +565,7 @@ radial-gradient(50% 34% at 2% 4%,rgba(176,255,54,.13) 0%,transparent 60%),
 <script>
 
 const DIM = 'rgba(233,230,223,.55)', BD = 'rgba(233,230,223,.18)';
-const LIME = '#b0ff36', PURPLE = '#a855f7', RED = '#ff5c7a', INK = '#14210a';
+const LIME = '#e8402a', PURPLE = '#e8b23d', RED = '#ff5c7a', INK = '#fff';
 
 function spark(vals) {
   const min = Math.min(...vals), max = Math.max(...vals), r = max - min || 1;
@@ -580,7 +580,7 @@ const ALL_DEALS = [
   { id: 'doom-prevails', art: './img/category-precons.jpg', url: 'https://www.bestbuy.com/product/wizards-of-the-coast-magic-the-gathering-marvel-super-heroes-commander-deck-doom-prevails/JJ8VP7KSL7', name: 'Marvel Super Heroes Commander Deck — Doom Prevails', retailer: 'BEST BUY', stock: 'HIGH DEMAND — RETAILER WARNS IT MAY SELL OUT', price: '$77.99', msrp: '', delta: 'NO MSRP PUBLISHED', ago: 'checked Sep 24', under: false, src: 'BIG', mark: 'B', markBg: '#f0a02e', markFg: '#1a1004', series: [77.99,77.99,77.99,77.99,77.99,77.99,77.99,77.99,77.99,77.99], slotHint: 'Doom Prevails commander deck' },
   { id: 'reality-fracture-sld-target', art: 'https://images.ctfassets.net/s5n2t79q9icq/5jKECux0YypT0gdUVQ2yMG/26797d4ef011e98218ba0e5af45776ff/FRA-1029_IREHSAFULXE_548x432_EN.png', url: 'https://www.target.com/p/magic-the-gathering-reality-fracture-secret-lair-bundle/-/A-1012055753', name: 'Reality Fracture — Secret Lair Bundle', retailer: 'TARGET', stock: 'OUT OF STOCK · PREORDER, STREETS OCT 23', price: '$104.99', msrp: '$89.99', delta: '+17% OVER MSRP', under: false, ago: 'checked Sep 24', src: 'BIG', mark: 'T', markBg: '#e5484d', markFg: '#fff', series: [104.99,104.99,104.99,104.99,104.99,104.99,104.99,104.99,104.99,104.99], slotHint: 'Reality Fracture Secret Lair bundle' },
   { id: 'reality-fracture-sld-walmart', art: 'https://images.ctfassets.net/s5n2t79q9icq/5jKECux0YypT0gdUVQ2yMG/26797d4ef011e98218ba0e5af45776ff/FRA-1029_IREHSAFULXE_548x432_EN.png', url: 'https://www.walmart.com/ip/MTG-REALITY-FRACTURE-SLD-BUNDLE/20843517878', name: 'Reality Fracture — Secret Lair Bundle (3rd-party seller)', retailer: 'WALMART MARKETPLACE', stock: 'PREORDER — MARKETPLACE RESELLER', price: '$189.00', msrp: '$89.99', delta: '+110% OVER MSRP — AVOID', under: false, ago: 'checked Sep 24', src: 'BIG', mark: 'W', markBg: '#3b7ddd', markFg: '#fff', series: [189,189,189,189,189,189,189,189,189,189], slotHint: 'Reality Fracture Secret Lair bundle' },
-  { id: 'motu-secretlair', art: './img/category-secretlair.jpg', url: 'https://secretlair.wizards.com/us/en/product/1254739/secret-lair-x-masters-of-the-universe-sold-separately', name: 'Secret Lair × Masters of the Universe (per set)', retailer: 'SECRET LAIR (OFFICIAL)', stock: 'ON SALE NOW — ORDERING OPENED SEP 14', price: '$29.99', msrp: '$29.99', delta: 'AT LIST PRICE', under: false, ago: 'checked Sep 24', src: 'SL', mark: 'S', markBg: '#fff', markFg: '#a855f7', series: [29.99,29.99,29.99,29.99,29.99,29.99,29.99,29.99,29.99,29.99], slotHint: 'Secret Lair x MOTU' },
+  { id: 'motu-secretlair', art: './img/category-secretlair.jpg', url: 'https://secretlair.wizards.com/us/en/product/1254739/secret-lair-x-masters-of-the-universe-sold-separately', name: 'Secret Lair × Masters of the Universe (per set)', retailer: 'SECRET LAIR (OFFICIAL)', stock: 'ON SALE NOW — ORDERING OPENED SEP 14', price: '$29.99', msrp: '$29.99', delta: 'AT LIST PRICE', under: false, ago: 'checked Sep 24', src: 'SL', mark: 'S', markBg: '#fff', markFg: '#e8b23d', series: [29.99,29.99,29.99,29.99,29.99,29.99,29.99,29.99,29.99,29.99], slotHint: 'Secret Lair x MOTU' },
 ];
 
 // "Signal Check" cards — live-patched by pwa-boot.js (heat + price, matched
@@ -591,8 +591,8 @@ const ALL_DEALS = [
 // just says so honestly instead of implying a check that never happened.
 const HOT_ITEMS = [
   { slot: 'hot-1', url: 'https://www.bestbuy.com/product/wizards-of-the-coast-magic-the-gathering-marvel-super-heroes-commander-deck-doom-prevails/JJ8VP7KSL7', art: './img/category-precons.jpg', name: 'Marvel Super Heroes Commander Deck — Doom Prevails', source: 'BEST BUY', heat: 'STATUS UNKNOWN', price: '—', tone: '#ff5c7a', toneInk: '#170409', why: 'No MSRP has been published for this item to compare against.', ago: 'not yet checked', slotHint: 'Doom Prevails commander deck' },
-  { slot: 'hot-2', url: 'https://secretlair.wizards.com/us/en/product/1254739/secret-lair-x-masters-of-the-universe-sold-separately', art: './img/category-secretlair.jpg', name: 'Secret Lair × Masters of the Universe', source: 'SECRET LAIR (OFFICIAL)', heat: 'STATUS UNKNOWN', price: '—', tone: '#b0ff36', toneInk: '#14210a', why: 'Five drop sets, $29.99 non-foil / $39.99 foil each at list.', ago: 'not yet checked', slotHint: 'Secret Lair x MOTU' },
-  { slot: 'hot-3', url: 'https://www.walmart.com/ip/MTG-REALITY-FRACTURE-SLD-BUNDLE/20843517878', art: 'https://images.ctfassets.net/s5n2t79q9icq/5jKECux0YypT0gdUVQ2yMG/26797d4ef011e98218ba0e5af45776ff/FRA-1029_IREHSAFULXE_548x432_EN.png', name: 'Reality Fracture — Secret Lair Bundle', source: 'WALMART MARKETPLACE', heat: 'STATUS UNKNOWN', price: '—', tone: '#a855f7', toneInk: '#fff', why: 'MSRP is $89.99 — watch for marketplace resellers marking this up.', ago: 'not yet checked', slotHint: 'Reality Fracture Secret Lair bundle' },
+  { slot: 'hot-2', url: 'https://secretlair.wizards.com/us/en/product/1254739/secret-lair-x-masters-of-the-universe-sold-separately', art: './img/category-secretlair.jpg', name: 'Secret Lair × Masters of the Universe', source: 'SECRET LAIR (OFFICIAL)', heat: 'STATUS UNKNOWN', price: '—', tone: '#e8402a', toneInk: '#fff', why: 'Five drop sets, $29.99 non-foil / $39.99 foil each at list.', ago: 'not yet checked', slotHint: 'Secret Lair x MOTU' },
+  { slot: 'hot-3', url: 'https://www.walmart.com/ip/MTG-REALITY-FRACTURE-SLD-BUNDLE/20843517878', art: 'https://images.ctfassets.net/s5n2t79q9icq/5jKECux0YypT0gdUVQ2yMG/26797d4ef011e98218ba0e5af45776ff/FRA-1029_IREHSAFULXE_548x432_EN.png', name: 'Reality Fracture — Secret Lair Bundle', source: 'WALMART MARKETPLACE', heat: 'STATUS UNKNOWN', price: '—', tone: '#e8b23d', toneInk: '#2b1800', why: 'MSRP is $89.99 — watch for marketplace resellers marking this up.', ago: 'not yet checked', slotHint: 'Reality Fracture Secret Lair bundle' },
 ];
 
 // "Recently released, price watch" bar — live-patched by pwa-boot.js
@@ -642,9 +642,9 @@ const LOCAL = [
 
 // Real, verified events — distances are approximate driving-distance estimates from Spartanburg, SC 29301, not geocoded live
 const CONS = [
-  { id: 'con-magiccon-atl', slot: 'con-1', tag: 'BADGES ON SALE', name: 'MagicCon: Atlanta', place: 'Atlanta, GA', when: 'NOV 13–15, 2026 · OFFICIAL WIZARDS CONVENTION', status: 'WEEKEND BADGE $126.36', dist: '~170 MI AWAY (EST.)', tone: '#b0ff36', slotHint: 'MagicCon Atlanta' },
-  { id: 'con-scg-la', slot: 'con-2', tag: 'TICKETS LIVE', name: 'SCG CON: Los Angeles', place: 'Los Angeles, CA', when: 'OCT 09–11, 2026 · SEALED + COMMANDER', status: 'SEE SCGCON.STARCITYGAMES.COM', dist: '~2,200 MI AWAY (EST.)', tone: '#a855f7', slotHint: 'SCG CON event hall' },
-  { id: 'con-scg-hartford', slot: 'con-3', tag: 'TICKETS LIVE', name: 'SCG CON: Hartford', place: 'Hartford, CT', when: 'OCT 23–25, 2026 · SEALED + COMMANDER', status: 'SEE SCGCON.STARCITYGAMES.COM', dist: '~700 MI AWAY (EST.)', tone: '#a855f7', slotHint: 'SCG CON event hall' },
+  { id: 'con-magiccon-atl', slot: 'con-1', tag: 'BADGES ON SALE', name: 'MagicCon: Atlanta', place: 'Atlanta, GA', when: 'NOV 13–15, 2026 · OFFICIAL WIZARDS CONVENTION', status: 'WEEKEND BADGE $126.36', dist: '~170 MI AWAY (EST.)', tone: '#e8402a', slotHint: 'MagicCon Atlanta' },
+  { id: 'con-scg-la', slot: 'con-2', tag: 'TICKETS LIVE', name: 'SCG CON: Los Angeles', place: 'Los Angeles, CA', when: 'OCT 09–11, 2026 · SEALED + COMMANDER', status: 'SEE SCGCON.STARCITYGAMES.COM', dist: '~2,200 MI AWAY (EST.)', tone: '#e8b23d', slotHint: 'SCG CON event hall' },
+  { id: 'con-scg-hartford', slot: 'con-3', tag: 'TICKETS LIVE', name: 'SCG CON: Hartford', place: 'Hartford, CT', when: 'OCT 23–25, 2026 · SEALED + COMMANDER', status: 'SEE SCGCON.STARCITYGAMES.COM', dist: '~700 MI AWAY (EST.)', tone: '#e8b23d', slotHint: 'SCG CON event hall' },
 ];
 
 class Component extends DCLogic {
@@ -678,7 +678,7 @@ class Component extends DCLogic {
       btnBg: on ? 'transparent' : LIME,
       btnFg: on ? LIME : INK,
       btnBd: on ? LIME : LIME,
-      btnGlow: on ? 'none' : '0 0 20px rgba(176,255,54,.22)',
+      btnGlow: on ? 'none' : '0 0 20px rgba(232,64,42,.22)',
     };
   }
 
@@ -726,7 +726,7 @@ class Component extends DCLogic {
       histRetailer: d.retailer,
       histMark: d.mark, histMarkBg: d.markBg, histMarkFg: d.markFg,
       histColor: d.under ? LIME : PURPLE,
-      histFill: d.under ? 'rgba(176,255,54,.12)' : 'rgba(168,85,247,.14)',
+      histFill: d.under ? 'rgba(232,64,42,.12)' : 'rgba(232,178,61,.14)',
       histLine: pts.join(' '),
       histArea: ['0,200', ...pts, '640,200'].join(' '),
       histMsrp: d.msrp,
@@ -833,7 +833,7 @@ class Component extends DCLogic {
           name: d.name,
           msrp: d.msrp,
           quotes: [
-            { src: d.retailer, price: d.price, bg: d.under ? 'rgba(176,255,54,.1)' : 'transparent', bd: d.under ? LIME : BD, fg: d.under ? LIME : '#fff', labelFg: DIM },
+            { src: d.retailer, price: d.price, bg: d.under ? 'rgba(232,64,42,.1)' : 'transparent', bd: d.under ? LIME : BD, fg: d.under ? LIME : '#fff', labelFg: DIM },
           ],
         };
       }),
@@ -847,7 +847,7 @@ class Component extends DCLogic {
           ...c,
           count: String(c.key === 'ALL' ? ALL_DEALS.length : ALL_DEALS.filter(d => catOf(d) === c.key).length).padStart(2, '0'),
           pick: () => this.setState({ cat: c.key }),
-          bg: on ? 'rgba(176,255,54,.08)' : '#100b1b',
+          bg: on ? 'rgba(232,64,42,.08)' : '#100b1b',
           bd: on ? LIME : 'rgba(233,230,223,.1)',
           countFg: on ? LIME : 'rgba(233,230,223,.55)',
         };
@@ -905,7 +905,7 @@ class Component extends DCLogic {
         { n: '3', t: 'We poll 4 official sources' },
         { n: '4', t: 'Alert fires — push, SMS, email' },
         { n: '5', t: 'You check out at MSRP' },
-      ].map((x, i) => ({ ...x, bg: i === 0 ? LIME : 'rgba(168,85,247,.2)', fg: i === 0 ? INK : '#e9d9ff' })),
+      ].map((x, i) => ({ ...x, bg: i === 0 ? LIME : 'rgba(232,178,61,.2)', fg: i === 0 ? INK : '#f6e3b4' })),
       armedCount: pad(Object.values(armed).filter(Boolean).length),
       armAll: () => {
         const all = {};
@@ -922,12 +922,12 @@ class Component extends DCLogic {
       heroBg: heroOn ? 'transparent' : LIME,
       heroFg: heroOn ? LIME : INK,
       heroBd: LIME,
-      heroGlow: heroOn ? 'none' : '0 0 26px rgba(176,255,54,.34)',
+      heroGlow: heroOn ? 'none' : '0 0 26px rgba(232,64,42,.34)',
       filters: FILTERS.map(x => ({
         label: x.label,
         pick: () => this.setState({ filter: x.key }),
         bg: f === x.key ? PURPLE : 'transparent',
-        fg: f === x.key ? '#fff' : DIM,
+        fg: f === x.key ? '#2b1800' : DIM,
         bd: f === x.key ? PURPLE : BD,
       })),
       deals: shown.slice(dp.start, dp.start + 6).map(d => {
@@ -939,7 +939,7 @@ class Component extends DCLogic {
           priceColor: d.under ? LIME : PURPLE,
           edge: d.under ? LIME : PURPLE,
           chipBg: d.src === 'SL' ? PURPLE : 'rgba(8,6,14,.82)',
-          chipFg: d.src === 'SL' ? '#fff' : 'rgba(233,230,223,.8)',
+          chipFg: d.src === 'SL' ? '#2b1800' : 'rgba(233,230,223,.8)',
           toggle: () => this.toggle(d.id),
           openHistory: () => this.setState({ history: d.id, hoverIdx: null }),
           target: this.targetOf(d),
@@ -984,8 +984,8 @@ class Component extends DCLogic {
           ...e,
           dist: e.dist.toFixed(1),
           tone,
-          kindBg: e.hot === 2 ? RED : e.hot === 1 ? LIME : 'rgba(168,85,247,.22)',
-          kindFg: e.hot === 2 ? '#170409' : e.hot === 1 ? INK : '#e9d9ff',
+          kindBg: e.hot === 2 ? RED : e.hot === 1 ? LIME : 'rgba(232,178,61,.22)',
+          kindFg: e.hot === 2 ? '#170409' : e.hot === 1 ? INK : '#f6e3b4',
           toggle: () => this.toggle(e.id),
           ...this.btn(on, '\u2713 ALERT ARMED', '+ ADD ALERT'),
         };
@@ -1005,7 +1005,7 @@ class Component extends DCLogic {
         return {
           ...w,
           color: over ? RED : at ? PURPLE : LIME,
-          ink: over ? '#170409' : at ? '#fff' : INK,
+          ink: over ? '#170409' : at ? '#2b1800' : INK,
           badge: over ? 'ABOVE MSRP' : at ? 'AT MSRP' : hot ? 'BEST PRICE YET' : 'BELOW MSRP',
           delta: at ? 'MSRP — NO DISCOUNT' : over ? Math.abs(w.pct) + '% OVER MSRP · +$' + (parseFloat(w.now.slice(1)) - parseFloat(w.was.slice(1))).toFixed(2) : w.pct + '% OFF MSRP · SAVE $' + (parseFloat(w.was.slice(1)) - parseFloat(w.now.slice(1))).toFixed(2),
           cta: over ? 'AVOID — SEE LISTING →' : at ? 'VIEW DROP →' : 'BUY NOW →',

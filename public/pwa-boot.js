@@ -57,6 +57,11 @@ function patchDeals(dealsArray, listingByUrl) {
           ? 'ACCOUNT REQUIRED'
           : 'STATUS UNKNOWN';
     d.under = msrpNum != null && price < msrpNum;
+    // Only fills a currently-empty art slot (e.g. the Hobbit Play Booster
+    // listings, which start with art:'' and an honest "no verified photo
+    // yet" slotHint) from a live-scraped photo — never overwrites an
+    // already-curated image already in the page's own data.
+    if (!d.art && l.image_url) d.art = l.image_url;
 
     if (msrpNum != null && msrpNum > 0) {
       const pct = Math.round(((price - msrpNum) / msrpNum) * 100);
@@ -92,6 +97,7 @@ function patchHot(hotItems, listingByUrl) {
           ? 'ACCOUNT REQUIRED'
           : 'STATUS UNKNOWN';
     if (l.last_price != null) h.price = '$' + Number(l.last_price).toFixed(2);
+    if (!h.art && l.image_url) h.art = l.image_url;
     changed = true;
   }
   return changed;
@@ -110,6 +116,7 @@ function patchWatch(watchItems, listingByUrl) {
     const msrpNum = w.was ? parseFloat(String(w.was).replace(/[^0-9.]/g, '')) : null;
     w.now = '$' + price.toFixed(2);
     w.pct = msrpNum != null && msrpNum > 0 ? Math.round(((price - msrpNum) / msrpNum) * 100) : null;
+    if (!w.art && l.image_url) w.art = l.image_url;
     changed = true;
   }
   return changed;

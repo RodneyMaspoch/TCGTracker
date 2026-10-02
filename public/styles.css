@@ -26,8 +26,8 @@ body[data-game="mtg"] {
   --bg: #08060e; --surface: #100b1b; --well: #0c0817; --hero-base: #0d0918;
   --ink: #e9e6df; --dim: rgba(233,230,223,.62); --dim2: rgba(233,230,223,.45);
   --hair: rgba(233,230,223,.12); --hair2: rgba(233,230,223,.2);
-  --accent: #b0ff36; --accent-ink: #14210a;
-  --sec: #a855f7; --sec-ink: #ffffff;
+  --accent: #e8402a; --accent-ink: #ffffff;
+  --sec: #e8b23d; --sec-ink: #2b1800;
   --warn: #ff5c7a; --warn-ink: #170409;
 }
 

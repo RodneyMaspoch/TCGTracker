@@ -95,6 +95,7 @@ async function pollOneListing(env, row) {
     last_stock: suspicious ? 'unknown' : result.stock,
     last_purchasable: nowPurchasable ? 1 : 0,
     last_checked_at: now,
+    image_url: result.image ?? null,
   });
 
   if (suspicious) return;
