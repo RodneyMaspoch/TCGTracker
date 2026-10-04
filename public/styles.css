@@ -536,6 +536,28 @@ button { font: inherit; cursor: pointer; }
 }
 .drawing-hero[data-state="open"] .drawing-panel-status { color: var(--sec); }
 
+/* ---------- Horizontal card slider (2026-10-02 request: "What's Hot" was
+   using the unbounded .grid below, which keeps adding MORE columns as the
+   viewport gets wider — on a big screen that's 8-10 thin columns instead
+   of a reasonable 4-6, which reads as "too narrow"). Fixed-width flex
+   children + horizontal scroll instead, same mechanism already used for
+   this on index.html/lorcana.html (those pages don't link this stylesheet,
+   so their copy of this block lives inline in each page's own <style>). */
+.tt-slider {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  grid-template-columns: none !important;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+}
+.tt-slider::-webkit-scrollbar { height: 6px; }
+.tt-slider::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 999px; }
+.tt-slider > * { flex: 0 0 262px; width: 262px; scroll-snap-align: start; }
+.tt-slider.tt-sm > * { flex-basis: 220px; width: 220px; }
+.tt-slider.tt-lg > * { flex-basis: 285px; width: 285px; }
+
 /* ---------- Product grid — the real dashboards' .card.cut / .artwell / .pad ---------- */
 .grid {
   display: grid;

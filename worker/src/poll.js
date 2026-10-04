@@ -88,15 +88,31 @@ async function pollOneListing(env, row) {
     }
   }
 
-  await updateListing(env, {
-    product_id: row.product_id,
-    retailer: row.retailer,
-    last_price: result.price,
-    last_stock: suspicious ? 'unknown' : result.stock,
-    last_purchasable: nowPurchasable ? 1 : 0,
-    last_checked_at: now,
-    image_url: result.image ?? null,
-  });
+  // 2026-10-02: this was an unguarded `await` — if the DB write throws for
+  // ANY reason (the most likely one in practice: migration 0004, which
+  // added the `image_url` column this query writes to, hasn't been run
+  // yet against the live D1 database), the exception aborted this
+  // function right here, before the restock/good-price checks below ever
+  // ran. Since this call happens on every listing on every tick, that
+  // meant a single un-applied migration could silently zero out the
+  // ENTIRE alert pipeline — no restock alert, no good-price alert, for
+  // ANY product — while looking, from the outside, exactly like "alerts
+  // just never fire." The trigger checks below only need `row`/`result`,
+  // not a successful write, so a DB failure here is now logged and
+  // swallowed instead of skipping the checks that actually matter.
+  try {
+    await updateListing(env, {
+      product_id: row.product_id,
+      retailer: row.retailer,
+      last_price: result.price,
+      last_stock: suspicious ? 'unknown' : result.stock,
+      last_purchasable: nowPurchasable ? 1 : 0,
+      last_checked_at: now,
+      image_url: result.image ?? null,
+    });
+  } catch (err) {
+    console.error(`[poll] updateListing failed for ${row.retailer}/${row.product_id} (continuing to trigger checks anyway): ${err.message}`);
+  }
 
   if (suspicious) return;
 
@@ -165,10 +181,22 @@ export async function tick(env) {
   // rotation that was slow, not a CPU ceiling). fast_idx is no longer
   // used to pick a slot, but is still written back as 0 so the
   // poll_state row's schema/shape doesn't need a migration.
-  await Promise.all([
+  // allSettled, not all — a single listing throwing (bad scrape, DB error,
+  // whatever) must never take the rest of the tick down with it. With
+  // Promise.all, one rejection here would skip EVERYTHING after this
+  // block for the rest of the tick, including setPollState at the bottom
+  // — which would freeze tick_count forever and, with it, the slow-lane
+  // rotation and the heads-up rotation (both keyed off tick_count). That's
+  // a second, independent way the alert pipeline could go silently dark
+  // besides the missing-migration bug fixed in pollOneListing above, so
+  // this is defended the same way: isolate failures, log them, keep going.
+  const settled = await Promise.allSettled([
     ...fastListings.map((row) => pollOneListing(env, row)),
     pollWalmartDrawing(env),
   ]);
+  for (const s of settled) {
+    if (s.status === 'rejected') console.error('[poll] fast-lane task rejected:', s.reason);
+  }
   const fastIdx = 0;
 
   const tickCount = state.tick_count + 1;
@@ -178,7 +206,11 @@ export async function tick(env) {
   let slowIdx = state.slow_idx;
   if (slowListings.length > 0 && tickCount % slowEveryN === 0) {
     slowIdx = (state.slow_idx + 1) % slowListings.length;
-    await pollOneListing(env, slowListings[slowIdx]);
+    try {
+      await pollOneListing(env, slowListings[slowIdx]);
+    } catch (err) {
+      console.error('[poll] slow-lane task rejected:', err);
+    }
   }
 
   // Heads-up (early signal) lane: one source every HEADS_UP_EVERY_N_TICKS
@@ -188,7 +220,11 @@ export async function tick(env) {
   const headsUpEveryN = parseInt(env.HEADS_UP_EVERY_N_TICKS || '5', 10);
   if (tickCount % headsUpEveryN === 0) {
     const headsUpIdx = Math.floor(tickCount / headsUpEveryN) % HEADS_UP_CHECK_COUNT;
-    await runHeadsUpCheck(env, headsUpIdx);
+    try {
+      await runHeadsUpCheck(env, headsUpIdx);
+    } catch (err) {
+      console.error('[poll] heads-up check rejected:', err);
+    }
   }
 
   await setPollState(env, { fast_idx: fastIdx, slow_idx: slowIdx, tick_count: tickCount });

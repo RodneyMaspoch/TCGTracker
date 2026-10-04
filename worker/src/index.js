@@ -97,6 +97,11 @@ app.get('/api/health', (c) => c.json({ ok: true, time: new Date().toISOString() 
 export default {
   fetch: app.fetch,
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(tick(env));
+    // tick() now isolates failures internally (see poll.js), but this
+    // catch is the last line of defense for anything upstream of that
+    // (e.g. the D1 binding itself being unreachable) — without it, an
+    // uncaught rejection here is invisible unless someone happens to be
+    // watching `wrangler tail` at that exact minute.
+    ctx.waitUntil(tick(env).catch((err) => console.error('[scheduled] tick() failed:', err)));
   },
 };
