@@ -11,19 +11,36 @@ compatibility_date = "2026-09-29"
 directory = "../public"
 binding = "ASSETS"
 
-# Fires the `scheduled` export in src/index.js once a minute. This is the
-# staggered rotation described in src/poll.js — it does NOT check every
-# tracked listing every tick, it checks one (sometimes two) per tick. See
-# poll.js's header comment for the cadence math and how to retune it.
+# 2026-10-05: this Cron Trigger is now just a watchdog — the real poll
+# loop moved to the Ticker Durable Object's self-re-arming alarm (see
+# ticker-do.js), which runs every ~15s. Cron Triggers can't fire faster
+# than once a minute on any Workers plan, which is exactly why the loop
+# was moved off of this mechanism; this trigger now only pings the DO to
+# restart the alarm chain if it ever stops. See index.js's scheduled().
 # Free plan cap: 5 Cron Triggers per ACCOUNT (not per Worker) — this uses 1.
 [triggers]
 crons = ["* * * * *"]
 
-# How many ticks (minutes) between each slow-lane advance. Default 3 means
-# the 12-listing MTG+Lorcana slow lane completes a full cycle every ~36
-# minutes. Raise this to check less often (lower total request volume to
-# retailers), lower it to check more often (closer to, but still slower
-# than, the fast lane).
+# Durable Object binding for the 15s ticker loop (see ticker-do.js). The
+# `migrations` block below is Cloudflare's required bookkeeping for DO
+# classes across deploys — unrelated to the D1 .sql files in
+# worker/migrations/, which are a separate system entirely. new_sqlite_classes
+# (not new_classes) is deliberate: the SQLite storage backend for Durable
+# Objects is the one available on the Workers Free plan.
+[[durable_objects.bindings]]
+name = "TICKER"
+class_name = "Ticker"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Ticker"]
+
+# How many ticks between each slow-lane advance. 2026-10-05: a "tick" is
+# now ~15s (see ticker-do.js), not 1 minute — default 3 means the
+# 12-listing MTG+Lorcana slow lane completes a full cycle every ~9 minutes
+# now, down from ~36 minutes. Raise this to check less often (lower total
+# request volume to retailers), lower it to check more often (closer to,
+# but still slower than, the fast lane).
 [vars]
 SLOW_LANE_EVERY_N_TICKS = "3"
 VAPID_PUBLIC_KEY = "BNivxQj3iFv4bbyOGjD7mMIloCvMCvnHd5CFTPfSKi5jNnAm_73DphOqwR3f39hPDMbnAvma6BapE5wKj8ngz0U"

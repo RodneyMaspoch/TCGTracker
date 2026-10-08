@@ -249,6 +249,72 @@ export async function checkTargetRedsky(tcin) {
   }
 }
 
+// 2026-10-08 — user request: alert ahead of a drawing opening (day-before /
+// 1h-before / 15m-before / at-go-live), not just when it's already open.
+// That means we also need to know WHEN the next drawing starts, not just
+// whether one is open right now. Per community trackers (autoqueue.app's
+// own Walmart drops guide), Walmart's collectibles draw page itself lists
+// upcoming drawings with their own date/time before entries open — this
+// is a best-effort extraction of that text, NOT a verified-against-the-
+// live-page regex (a direct fetch of walmart.com from here was blocked by
+// a provenance/consent check, so this couldn't be tuned against real page
+// copy before shipping — see the project doc). It deliberately returns
+// null rather than guessing when nothing confidently matches, same
+// policy as every other "don't fabricate data" heuristic in this file —
+// a missed/garbled schedule just means no reminder fires for that cycle,
+// not a wrong one. Flag for retuning once real page text can be checked.
+const MONTH_NAMES = 'jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?';
+const DRAWING_SCHEDULE_RE = new RegExp(
+  `(?:drawing|entries?|entry window)[^.]{0,40}?(?:opens?|starts?|begins?)[^.]{0,20}?` +
+  `(?:on\\s+)?((?:${MONTH_NAMES})\\.?\\s+\\d{1,2})(?:,?\\s*(\\d{4}))?` +
+  `[^.]{0,20}?(?:at\\s+)?(\\d{1,2}:\\d{2}\\s*(?:am|pm)?)\\s*(ET|EST|EDT|PT|PST|PDT|CT|CST|CDT)?`,
+  'i'
+);
+const TZ_OFFSET_HOURS = { ET: -4, EDT: -4, EST: -5, PT: -7, PDT: -7, PST: -8, CT: -5, CDT: -5, CST: -6 };
+
+function parseUpcomingDrawingTime(bodyText, now = new Date()) {
+  const m = bodyText.match(DRAWING_SCHEDULE_RE);
+  if (!m) return null;
+  const [, monthDay, yearStr, timeStr, tzStr] = m;
+  const year = yearStr ? parseInt(yearStr, 10) : now.getUTCFullYear();
+  const tz = (tzStr || 'ET').toUpperCase();
+  const offsetHours = TZ_OFFSET_HOURS[tz] ?? -4; // default to Eastern — Walmart's own timezone for these
+
+  // Build an ISO-ish string and let Date parse month-name + day + year, then
+  // layer the time + fixed offset on top (Date can't parse "3:00pm ET"
+  // directly, so time/timezone are handled separately from the date part).
+  const dateOnly = new Date(`${monthDay} ${year} UTC`);
+  if (isNaN(dateOnly.getTime())) return null;
+
+  const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+  if (!timeMatch) return null;
+  let [, hh, mm, ampm] = timeMatch;
+  hh = parseInt(hh, 10);
+  mm = parseInt(mm, 10);
+  if (ampm) {
+    const isPm = /pm/i.test(ampm);
+    if (isPm && hh !== 12) hh += 12;
+    if (!isPm && hh === 12) hh = 0;
+  }
+
+  const target = new Date(Date.UTC(
+    dateOnly.getUTCFullYear(),
+    dateOnly.getUTCMonth(),
+    dateOnly.getUTCDate(),
+    hh - offsetHours,
+    mm
+  ));
+  if (isNaN(target.getTime())) return null;
+
+  // If this parsed to a time already more than a day in the past, it's
+  // almost certainly last cycle's drawing still mentioned somewhere on the
+  // page (e.g. a "recent drawings" section) rather than the upcoming one —
+  // don't surface a stale date as if it were the next drawing.
+  if (target.getTime() < now.getTime() - 24 * 3600 * 1000) return null;
+
+  return target.toISOString();
+}
+
 // Walmart's Collectibles Drawing page is a listing page, not a single
 // product page — same heuristic as the Node version, just via stripToText
 // instead of cheerio.
@@ -258,9 +324,11 @@ export async function scrapeWalmartDrawing(url = 'https://www.walmart.com/shop/c
 
   const openSignal = /entries close|closes in|time remaining|enter now/i.test(bodyText);
   const closedOnly = /closed drawing/i.test(bodyText) && !openSignal;
+  const nextDrawingAt = parseUpcomingDrawingTime(bodyText);
 
   return {
     isOpen: openSignal && !closedOnly,
+    nextDrawingAt, // ISO string, or null if no confident upcoming-schedule match
     rawSnippet: bodyText.slice(0, 600),
   };
 }

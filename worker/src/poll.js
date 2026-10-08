@@ -8,15 +8,30 @@
 // millisecond of real CPU work — it's the SEQUENTIAL "one every tick"
 // rotation that was wasting most of the available speed, not a CPU limit.
 //
+// 2026-10-05: "a tick" no longer means "once a minute." tick() (this
+// file's export) is now called every ~15s by the Ticker Durable Object's
+// self-re-arming alarm (see ticker-do.js) instead of directly by a Cron
+// Trigger — Cron Triggers can't fire faster than once a minute on any
+// Workers plan, which was the actual ceiling on alert speed before. All
+// the "every tick" / "every N ticks" language below is still accurate,
+// just ~4x faster in wall-clock terms than when it was written.
+//
 // Fast lane: every Pokémon listing + the Walmart-drawing check, ALL
-//   checked every single tick (every 1 min) — full coverage every ~60s,
+//   checked every single tick (every ~15s) — full coverage every ~15s,
 //   not a ~5min rotation. This was changed specifically to compete with
 //   (or beat) third-party restock-alert apps/services that check more
-//   often than once-every-several-minutes per item.
+//   often than once-every-several-minutes per item. Trade-off: this also
+//   means ~4x more HTTP requests/day land on the actual retailer pages
+//   being scraped — if any retailer's bot-detection starts reacting
+//   differently (CAPTCHAs, 403s), TICK_INTERVAL_MS in ticker-do.js is the
+//   first thing to turn back up.
 // Slow lane: the 12 MTG + Lorcana listings, still staggered — one slot
 //   advanced only every SLOW_LANE_EVERY_N_TICKS ticks, since there's no
 //   reason those need Pokémon's level of urgency and keeping them
-//   staggered leaves more subrequest/CPU headroom for the fast lane.
+//   staggered leaves more subrequest/CPU headroom for the fast lane. A
+//   full 12-listing cycle is now ~(12 * SLOW_LANE_EVERY_N_TICKS * 15s),
+//   not ...* 60s — e.g. the default of 3 means a ~9min full cycle now,
+//   down from ~36min.
 //
 // Retune by changing SLOW_LANE_EVERY_N_TICKS (env var, see wrangler.toml)
 // or by moving products between poll_tier 'fast'/'slow' — see
@@ -27,7 +42,7 @@
 
 import { scrapeGeneric, scrapeWalmartDrawing } from './scrapers.js';
 import { notifyAll } from './push.js';
-import { runHeadsUpCheck, HEADS_UP_CHECK_COUNT } from './headsup.js';
+import { runHeadsUpCheck } from './headsup.js';
 import {
   getListingsForLane,
   updateListing,
@@ -57,6 +72,7 @@ const RETAILER_LABELS = {
   disneylorcana: 'Disney Lorcana',
   ravensburger: 'Ravensburger',
   pokemoncenter: 'Pokémon Center',
+  nintendo: 'Nintendo Official Store',
 };
 function retailerLabel(slug) {
   return RETAILER_LABELS[slug] || slug;
@@ -149,6 +165,68 @@ async function pollOneListing(env, row) {
   }
 }
 
+// 2026-10-08 — user request: alert ahead of time, not just when the
+// drawing is already open. Four lead-time tiers, each fired at most once
+// per announced drawing (see REMINDER_TIERS below). A tier only fires
+// inside a short grace window after its target moment — this does two
+// things: (1) keeps a single ~15s tick from ever double-firing the same
+// tier, since reminders_sent_json is checked and updated together, and
+// (2) means a drawing first discovered close to go-live (e.g. spotted
+// only 2 hours ahead) does NOT fire the "day before" tier late — that
+// tier's window has already passed by the time we saw it, so it's marked
+// sent-without-notifying rather than firing a stale/confusing reminder.
+const REMINDER_TIERS = [
+  { key: 'day_before', leadMs: 24 * 3600 * 1000, label: 'Tomorrow' },
+  { key: 'hour_before', leadMs: 60 * 60 * 1000, label: 'In 1 hour' },
+  { key: 'fifteen_before', leadMs: 15 * 60 * 1000, label: 'In 15 minutes' },
+  { key: 'go_live', leadMs: 0, label: 'Now' },
+];
+const REMINDER_GRACE_MS = 5 * 60 * 1000; // 5min window to actually fire a tier
+
+async function checkDrawingReminders(env, prev, nextDrawingAt, nowMs, nowIso) {
+  if (!nextDrawingAt) return;
+  const drawingMs = new Date(nextDrawingAt).getTime();
+  if (isNaN(drawingMs)) return;
+
+  // A new/changed drawing time resets which tiers have already fired —
+  // otherwise the first tick after Walmart posts a NEW drawing would see
+  // the old reminders_sent flags and (for a tier whose window happens to
+  // already be open) silently skip sending anything for the new one.
+  const prevNextAt = prev?.next_drawing_at || null;
+  let sent = {};
+  if (prevNextAt === nextDrawingAt) {
+    try {
+      sent = prev?.reminders_sent_json ? JSON.parse(prev.reminders_sent_json) : {};
+    } catch (_) {
+      sent = {};
+    }
+  }
+
+  for (const tier of REMINDER_TIERS) {
+    if (sent[tier.key]) continue;
+    const targetMs = drawingMs - tier.leadMs;
+    if (nowMs < targetMs) continue; // too early for this tier still
+    sent[tier.key] = true; // mark handled either way — fired now, or too late to fire meaningfully
+    if (nowMs > targetMs + REMINDER_GRACE_MS) {
+      console.warn(`[poll] Walmart drawing reminder tier '${tier.key}' window already passed when first seen — skipping, not sending late`);
+      continue;
+    }
+    const msg = tier.key === 'go_live'
+      ? 'Walmart Collectibles Drawing should be opening right about now — go check (odds are equal all window, but it\'s time-limited).'
+      : `Walmart Collectibles Drawing opens ${tier.label.toLowerCase()} (${new Date(nextDrawingAt).toLocaleString('en-US', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' })} ET).`;
+    await insertEvent(env, { created_at: nowIso, kind: 'drawing_reminder', product_id: null, message: msg, data_json: JSON.stringify({ tier: tier.key, nextDrawingAt }) });
+    await notifyAll(env, { title: `⏰ Walmart drawing — ${tier.label}`, body: msg, url: 'https://www.walmart.com/shop/collectibles/draw', tag: `walmart-drawing-${tier.key}` });
+  }
+
+  await updateDrawingState(env, {
+    is_open: prev?.is_open ?? 0,
+    items_json: prev?.items_json ?? null,
+    last_checked_at: nowIso,
+    next_drawing_at: nextDrawingAt,
+    reminders_sent_json: JSON.stringify(sent),
+  });
+}
+
 async function pollWalmartDrawing(env) {
   let result;
   try {
@@ -165,6 +243,18 @@ async function pollWalmartDrawing(env) {
     const msg = 'Walmart Collectibles Drawing just opened a new window — go enter (odds are equal all window, but the window is time-limited).';
     await insertEvent(env, { created_at: now, kind: 'drawing_open', product_id: null, message: msg, data_json: JSON.stringify(result) });
     await notifyAll(env, { title: '🎟️ Walmart drawing OPEN', body: msg, url: 'https://www.walmart.com/shop/collectibles/draw', tag: 'walmart-drawing' });
+  }
+
+  // Lead-time reminders (day-before/1h/15m/go-live) — separate from the
+  // is_open-transition alert above, which only fires once Walmart's page
+  // actually confirms entries are open. This fires on the CLOCK reaching
+  // the announced time, which can be a useful few-seconds-earlier signal
+  // than waiting for the next scrape to re-confirm isOpen, especially
+  // right at go-live when every second counts.
+  try {
+    await checkDrawingReminders(env, prev, result.nextDrawingAt, Date.now(), now);
+  } catch (err) {
+    console.error('[poll] Walmart drawing reminder check failed:', err);
   }
 }
 
@@ -202,7 +292,8 @@ export async function tick(env) {
   const tickCount = state.tick_count + 1;
 
   // Slow lane: only advances every `slowEveryN` ticks, so a 12-listing lane
-  // completes a full cycle roughly every (12 * slowEveryN) minutes.
+  // completes a full cycle roughly every (12 * slowEveryN) ticks — ticks
+  // are now ~15s apart (see top-of-file comment), not 1 minute.
   let slowIdx = state.slow_idx;
   if (slowListings.length > 0 && tickCount % slowEveryN === 0) {
     slowIdx = (state.slow_idx + 1) % slowListings.length;
@@ -213,18 +304,25 @@ export async function tick(env) {
     }
   }
 
-  // Heads-up (early signal) lane: one source every HEADS_UP_EVERY_N_TICKS
-  // ticks, rotating through TrackaLacker/TCG Drop Radar/autoqueue/Reddit.
-  // Stateless on purpose (derived from tick_count, no extra column) — see
-  // headsup.js for why these are checked at all and how they're labeled.
-  const headsUpEveryN = parseInt(env.HEADS_UP_EVERY_N_TICKS || '5', 10);
-  if (tickCount % headsUpEveryN === 0) {
-    const headsUpIdx = Math.floor(tickCount / headsUpEveryN) % HEADS_UP_CHECK_COUNT;
-    try {
-      await runHeadsUpCheck(env, headsUpIdx);
-    } catch (err) {
-      console.error('[poll] heads-up check rejected:', err);
-    }
+  // Heads-up (early signal) lane: 2026-10-05 — was one source rotated in
+  // every HEADS_UP_EVERY_N_TICKS ticks (default 5), so with 7 sources any
+  // single one was only re-checked roughly every 35 ticks (originally ~35
+  // min, back when a tick was 1 minute) in the worst case. "The point is
+  // to get the alert right away" means that gap defeats the whole
+  // feature, so every source now runs concurrently on every tick instead
+  // — same CPU-time-vs-fetch-time reasoning as the fast lane above
+  // (runHeadsUpCheck itself uses Promise.allSettled across all sources,
+  // see headsup.js). Combined with ticks themselves now firing every
+  // ~15s via the Ticker Durable Object (see ticker-do.js) instead of once
+  // a minute via Cron Trigger, every heads-up source is effectively
+  // re-checked every ~15s now, not just every tick — the real floor is
+  // now TICK_INTERVAL_MS in ticker-do.js, not Cron Triggers' once-a-minute
+  // limit (that limit still applies to the plain Cron Trigger itself,
+  // which is why the loop was moved onto a Durable Object alarm instead).
+  try {
+    await runHeadsUpCheck(env);
+  } catch (err) {
+    console.error('[poll] heads-up check rejected:', err);
   }
 
   await setPollState(env, { fast_idx: fastIdx, slow_idx: slowIdx, tick_count: tickCount });

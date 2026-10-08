@@ -48,10 +48,13 @@
 // the breakout that doesn't touch left/right at all. Also added
 // urgent-ticker.js, the cross-game "something just happened" bar shown
 // on every page above everything else.
-const CACHE = 'tcgtracker-shell-v8';
+// v9 — added nintendo.html/nintendo-app.js, the first non-TCG product
+// page (see the project doc). Same "keep this list in sync or
+// cache.addAll fails for EVERY page" reasoning as v4/v5 above.
+const CACHE = 'tcgtracker-shell-v9';
 const SHELL_FILES = [
-  '/', '/index.html', '/lorcana.html', '/pokemon.html', '/heads-up.html',
-  '/runtime.js', '/pwa-boot.js', '/pokemon-app.js', '/heads-up-app.js',
+  '/', '/index.html', '/lorcana.html', '/pokemon.html', '/heads-up.html', '/nintendo.html',
+  '/runtime.js', '/pwa-boot.js', '/pokemon-app.js', '/heads-up-app.js', '/nintendo-app.js',
   '/push-client.js', '/urgent-ticker.js', '/styles.css',
   '/manifest.json',
 ];

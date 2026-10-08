@@ -16,9 +16,17 @@ import {
   removeSubscription,
   setProductTier,
   getHeadsUp,
+  insertTrackedProduct,
 } from './db.js';
 import { notifyAll, pushConfigured } from './push.js';
-import { tick } from './poll.js';
+import { Ticker } from './ticker-do.js';
+
+// Durable Object classes must be exported from the main entry module (this
+// file, per wrangler.toml's `main`) for Workers to find them — the actual
+// implementation lives in ticker-do.js. See that file for why this exists:
+// it's what gets this app checking every ~15s instead of waiting on Cron
+// Triggers' once-a-minute floor.
+export { Ticker };
 
 const app = new Hono();
 app.use('*', cors());
@@ -74,6 +82,52 @@ app.post('/api/admin/set-tier', async (c) => {
   return c.json({ ok: true });
 });
 
+// 2026-10-08, user request: lets the frontend (so far just the new
+// Nintendo page — see public/nintendo-app.js) add a product+listing to
+// track at runtime, instead of every tracked item needing a committed
+// migration file first. No auth — same posture as /api/admin/set-tier
+// above, which already has none; this app has always assumed a single
+// trusted user, not a public multi-tenant deployment.
+app.post('/api/admin/track-product', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { game, name, url, retailer, poll_tier, msrp } = body;
+  if (!game || !name || !url || !retailer) {
+    return c.json({ error: 'game, name, url, and retailer are required' }, 400);
+  }
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (_) {
+    return c.json({ error: 'url is not a valid URL' }, 400);
+  }
+  if (parsed.protocol !== 'https:') {
+    return c.json({ error: 'url must be https' }, 400);
+  }
+
+  // Derive a stable, human-debuggable id from the game + URL's final path
+  // segment, rather than requiring the frontend to invent one — collisions
+  // just mean "this exact product is already tracked," which INSERT OR
+  // IGNORE in insertTrackedProduct() already treats as a harmless no-op.
+  const lastSegment = parsed.pathname.split('/').filter(Boolean).pop() || 'item';
+  const id = `${game}-${lastSegment}`.toLowerCase().slice(0, 80);
+
+  try {
+    await insertTrackedProduct(c.env, {
+      id,
+      game,
+      name,
+      msrp: typeof msrp === 'number' ? msrp : null,
+      poll_tier: ['fast', 'slow'].includes(poll_tier) ? poll_tier : 'slow',
+      retailer,
+      url,
+    });
+    return c.json({ ok: true, id }, 201);
+  } catch (err) {
+    console.error('[api/admin/track-product] insert failed', err);
+    return c.json({ error: 'insert_failed', message: String(err && err.message || err) }, 500);
+  }
+});
+
 // Early-signal / unconfirmed tier — see worker/src/headsup.js for why this
 // is a separate table and endpoint from /api/events (confirmed alerts).
 app.get('/api/heads-up', async (c) => {
@@ -97,11 +151,28 @@ app.get('/api/health', (c) => c.json({ ok: true, time: new Date().toISOString() 
 export default {
   fetch: app.fetch,
   async scheduled(event, env, ctx) {
-    // tick() now isolates failures internally (see poll.js), but this
-    // catch is the last line of defense for anything upstream of that
-    // (e.g. the D1 binding itself being unreachable) — without it, an
-    // uncaught rejection here is invisible unless someone happens to be
-    // watching `wrangler tail` at that exact minute.
-    ctx.waitUntil(tick(env).catch((err) => console.error('[scheduled] tick() failed:', err)));
+    // 2026-10-05: tick() itself no longer runs from here. The real loop
+    // now lives in the Ticker Durable Object's self-re-arming alarm (see
+    // ticker-do.js), running every ~15s — far faster than this Cron
+    // Trigger could ever fire on its own (Cloudflare's floor is once a
+    // minute, `* * * * *`, on every plan). This once-a-minute trigger is
+    // kept as a cheap watchdog instead: it pings the Ticker DO, which only
+    // re-arms its alarm if one isn't already scheduled. Normally that's a
+    // no-op — the 15s loop is already running — but if that loop ever
+    // stops (an error before the DO's re-arm, an eviction, etc.), this
+    // catches it within 60 seconds instead of it staying broken silently
+    // and permanently, the same "always have a fallback" principle as the
+    // try/catch layers already in poll.js.
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const id = env.TICKER.idFromName('singleton');
+          const stub = env.TICKER.get(id);
+          await stub.fetch('https://ticker.internal/heartbeat');
+        } catch (err) {
+          console.error('[scheduled] ticker heartbeat failed:', err);
+        }
+      })()
+    );
   },
 };

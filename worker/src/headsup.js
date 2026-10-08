@@ -27,6 +27,37 @@ const RETAILER_RE = /(walmart|target|best ?buy|gamestop)/i;
 // a snippet is *worth surfacing*, not what the date actually is.
 const DATE_RE = /(today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december)\s*\d{0,2}/i;
 
+const MONTH_INDEX = {
+  january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+  july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+};
+// "September 16, 2026" / "Sep 16 2026" / "August 13, 2026" — a MONTH-DAY
+// pair with an explicit year, which is what a retrospective guide article
+// actually writes (unlike a live event log, which this project otherwise
+// treats a bare "today"/"tomorrow"/weekday mention from as inherently
+// near-term). Deliberately requires the year: without one, there's no way
+// to tell "September 16" apart from a date in literally any other year,
+// and guessing wrong in either direction is worse than not matching.
+const EXPLICIT_DATE_RE = /(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s*(\d{4})/i;
+
+// A guide-style article (as opposed to a live event log) mixes real past
+// events in with anything current — "Target restocked on Sep 16" reads
+// exactly like a fresh signal to the keyword/date heuristic above even
+// once that date is weeks gone. Where an explicit month+day+year is
+// present, reject anything more than a few days stale rather than treat
+// every mention of a retailer-near-a-date as equally "worth a push
+// notification today." A snippet with no explicit year (just "today",
+// "tomorrow", or a bare weekday name) is unaffected — those are already
+// inherently about the near term, not a historical record.
+function isStaleExplicitDate(window) {
+  const m = window.match(EXPLICIT_DATE_RE);
+  if (!m) return false;
+  const parsed = new Date(Date.UTC(parseInt(m[3], 10), MONTH_INDEX[m[1].toLowerCase()], parseInt(m[2], 10)));
+  if (isNaN(parsed.getTime())) return false;
+  const daysOld = (Date.now() - parsed.getTime()) / 86400000;
+  return daysOld > 3;
+}
+
 // Canonical display name for whatever RETAILER_RE actually matched —
 // shared by the prose-snippet sources below and checkRestockd(), so
 // "Best Buy"/"bestbuy"/"best  buy" and "Pokemon Center"/"Pokémon Center"
@@ -39,6 +70,12 @@ function normalizeRetailer(raw) {
   if (low.includes('gamestop')) return 'GameStop';
   if (low.replace(/\s/g, '').includes('bestbuy')) return 'Best Buy';
   if (low.includes('pok')) return 'Pokémon Center';
+  // Added 2026-10-05 for HotStock, which tracks a wider retailer set than
+  // the original Walmart-drawing-focused RETAILER_RE did.
+  if (low.includes('ebay')) return 'eBay';
+  if (low.includes('antonline')) return 'Antonline';
+  if (low.includes("sam's") || low.includes('sams club')) return "Sam's Club";
+  if (low.includes('costco')) return 'Costco';
   return raw.trim();
 }
 
@@ -67,6 +104,7 @@ function extractSnippets(text, maxSnippets = 3) {
     const end = Math.min(clean.length, match.index + 220);
     const window = clean.slice(start, end);
     if (!RETAILER_RE.test(window) || !DATE_RE.test(window)) continue;
+    if (isStaleExplicitDate(window)) continue;
     const signature = window.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 120);
     if (seenSignatures.has(signature)) continue;
     seenSignatures.add(signature);
@@ -129,8 +167,20 @@ function hashText(s) {
 
 const SOURCES = [
   {
+    // 2026-10-04: was pointed at trackalacker.com's generic "how the
+    // Walmart draw system works" explainer — a mechanics guide, not a log
+    // of actual events, so it rarely had a retailer+date pairing to match
+    // at all. Verified (web search + fetch) this Collector Guide page is
+    // a different, far more content-dense article — it names specific
+    // retailers next to specific dated events ("Target put first-wave
+    // product up... on September 16, 2026", "Walmart opened preorders...
+    // with Battle Decks going live on August 13, 2026"). That also means
+    // it mixes in real PAST events alongside anything current, which the
+    // old loose "any month+day nearby" check would have surfaced as if
+    // fresh — see the new explicit-date recency filter in extractSnippets
+    // below, added for exactly this source.
     key: 'trackalacker',
-    url: 'https://www.trackalacker.com/articles/news/walmart-draw-system-guide',
+    url: 'https://www.trackalacker.com/articles/news/pokemon-30th-celebration-collector-guide',
     game: 'pokemon',
   },
   {
@@ -244,6 +294,59 @@ async function checkRestockd(env) {
   }
 }
 
+// HotStock (hotstock.io) — a real stock-finder app (hotstock.io/us, iOS
+// app "HotStock - in-stock alerts") the user flagged (2026-10-05, same
+// message as the TrackaLacker ask) as working better than anything else
+// they've tried, alongside TrackaLacker. Its per-category page
+// (hotstock.io/us/p/pokemon) is public, no-login, server-rendered, and
+// lists IN STOCK / OUT OF STOCK across a wider retailer set than this
+// project otherwise tracks (eBay, Amazon, Antonline, Sam's Club, Costco,
+// alongside Walmart/Target/Best Buy/GameStop) — verified by fetching the
+// page directly before writing this. Unlike Restockd's page, HotStock
+// doesn't show a price or a "last checked" date per row, just a live
+// in-stock/out-of-stock boolean per retailer right now — which is exactly
+// what's surfaced: only the IN STOCK rows, timestamped with when THIS
+// check observed them (not a claimed retailer-side timestamp that isn't
+// actually on the page).
+const HOTSTOCK_URL = 'https://www.hotstock.io/us/p/pokemon';
+// Matches "<Retailer> <Product title...> IN STOCK" / "...OUT OF STOCK" —
+// the retailer names HotStock's own page uses, immediately followed by a
+// non-greedy product title and then the status that terminates the row.
+const HOTSTOCK_ENTRY_RE = /(eBay|Amazon|Antonline|Best ?Buy|GameStop|Sam'?s ?[Cc]lub|Walmart|Target|Pok[ée]mon Center|Costco)\s+([^\n]{4,160}?)\s*(IN STOCK|OUT OF STOCK)/g;
+
+async function checkHotstock(env) {
+  let text;
+  try {
+    text = stripToText(await fetchText(HOTSTOCK_URL));
+  } catch (err) {
+    console.warn(`[headsup] fetch failed for hotstock: ${err.message}`);
+    return;
+  }
+  const re = new RegExp(HOTSTOCK_ENTRY_RE.source, 'g');
+  const now = new Date().toISOString();
+  let match;
+  let count = 0;
+  while ((match = re.exec(text)) !== null && count < 20) {
+    const [, retailer, rawName, status] = match;
+    if (status !== 'IN STOCK') continue; // only the actionable signal, not every row HotStock tracks
+    const name = rawName.trim().replace(/\s+/g, ' ');
+    if (name.length < 4) continue;
+    const row = {
+      source: 'hotstock',
+      game: 'pokemon',
+      title: `${name} — in stock at ${normalizeRetailer(retailer)}`,
+      snippet: null,
+      url: HOTSTOCK_URL,
+      retailer: normalizeRetailer(retailer),
+      discovered_at: now,
+      dedupe_key: hashText(`${retailer}|${name}`),
+    };
+    const isNew = await insertHeadsUp(env, row);
+    if (isNew) await notifyHeadsUp(env, row);
+    count++;
+  }
+}
+
 // autoqueue.app keeps a public "last 90 days" log of Pokémon Center drop
 // alerts it sent its own subscribers — exactly the "a drop happened at
 // this time" signal needed here, and the closest thing to a real-time
@@ -333,36 +436,50 @@ async function checkReddit(env) {
   }
 }
 
-// Called from poll.js's tick — one heads-up source per call, rotated, to
-// keep each Cron tick cheap (same reasoning as the fast/slow lane
-// staggering for retailer checks).
-// Rotation weighted toward Restockd + TrackaLacker (2026-10-02, explicit
-// user feedback: "Restockd and Trackalacker apps have been the best"
-// sources so far). Restockd gets 3 of 8 slots, TrackaLacker 2 of 8;
-// tcgdropradar/autoqueue's blog/Reddit stay in the rotation at their old
-// single-slot cadence rather than being dropped outright — they're lower
-//-confidence per the user's own read, not worthless.
-const CHECKERS = [
+// Called from poll.js's tick.
+//
+// 2026-10-05: this used to check ONE source per call, rotated through a
+// weighted list, on a tick gated to every HEADS_UP_EVERY_N_TICKS (default
+// 5) ticks — so any single source (TrackaLacker, HotStock, etc.) only
+// actually got re-checked every 20-45 minutes depending on how many
+// rotation slots it had. That directly contradicts the entire point of
+// this tier ("the point is to get the alert right away... one second
+// late and the bots already beat me") — a 20+ minute-stale "early signal"
+// isn't early. Every one of these fetches is a small, cheap HTML/JSON
+// page read (same reasoning poll.js's top-of-file comment already gives
+// for why the fast lane checks every Pokémon listing every tick instead
+// of rotating: CPU time is actual compute, and awaiting fetch() is free,
+// so running all of these concurrently costs ~nothing extra per tick
+// compared to running one). So now every distinct source is checked on
+// EVERY tick, concurrently — matching the fast lane's cadence. The
+// weighted-rotation list is gone because weighting by repetition only
+// meant something when sources took turns; once everything runs every
+// tick, repeating a source in the list would just fetch the same URL
+// twice in parallel for no reason.
+//
+// The real floor under all of this is Cloudflare's Cron Trigger
+// granularity: `* * * * *` in wrangler.toml fires once a minute, and a
+// Cron Trigger cannot fire more often than once a minute on any
+// Cloudflare Workers plan — there's no faster schedule to move to. So
+// "every tick" here means every ~60 seconds, which is as fast as this
+// architecture can check at all.
+const DISTINCT_CHECKERS = [
   (env) => checkWebSource(env, SOURCES[0]), // trackalacker
-  (env) => checkRestockd(env),
   (env) => checkWebSource(env, SOURCES[1]), // tcgdropradar
-  (env) => checkRestockd(env),
-  (env) => checkWebSource(env, SOURCES[0]), // trackalacker
-  (env) => checkReddit(env),
   (env) => checkWebSource(env, SOURCES[2]), // autoqueue blog
   (env) => checkRestockd(env),
+  (env) => checkHotstock(env),
+  (env) => checkReddit(env),
+  (env) => checkAutoqueuePokemonCenter(env),
 ];
 
-export async function runHeadsUpCheck(env, index) {
-  // Pokémon Center is checked on EVERY heads-up tick (not rotated in with
-  // the others) — explicit priority: "this should be the most important
-  // thing," and a signal that only refreshes every ~30 minutes (if it
-  // shared a slot with 5 other sources) isn't fast enough to "run there
-  // immediately." The rotation below still covers the other sources at
-  // the original cadence alongside it.
-  await checkAutoqueuePokemonCenter(env);
-  const checker = CHECKERS[index % CHECKERS.length];
-  await checker(env);
+export async function runHeadsUpCheck(env) {
+  const settled = await Promise.allSettled(DISTINCT_CHECKERS.map((fn) => fn(env)));
+  for (const s of settled) {
+    if (s.status === 'rejected') console.error('[headsup] source check rejected:', s.reason);
+  }
 }
 
-export const HEADS_UP_CHECK_COUNT = CHECKERS.length;
+// Kept exported for back-compat with anything still importing it, though
+// runHeadsUpCheck no longer takes an index to mod against it.
+export const HEADS_UP_CHECK_COUNT = DISTINCT_CHECKERS.length;

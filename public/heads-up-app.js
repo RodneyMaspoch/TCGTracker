@@ -13,6 +13,7 @@ const SOURCE_LABELS = {
   'autoqueue-pc': 'autoqueue.app',
   reddit: 'Reddit — r/PokemonTCG',
   restockd: 'Restockd',
+  hotstock: 'HotStock',
 };
 // Real per-game icon files (see /public/icons/*.png) — shown in the card's
 // art band as a plain game indicator, never as a stand-in for a product

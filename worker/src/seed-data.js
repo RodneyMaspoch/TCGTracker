@@ -21,6 +21,29 @@
 const REF_CHECKED_AT = '2026-09-27T21:00:00.000Z';
 
 export const PRODUCTS = [
+  // ---------------- NINTENDO (fast lane) ----------------
+  // 2026-10-08, user request: this is the first non-TCG product tracked
+  // in this app (Nintendo doesn't sell MTG/Lorcana/Pokémon TCG product
+  // itself) — a hyped, hard-to-get hardware accessory, same urgency
+  // profile as the Pokémon fast lane. `game: 'nintendo'` is a NEW value —
+  // none of the existing frontend pages filter for it yet (app.js and
+  // pokemon-app.js both do `products.filter(p => p.game === activeGame)`
+  // against a fixed tab list), so this product is tracked/polled/alerted
+  // on the backend (push notifications + /api/events) starting now, but
+  // won't show a themed product card anywhere until a UI decision is made
+  // — see the project doc for the open question on where it should live.
+  // msrp left null — Nintendo hadn't published final pricing as of when
+  // this was added; this project doesn't fabricate a number it hasn't
+  // confirmed. tcgplayer_ref is also null — this isn't a TCG product, so
+  // the MSRP-vs-TCGPlayer "good price" trigger will simply never apply to
+  // it (by design, not a bug) — only the restock/purchasable trigger does.
+  {
+    id: 'switch2-zelda40-pro-controller-stand', game: 'nintendo', name: 'Switch 2 Pro Controller + Display Stand — The Legend of Zelda 40th Anniversary Edition', msrp: null, poll_tier: 'fast', tcgplayer_ref: null,
+    listings: [
+      { retailer: 'nintendo', url: 'https://www.nintendo.com/us/store/products/nintendo-switch-2-pro-controller-display-stand-the-legend-of-zelda-40th-anniversary-edition-127076/' },
+    ],
+  },
+
   // ---------------- POKEMON (fast lane) ----------------
   {
     id: 'pkm-30th-etb', game: 'pokemon', name: '30th Celebration — Elite Trainer Box', msrp: 49.99, poll_tier: 'fast', tcgplayer_ref: 168.78,

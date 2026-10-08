@@ -71,10 +71,16 @@ export async function getDrawingState(env) {
   return env.DB.prepare('SELECT * FROM walmart_drawing_state WHERE id = 1').first();
 }
 
-export async function updateDrawingState(env, { is_open, items_json, last_checked_at }) {
+// next_drawing_at / reminders_sent_json (migration 0006) are optional
+// params — callers that don't pass them (if any existed) would leave the
+// existing stored value untouched via COALESCE, same pattern as
+// updateListing's image_url handling.
+export async function updateDrawingState(env, { is_open, items_json, last_checked_at, next_drawing_at, reminders_sent_json }) {
   await env.DB.prepare(
-    'UPDATE walmart_drawing_state SET is_open = ?, items_json = ?, last_checked_at = ? WHERE id = 1'
-  ).bind(is_open, items_json, last_checked_at).run();
+    'UPDATE walmart_drawing_state SET is_open = ?, items_json = ?, last_checked_at = ?, ' +
+    'next_drawing_at = COALESCE(?, next_drawing_at), ' +
+    'reminders_sent_json = COALESCE(?, reminders_sent_json) WHERE id = 1'
+  ).bind(is_open, items_json, last_checked_at, next_drawing_at ?? null, reminders_sent_json ?? null).run();
 }
 
 // ---------------- poll_state (staggered rotation cursors) ----------------
@@ -111,6 +117,26 @@ export async function allSubscriptions(env) {
 
 export async function setProductTier(env, productId, tier) {
   await env.DB.prepare('UPDATE products SET poll_tier = ? WHERE id = ?').bind(tier, productId).run();
+}
+
+// 2026-10-08, user request: lets a product+listing be added at RUNTIME
+// (from the new Nintendo page's "track a product" form, see
+// POST /api/admin/track-product in index.js) instead of only ever through
+// a committed migration file — every other product in this app so far
+// came from seed-data.js + a migration, which works for a curated list
+// this project builds ahead of time, but not for "the user finds a new
+// item and wants it tracked right now." `id` is derived from the URL
+// (stable, collision-resistant, human-debuggable) rather than requiring
+// the caller to invent one. `INSERT OR IGNORE` on both tables means
+// calling this twice with the same URL is a harmless no-op, not a
+// duplicate/crash — same defensive posture as every seed migration here.
+export async function insertTrackedProduct(env, { id, game, name, msrp, poll_tier, retailer, url }) {
+  await env.DB.prepare(
+    'INSERT OR IGNORE INTO products (id, game, name, msrp, poll_tier, tcgplayer_ref) VALUES (?, ?, ?, ?, ?, NULL)'
+  ).bind(id, game, name, msrp ?? null, poll_tier || 'slow').run();
+  await env.DB.prepare(
+    'INSERT OR IGNORE INTO retailer_listings (product_id, retailer, url) VALUES (?, ?, ?)'
+  ).bind(id, retailer, url).run();
 }
 
 // ---------------- heads_up (early signal / unconfirmed tier) ----------------
