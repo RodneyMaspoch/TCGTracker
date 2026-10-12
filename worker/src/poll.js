@@ -41,6 +41,7 @@
 // worth watching if the fast lane grows a lot).
 
 import { scrapeGeneric, scrapeWalmartDrawing } from './scrapers.js';
+import { checkNintendoProduct } from './nintendo-algolia.js';
 import { notifyAll } from './push.js';
 import { runHeadsUpCheck } from './headsup.js';
 import {
@@ -81,7 +82,15 @@ function retailerLabel(slug) {
 async function pollOneListing(env, row) {
   let result;
   try {
-    result = await scrapeGeneric(row.url);
+    // 2026-10-10: Nintendo listings go through nintendo-algolia.js's
+    // checkNintendoProduct() instead of the generic HTML scraper — it
+    // reads real structured fields (price/stockStatus) from Nintendo's own
+    // public search index by sku, rather than regexing rendered HTML, so
+    // it's strictly more reliable for this one retailer. Every other
+    // retailer is unaffected and still goes through scrapeGeneric().
+    result = row.retailer === 'nintendo'
+      ? await checkNintendoProduct(env, row.url)
+      : await scrapeGeneric(row.url);
   } catch (err) {
     console.warn(`[poll] fetch failed for ${row.retailer}/${row.product_id}: ${err.message}`);
     return;

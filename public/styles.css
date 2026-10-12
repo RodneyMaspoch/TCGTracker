@@ -121,6 +121,16 @@ button { font: inherit; cursor: pointer; }
   padding: 14px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  /* 2026-10-08 — was vertically centered via the parent .artwell's
+     align-items:center, which put the first line of a long placeholder
+     name right behind the top-left .tag-chip retailer badge (see
+     .card .artwell .tag-chip above) whenever there was no scraped photo
+     yet to fill the box — exactly the nintendo.html case that surfaced
+     this, since that product is brand new and has no image yet. Bottom-
+     aligning just this text (not the whole .artwell, which still needs
+     center alignment for a real <img> to fill correctly) keeps it clear
+     of the badge regardless of name length. */
+  align-self: flex-end;
 }
 
 #app {

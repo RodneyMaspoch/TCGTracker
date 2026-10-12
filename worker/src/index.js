@@ -20,6 +20,7 @@ import {
 } from './db.js';
 import { notifyAll, pushConfigured } from './push.js';
 import { Ticker } from './ticker-do.js';
+import { searchNintendoCatalog } from './nintendo-algolia.js';
 
 // Durable Object classes must be exported from the main entry module (this
 // file, per wrangler.toml's `main`) for Workers to find them — the actual
@@ -125,6 +126,23 @@ app.post('/api/admin/track-product', async (c) => {
   } catch (err) {
     console.error('[api/admin/track-product] insert failed', err);
     return c.json({ error: 'insert_failed', message: String(err && err.message || err) }, 500);
+  }
+});
+
+// 2026-10-10, user request: real catalog search for the Nintendo page,
+// replacing "paste a URL you found yourself" as the primary way to add a
+// product. Backed by nintendo.com's own public Algolia search index — see
+// worker/src/nintendo-algolia.js's header comment for the full story and
+// worker/wrangler.toml for the (non-secret) credentials.
+app.get('/api/nintendo/search', async (c) => {
+  const q = (c.req.query('q') || '').trim();
+  if (!q) return c.json({ error: 'q query param is required' }, 400);
+  try {
+    const results = await searchNintendoCatalog(c.env, q);
+    return c.json({ query: q, results });
+  } catch (err) {
+    console.error('[api/nintendo/search] failed', err);
+    return c.json({ error: 'search_failed', message: String(err && err.message || err) }, 500);
   }
 });
 

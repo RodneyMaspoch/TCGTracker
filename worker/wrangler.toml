@@ -46,6 +46,17 @@ SLOW_LANE_EVERY_N_TICKS = "3"
 VAPID_PUBLIC_KEY = "BNivxQj3iFv4bbyOGjD7mMIloCvMCvnHd5CFTPfSKi5jNnAm_73DphOqwR3f39hPDMbnAvma6BapE5wKj8ngz0U"
 VAPID_SUBJECT = "mailto:stuffiliked@gmail.com"
 
+# 2026-10-10: Nintendo's own store search (nintendo.com/us/search) runs on
+# Algolia — see worker/src/nintendo-algolia.js's header comment for the
+# full story. This app/key pair is the exact public, search-only
+# credential nintendo.com ships to every visitor's browser on every page
+# load (found via the browser's own DevTools Network tab, together with
+# the user) — there is nothing secret about it, which is why it's a plain
+# [vars] entry here and not a `wrangler secret put`. If Nintendo ever
+# rotates this key, update it here — no code change needed.
+NINTENDO_ALGOLIA_APP_ID = "U3B6GR4UA3"
+NINTENDO_ALGOLIA_API_KEY = "a29c6927638bfd8cee23993e51e721c9"
+
 # D1 database binding. Run `wrangler d1 create tcgtracker-db` once, then
 # paste the database_id it prints below (see worker/README.md for the full
 # step-by-step). Left blank here on purpose — wrangler will refuse to
