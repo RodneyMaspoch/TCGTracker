@@ -46,9 +46,9 @@
   // styles.css's --warn/--warn-ink per game, kept in sync by eye since
   // this file can't depend on that stylesheet existing).
   const GAME_COLORS = {
-    mtg: { bg: '#ff5c7a', ink: '#170409' },
-    lorcana: { bg: '#ff9a3d', ink: '#2a1207' },
-    pokemon: { bg: '#e5383b', ink: '#210800' },
+    mtg: { bg: '#e5383b', ink: '#ffffff' },
+    lorcana: { bg: '#e5383b', ink: '#ffffff' },
+    pokemon: { bg: '#e5383b', ink: '#ffffff' },
     headsup: { bg: '#ff5c5c', ink: '#240404' },
   };
   const colors = GAME_COLORS[document.body.dataset.game] || GAME_COLORS.headsup;
@@ -211,7 +211,11 @@
     return document.querySelector('[data-tcg-sticky-header]') || document.body;
   }
 
-  function render(events) {
+  function render(allEvents) {
+    // 2026-10-15 — show each distinct message once (newest), not every
+    // repeat of the same restock.
+    const seen = new Set();
+    const events = allEvents.filter((ev) => { const k = ev.message; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 8);
     if (!events.length) {
       if (wrap) wrap.remove();
       wrap = null;
@@ -251,9 +255,9 @@
     // reading pace for short all-caps sentences, with a floor so even a
     // single short item doesn't rush past, and a ceiling so a very long
     // list doesn't crawl forever.
-    const PX_PER_SECOND = 70;
+    const PX_PER_SECOND = 30; // 2026-10-15: was 70 — user: still too fast
     const halfWidth = track.scrollWidth / 2; // two laps were rendered above
-    const seconds = Math.min(90, Math.max(28, Math.round(halfWidth / PX_PER_SECOND)));
+    const seconds = Math.max(30, Math.round(halfWidth / PX_PER_SECOND));
     track.style.animationDuration = `${seconds}s`;
   }
 

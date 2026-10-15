@@ -14,32 +14,32 @@
 /* ---------- Pokémon: 2026-10-15 v2 — TrackaLacker-style light page:
    white background, mint-green accent, image-first tiles. ---------- */
 body[data-game="pokemon"] {
-  --bg: #ffffff; --surface: #ffffff; --well: #f3f5f4; --hero-base: #ffffff;
+  --bg: #ffffff; --surface: #ffffff; --well: #f3f4f6; --hero-base: #ffffff;
   --ink: #111418; --dim: rgba(17,20,24,.62); --dim2: rgba(17,20,24,.45);
   --hair: rgba(17,20,24,.10); --hair2: rgba(17,20,24,.18);
-  --accent: #1bc47d; --accent-ink: #ffffff;
+  --accent: #1bc47d; --accent-ink: #ffffff; --accent-soft: #eafaf3;
   --sec: #2563eb; --sec-ink: #ffffff;
   --warn: #e0365a; --warn-ink: #ffffff;
 }
 
 /* ---------- MTG: near-black / lime / purple ---------- */
 body[data-game="mtg"] {
-  --bg: #08060e; --surface: #100b1b; --well: #0c0817; --hero-base: #0d0918;
-  --ink: #e9e6df; --dim: rgba(233,230,223,.62); --dim2: rgba(233,230,223,.45);
-  --hair: rgba(233,230,223,.12); --hair2: rgba(233,230,223,.2);
-  --accent: #e8402a; --accent-ink: #ffffff;
-  --sec: #e8b23d; --sec-ink: #2b1800;
-  --warn: #ff5c7a; --warn-ink: #170409;
+  --bg: #ffffff; --surface: #ffffff; --well: #f3f4f6; --hero-base: #ffffff;
+  --ink: #111418; --dim: rgba(17,20,24,.62); --dim2: rgba(17,20,24,.45);
+  --hair: rgba(17,20,24,.10); --hair2: rgba(17,20,24,.18);
+  --accent: #e0301e; --accent-ink: #ffffff; --accent-soft: #fdeeec;
+  --sec: #2563eb; --sec-ink: #ffffff;
+  --warn: #e0365a; --warn-ink: #ffffff;
 }
 
 /* ---------- Lorcana: navy / indigo / gold ---------- */
 body[data-game="lorcana"] {
-  --bg: #060b1a; --surface: #0e1732; --well: #0a1024; --hero-base: #0b1228;
-  --ink: #e8ecf7; --dim: rgba(232,236,247,.62); --dim2: rgba(232,236,247,.45);
-  --hair: rgba(232,236,247,.12); --hair2: rgba(232,236,247,.2);
-  --accent: #8f9df0; --accent-ink: #ffffff;
-  --sec: #e3c07f; --sec-ink: #141a44;
-  --warn: #ff9a3d; --warn-ink: #2a1207;
+  --bg: #ffffff; --surface: #ffffff; --well: #f3f4f6; --hero-base: #ffffff;
+  --ink: #111418; --dim: rgba(17,20,24,.62); --dim2: rgba(17,20,24,.45);
+  --hair: rgba(17,20,24,.10); --hair2: rgba(17,20,24,.18);
+  --accent: #5b4bdb; --accent-ink: #ffffff; --accent-soft: #efedfc;
+  --sec: #2563eb; --sec-ink: #ffffff;
+  --warn: #e0365a; --warn-ink: #ffffff;
 }
 
 /* ---------- Heads Up: shared across all three games — neutral graphite /
@@ -1369,24 +1369,16 @@ a.event::after {
    pill on every photo, a product sheet with "Where to buy", and a
    "Recent restocks" deal row. Minimal copy.
    ========================================================================== */
-body[data-game="pokemon"] { background: #fff; color: var(--ink); }
-body[data-game="pokemon"] .tcg-header { background: #fff; box-shadow: 0 1px 0 var(--hair); }
-body[data-game="pokemon"] .tcg-brand-word { color: var(--ink); }
-body[data-game="pokemon"] .tcg-nav-tip { background: #111418; color: #fff; border-color: transparent; }
-body[data-game="pokemon"] .tcg-nav-item.active { background: rgba(27,196,125,.14); }
-body[data-game="pokemon"] .mkt-ticker-wrap { background: #111418; }
+body.tl-page { background: #fff; color: var(--ink); }
+body.tl-page .tcg-header { background: #fff; box-shadow: 0 1px 0 var(--hair); }
+body.tl-page .tcg-brand-word { color: var(--ink); }
+body.tl-page .tcg-nav-tip { background: #111418; color: #fff; border-color: transparent; }
+body.tl-page .tcg-nav-item.active { background: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent); }
 
-.tl-hero { text-align: center; padding: 40px 16px 24px; background: linear-gradient(180deg, #eafaf3 0%, #fff 100%); }
-.tl-eyebrow, .tl-section-eyebrow { font: 800 13px/1 Archivo, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #e8a400; }
-.tl-title { margin: 10px 0 0; font: 900 clamp(30px, 7vw, 52px)/1 Archivo, sans-serif; font-stretch: 75%; text-transform: uppercase; color: var(--ink); letter-spacing: .01em; }
-.tl-drawing { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; padding: 10px 16px; border-radius: 999px; background: #fff; border: 1px solid var(--hair2); color: var(--ink); font: 700 13px/1.2 Archivo, sans-serif; text-decoration: none; }
-.tl-drawing.open { background: var(--accent); border-color: var(--accent); color: #fff; }
-.tl-drawing-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--dim2); }
-.tl-drawing.open .tl-drawing-dot { background: #fff; }
 
 .tl-coming, .tl-browse, .tl-deals { max-width: 1240px; margin: 0 auto; padding: 24px 16px; }
 .tl-section-title { font: 900 clamp(20px, 3.4vw, 28px)/1.1 Archivo, sans-serif; font-stretch: 80%; color: var(--ink); text-align: center; margin-bottom: 18px; }
-.tl-deals { text-align: center; background: #f2fbf7; max-width: none; }
+.tl-deals { text-align: center; background: var(--accent-soft); max-width: none; }
 .tl-deals > * { max-width: 1240px; margin-left: auto; margin-right: auto; }
 
 .tl-row { display: grid; grid-template-columns: 150px 1fr; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--hair); }
@@ -1403,7 +1395,7 @@ body[data-game="pokemon"] .mkt-ticker-wrap { background: #111418; }
 .tl-photo > img { width: 100%; height: 100%; object-fit: contain; padding: 10px; box-sizing: border-box; }
 .tl-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--well); }
 .tl-ph img { width: 40px; height: 40px; opacity: .35; }
-.tl-badge { position: absolute; top: 6px; left: 6px; font: 800 10px/1 Archivo, sans-serif; padding: 5px 7px; border-radius: 6px; background: var(--accent); color: #fff; }
+.tl-badge { position: absolute; top: 6px; left: 6px; font: 800 10px/1 Archivo, sans-serif; padding: 5px 7px; border-radius: 6px; background: #16a34a; color: #fff; }
 .tl-badge.good { background: #e8a400; }
 .tl-badge.kind-release { background: #2563eb; }
 .tl-badge.kind-lottery { background: #ffc220; color: #111418; }
@@ -1457,4 +1449,31 @@ body[data-game="pokemon"] .mkt-ticker-wrap { background: #111418; }
   .tl-row-count { margin-top: 0; }
   .tl-tile { flex-basis: 132px; }
   .tl-photo { width: 132px; height: 132px; }
+}
+
+
+/* ---- 2026-10-15 v3: "next big thing" hero, shared by all game pages ---- */
+.tl-hero2 { max-width: 1240px; margin: 20px auto 0; padding: 0 16px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 24px; align-items: center; }
+.tl-hero2 > * { min-width: 0; }
+.tl-hero2-text { background: var(--accent-soft); border-radius: 20px; padding: 32px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; }
+.tl-hero2.hot .tl-hero2-text { background: var(--accent); }
+.tl-hero2.hot .tl-hero2-text * { color: #fff; }
+.tl-hero2-kicker { font: 800 13px/1 Archivo, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.tl-hero2-title { margin: 12px 0 0; font: 900 clamp(28px, 5vw, 48px)/1.02 Archivo, sans-serif; font-stretch: 78%; text-transform: uppercase; color: var(--ink); }
+.tl-hero2-line { margin-top: 12px; font: 600 15px/1.35 Archivo, sans-serif; color: var(--dim); }
+.tl-hero2-count { margin-top: 14px; font: 900 30px/1 Archivo, sans-serif; font-stretch: 80%; color: var(--accent); }
+.tl-hero2-actions { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.tl-hero2-cta { display: inline-block; padding: 13px 20px; border-radius: 999px; background: #111418; color: #fff !important; font: 800 13px/1 Archivo, sans-serif; letter-spacing: .05em; text-decoration: none; }
+.tl-hero2.hot .tl-hero2-cta { background: #fff; color: #111418 !important; }
+.tl-hero2-actions .tl-track { position: static; padding: 12px 16px; font-size: 12px; }
+.tl-hero2.hot .tl-hero2-actions .tl-track { background: rgba(0,0,0,.25); color: #fff; }
+.tl-hero2-photo { position: relative; aspect-ratio: 4 / 3; border-radius: 20px; border: 1px solid var(--hair); background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.tl-hero2-photo > img { width: 100%; height: 100%; object-fit: contain; padding: 16px; box-sizing: border-box; }
+.tl-hero2-photo .tl-ph img { width: 72px; height: 72px; }
+.tl-track { background: var(--accent); }
+.tl-dmon { color: var(--accent); }
+@media (max-width: 760px) {
+  .tl-hero2 { grid-template-columns: 1fr; gap: 12px; }
+  .tl-hero2-photo { order: -1; aspect-ratio: 16 / 9; }
+  .tl-hero2-text { padding: 22px; }
 }
