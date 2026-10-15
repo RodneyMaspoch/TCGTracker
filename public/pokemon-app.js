@@ -51,6 +51,14 @@ const WALMART_DRAWING_REF = {
   rumor: 'A Prismatic Evolutions double-drawing was rumored "in ~5 days" as of a Sep-26 social post — not independently confirmed, treat as tentative, not live.',
 };
 
+// Upcoming Pokémon releases (dated, from the project watchlist research).
+// Past dates hide themselves automatically. A release whose product is
+// tracked (productId) shows that product's photo and TRACK button.
+const UPCOMING_RELEASES = [
+  { name: "Deck Crafter's Collection", date: '2026-10-23', note: '$9.99 · Best Buy' },
+  { name: 'Delta Reign — Elite Trainer Box', date: '2026-11-06', note: '$49.99', productId: 'pkm-delta-reign-etb' },
+];
+
 const EVENT_KIND_LABELS = { restock: 'Restock', good_price: 'Good Price', drawing_open: 'Drawing Open' };
 
 const ALERT_SERVICES = [
@@ -142,7 +150,7 @@ async function loadAll() {
     const [products, drawing, events] = await Promise.all([
       fetch('/api/products').then((r) => r.json()),
       fetch('/api/walmart-drawing').then((r) => r.json()),
-      fetch('/api/events?limit=30').then((r) => r.json()),
+      fetch('/api/events?limit=100').then((r) => r.json()),
     ]);
     state.products = products;
     state.drawing = drawing;
@@ -164,6 +172,7 @@ function render() {
   renderCategoryFilters();
   renderGrid();
   renderEvents();
+  renderComingUp();
   renderUpcomingEvents();
   renderAlertServices();
 }
@@ -232,40 +241,88 @@ function renderHot() {
   const section = els.hotSection;
   const grid = els.hotGrid;
   if (!section || !grid) return;
-
-  const products = state.products.filter((p) => p.game === state.activeGame);
-  const recentRestockProductIds = new Set(
-    state.events
-      .filter((ev) => ev.kind === 'restock' && Date.now() - new Date(ev.created_at).getTime() <= HOT_RESTOCK_WINDOW_MS)
-      .map((ev) => ev.product_id)
-      .filter(Boolean)
-  );
-
-  const hotCards = [];
-  for (const product of products) {
-    for (const l of product.listings || []) {
-      if (isGoodPriceListing(product, l) || (l.last_purchasable && recentRestockProductIds.has(product.id))) {
-        hotCards.push({ product, listing: l });
-      }
-    }
-  }
-
-  if (hotCards.length === 0) {
-    section.hidden = true;
-    grid.innerHTML = '';
-    return;
-  }
-  section.hidden = false;
+  const live = state.products
+    .filter((p) => p.game === state.activeGame)
+    .filter((p) => (p.listings || []).some((l) => l.last_purchasable));
+  section.hidden = live.length === 0;
   grid.innerHTML = '';
-  for (const { product, listing } of hotCards.slice(0, 8)) {
-    grid.appendChild(renderCard(product, listing));
-  }
+  for (const product of live.slice(0, 8)) grid.appendChild(renderCard(product));
 }
 
 // One-time-ish static content — game-filtered like everything else, so
 // switching tabs shows each game's own events. Rebuilding this on every
 // render() is cheap (a handful of DOM nodes), so it just piggybacks on
 // the same render cycle as the live data instead of needing its own path.
+// "Coming up": one strip mixing upcoming releases, the next Walmart
+// drawing, and events/championships, soonest first. Image when we have
+// one, otherwise a big date block. No paragraphs — date + name + one line.
+function parseWhen(str) {
+  const m = String(str).match(/([A-Z][a-z]{2})[a-z]*\.? (\d{1,2})(?:[–-]\d{1,2})?,? (\d{4})/);
+  if (!m) return null;
+  const d = new Date(`${m[1]} ${m[2]}, ${m[3]}`);
+  return isNaN(d) ? null : d;
+}
+function renderComingUp() {
+  const wrap = document.getElementById('tlComing');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const items = [];
+  if (state.drawing) {
+    const next = state.drawing.next_drawing_at ? new Date(state.drawing.next_drawing_at) : null;
+    items.push({
+      kind: 'LOTTERY', name: 'Walmart Collectibles Drawing',
+      date: state.drawing.is_open ? new Date() : next,
+      line: state.drawing.is_open ? 'OPEN NOW — enter' : (next ? 'Entries open' : 'Next date not announced'),
+      url: 'https://www.walmart.com/shop/collectibles/draw', productId: 'pkm-30th-etb', hot: !!state.drawing.is_open,
+    });
+  }
+  for (const r of UPCOMING_RELEASES) {
+    const d = new Date(r.date + 'T12:00:00');
+    if (d >= today) items.push({ kind: 'RELEASE', name: r.name, date: d, line: r.note, productId: r.productId });
+  }
+  for (const ev of EVENTS_BY_GAME[state.activeGame] || []) {
+    const d = parseWhen(ev.when);
+    if (!d || d >= today) items.push({ kind: 'EVENT', name: ev.name, date: d, line: ev.where, whenText: d ? null : ev.when });
+  }
+  items.sort((a, b) => (a.hot ? -1 : 0) - (b.hot ? -1 : 0) || (a.date ? a.date.getTime() : 9e15) - (b.date ? b.date.getTime() : 9e15));
+
+  for (const it of items) {
+    const tile = document.createElement(it.url ? 'a' : 'div');
+    tile.className = 'tl-tile tl-cu' + (it.hot ? ' hot' : '');
+    if (it.url) { tile.href = it.url; tile.target = '_blank'; tile.rel = 'noopener noreferrer'; }
+    const product = it.productId && state.products.find((p) => p.id === it.productId);
+    let photo;
+    if (product) {
+      photo = buildPhoto(product, 'tl-photo');
+      if (it.kind === 'RELEASE') photo.appendChild(buildTrackPill(product));
+    } else {
+      photo = document.createElement('div');
+      photo.className = 'tl-photo tl-datebox';
+      if (it.date) {
+        photo.innerHTML = `<span class="tl-dmon">${it.date.toLocaleString('en-US', { month: 'short' })}</span><span class="tl-dday">${it.date.getDate()}</span>`;
+      } else {
+        photo.innerHTML = `<span class="tl-dmon">${it.whenText || 'TBA'}</span>`;
+      }
+    }
+    const tag = document.createElement('span');
+    tag.className = 'tl-badge kind-' + it.kind.toLowerCase();
+    tag.textContent = it.kind;
+    photo.appendChild(tag);
+    tile.appendChild(photo);
+    const name = document.createElement('div');
+    name.className = 'tl-name';
+    name.textContent = it.name;
+    tile.appendChild(name);
+    const line = document.createElement('div');
+    line.className = 'tl-price tl-cu-line';
+    const when = it.date && !it.hot ? it.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · ' : '';
+    line.textContent = when + it.line;
+    tile.appendChild(line);
+    wrap.appendChild(tile);
+  }
+}
+
 function renderUpcomingEvents() {
   const wrap = els.eventsUpcomingList;
   if (!wrap) return;
@@ -311,74 +368,20 @@ function renderTabs() {
 function renderDrawingHero() {
   const el = els.drawingHero;
   if (!el) return;
-  if (state.activeGame !== 'pokemon' || !state.drawing) {
-    el.hidden = true;
-    return;
-  }
+  if (!state.drawing) { el.hidden = true; return; }
   el.hidden = false;
   const isOpen = !!state.drawing.is_open;
-  el.dataset.state = isOpen ? 'open' : 'closed';
-  const checked = state.drawing.last_checked_at
-    ? new Date(state.drawing.last_checked_at).toLocaleString()
-    : 'not yet checked';
-
-  el.innerHTML = `
-    <div class="hero-band-bg"></div>
-    <div class="hero-band-inner">
-      <div>
-        <div class="hero-badge"><span class="dotpulse"></span><span>${isOpen ? 'DRAWING OPEN RIGHT NOW' : 'NO DRAWING OPEN RIGHT NOW'}</span></div>
-        <div class="hero-headline">Skip the refresh.<br><span class="hl">${isOpen ? 'Enter' : 'Wait for'}</span> the drawing${isOpen ? ' instead' : ''}.</div>
-        <p class="hero-sub">Walmart sells its hottest Pokémon sealed product through a free-to-enter drawing, not a first-come race: sign in, pick an eligible item, submit before the window closes, and Walmart auto-charges and ships if you're randomly selected. No advantage to fast fingers. ${isOpen ? '<strong>A window is open right now.</strong>' : '<strong>Nothing is open to enter right now</strong> — this updates the moment a window opens.'}</p>
-        <div class="hero-cta-row">
-          <a class="btn hero-cta-secondary" href="https://www.walmart.com/shop/collectibles/draw" target="_blank" rel="noopener noreferrer">OPEN THE DRAWING PAGE →</a>
-        </div>
-      </div>
-      <div class="hero-panel">
-        <div class="artwell cut-sm">
-          <div class="mono">${WALMART_DRAWING_REF.itemName}<br>(official product photo — link out)</div>
-        </div>
-        <div class="hero-panel-body">
-          <div class="hero-panel-title">${WALMART_DRAWING_REF.itemName} (last drawing price)</div>
-          <div class="hero-panel-prices">
-            <div><div class="label mono">Drawing price</div><div class="num" style="color:#fff">$${WALMART_DRAWING_REF.drawingPrice.toFixed(2)}</div></div>
-            <div><div class="label mono">General MSRP</div><div class="num" style="color:var(--dim)">$${WALMART_DRAWING_REF.msrp.toFixed(2)}</div></div>
-          </div>
-          <div class="hero-panel-status">${isOpen ? 'OPEN · ENTRIES BEING ACCEPTED NOW' : 'CLOSED · ENTRIES NO LONGER ACCEPTED FOR THIS WINDOW'}</div>
-          <div class="hero-panel-footnote">Last confirmed window (re-verified directly against the drawing page): ${WALMART_DRAWING_REF.lastWindow} ${WALMART_DRAWING_REF.rumor}<br><br>This app's own last check: ${checked}. It polls roughly every 90s and pushes an alert the moment the state above flips to OPEN.</div>
-        </div>
-      </div>
-    </div>
-  `;
+  el.innerHTML = `<a class="tl-drawing${isOpen ? ' open' : ''}" href="https://www.walmart.com/shop/collectibles/draw" target="_blank" rel="noopener noreferrer">
+    <span class="tl-drawing-dot"></span>${isOpen ? 'Walmart drawing is OPEN — enter now →' : 'Walmart drawing: closed · we\'ll alert you when it opens'}</a>`;
 }
 
-// Card layout below is deliberately built to match index.html's/
-// lorcana.html's own "Tracking Now" deal cards one-for-one: a 5/6 photo
-// well with a retailer chip overlay, the name as a link, a stock line, a
-// big price with MSRP struck through, and an "ALERT ≤ $ / ADD ALERT" row.
-// The one structural difference: those pages treat "same product, two
-// retailers" as two separate cards (see server/seed.js's hobbit-target /
-// hobbit-walmart pair), so this flattens each PRODUCT's listings into one
-// card per LISTING too, instead of nesting all of a product's retailers
-// inside a single card the way the earlier version of this page did —
-// that nested-list style was the biggest visible difference from the
-// sibling pages, more than the missing photo/big-price treatment was.
-//
-// Like index.html's/lorcana.html's own "ADD ALERT" control, this is a
-// client-side-only toggle (see armedState/targetState below) — it isn't
-// wired to a per-listing threshold on the server. That matches those
-// pages' actual current behavior exactly, not a step behind it: the
-// server-side alert that actually fires (Trigger 2b, MSRP-anchored) is a
-// fixed rule in poll.js, not driven by this input on any of the three
-// pages yet.
-const armedState = {};   // key: `${product.id}:${retailer}` -> boolean
-const targetState = {};  // key: `${product.id}:${retailer}` -> string (input value)
-
-// Mirrors the server-side Trigger 2b logic in server/poller.js — MSRP
-// leads the comparison, TCGPlayer just confirms there's real resale
-// demand. See the comment above pollOneListing() there for the full
-// reasoning (TCGPlayer is almost always above MSRP for hyped sealed
-// product, so comparing straight to TCGPlayer flags marked-up listings
-// as "good deals" just because they're cheaper than an inflated ceiling).
+// 2026-10-15 — simplified, trackalacker-style: ONE card per product (not
+// one per store), with a real photo and a short list of stores underneath,
+// each showing a colored status dot, price and a direct link. The old
+// per-card checkout checklist, separate mute button and "ALERT ≤ $"
+// input (which was never wired to the server) were removed; alerts are
+// controlled by the single bell on the photo, which maps to the real
+// server-side per-product mute.
 const MIN_MARKUP_OVER_MSRP = 0.25;        // TCGPlayer must be >= 25% over MSRP
 const MAX_RETAIL_PREMIUM_OVER_MSRP = 0.10; // retail price must be <= 10% over MSRP
 
@@ -390,236 +393,261 @@ function isGoodPriceListing(product, l) {
   return retailPremiumOverMsrp <= MAX_RETAIL_PREMIUM_OVER_MSRP;
 }
 
-function renderGrid() {
-  const grid = els.grid;
-  grid.innerHTML = '';
-  let products = state.products.filter((p) => p.game === state.activeGame);
-  if (state.categoryFilter !== 'all') {
-    products = products.filter((p) => categorize(p.name) === state.categoryFilter);
-  }
-
-  // Flatten to one card per listing (see comment above); a product with
-  // no tracked listings yet still gets one card, same as the original
-  // per-product view, so nothing tracked disappears from the grid.
-  const cards = [];
-  for (const product of products) {
-    if (!product.listings || product.listings.length === 0) {
-      cards.push({ product, listing: null });
-    } else {
-      for (const l of product.listings) cards.push({ product, listing: l });
-    }
-  }
-
-  if (cards.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-state';
-    empty.textContent = 'No tracked products for this game yet.';
-    grid.appendChild(empty);
-    return;
-  }
-
-  for (const { product, listing } of cards) {
-    grid.appendChild(renderCard(product, listing));
-  }
+// Photos: the live photo scraped off a store page always wins. Because
+// most big stores block the scraper, each tracked product also has one
+// verified box-art photo as a backup (real product images, found
+// 2026-10-15 on retailer listings — not mockups). A product with neither
+// shows a clean placeholder instead of a broken image.
+const PRODUCT_IMAGES = {
+  'pkm-30th-etb': 'https://thehobbybin.com/cdn/shop/files/30th-Celebration-Elite-Trainer-Box.png?v=1782833098&width=800',
+  'pkm-30th-etb-pokemoncenter': 'https://thehobbybin.com/cdn/shop/files/30th-Celebration-Pokemon-Center-Elite-Trainer-Box.png?v=1782833098&width=800',
+  'pkm-30th-upc-day': 'https://cdn.shopify.com/s/files/1/0713/8007/4695/files/704190.jpg?v=1785248463',
+  'pkm-delta-reign-etb': 'https://cdn.shopify.com/s/files/1/0727/7553/2770/files/712102.jpg?v=1787705571',
+  'pkm-prismatic-etb': 'https://cdn.shopify.com/s/files/1/0689/9397/4463/files/593355.jpg?v=1748918714',
+};
+function productImageCandidates(product, listings) {
+  const out = [];
+  for (const l of listings || []) if (l.image_url) out.push(l.image_url);
+  if (PRODUCT_IMAGES[product.id]) out.push(PRODUCT_IMAGES[product.id]);
+  return [...new Set(out)];
 }
 
-function renderCard(product, l) {
-  const key = `${product.id}:${l ? l.retailer : 'none'}`;
-  const good = l ? isGoodPriceListing(product, l) : false;
+const RETAILER_NAMES = {
+  target: 'Target', walmart: 'Walmart', walmart_marketplace: 'Walmart (3rd party)', bestbuy: 'Best Buy',
+  gamestop: 'GameStop', pokemoncenter: 'Pokémon Center', samsclub: "Sam's Club", costco: 'Costco', amazon: 'Amazon',
+};
+const retailerName = (slug) => RETAILER_NAMES[slug] || slug;
 
-  const card = document.createElement('div');
-  card.className = 'card' + (good ? ' good-price' : '');
+function storeState(l) {
+  if (l.last_purchasable) return ['in', 'In stock'];
+  if (l.last_stock === 'account_gated') return ['gated', 'Account req.'];
+  if (l.last_stock && l.last_stock !== 'unknown') return ['out', 'Sold out'];
+  return ['unknown', 'Checking'];
+}
 
-  const art = document.createElement(l && l.url ? 'a' : 'div');
-  art.className = 'artwell card-art';
-  if (l && l.url) {
-    art.href = l.url;
-    art.target = '_blank';
-    art.rel = 'noopener noreferrer';
-  }
-  const placeholderHtml = `<div class="mono">${product.name}<br>(official product photo — link out)</div>`;
-  // Real photo, pulled live off the retailer's own listing page by the
-  // poller (see worker/src/scrapers.js) — not uploaded/maintained by hand,
-  // since these products and their listings change too often for that to
-  // stay accurate. Built as a real <img> (not a template-literal string)
-  // so its error handler is a real function, not a fragile string that
-  // would break on a product name containing a quote. Falls back to the
-  // honest text placeholder when a listing has no scraped image yet
-  // (brand-new product, or a retailer page with neither a schema.org
-  // Product block nor an og:image tag), or if the image URL 404s later.
-  if (l && l.image_url) {
-    const img = document.createElement('img');
-    img.src = l.image_url;
-    img.alt = '';
-    img.loading = 'lazy';
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
-    img.onerror = () => { art.innerHTML = placeholderHtml; };
-    art.appendChild(img);
-  } else {
-    art.innerHTML = placeholderHtml;
-  }
-  if (l) {
-    const chip = document.createElement('div');
-    chip.className = 'chip tag-chip';
-    chip.style.background = 'rgba(23,10,8,.8)';
-    chip.style.color = 'var(--ink)';
-    chip.innerHTML = `<span>${l.retailer}</span>`;
-    art.appendChild(chip);
-  }
-  if (good) {
-    const tag = document.createElement('div');
-    tag.className = 'chip';
-    tag.style.position = 'absolute';
-    tag.style.top = '10px';
-    tag.style.right = '10px';
-    tag.style.background = 'var(--accent)';
-    tag.style.color = 'var(--accent-ink)';
-    tag.innerHTML = '<span>GOOD PRICE</span>';
-    art.appendChild(tag);
-  }
-  card.appendChild(art);
+function timeAgo(iso) {
+  if (!iso) return 'not checked yet';
+  const sec = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (sec < 60) return 'just now';
+  if (sec < 3600) return `${Math.round(sec / 60)} min ago`;
+  if (sec < 86400) return `${Math.round(sec / 3600)} hr ago`;
+  return `${Math.round(sec / 86400)} days ago`;
+}
 
-  const pad = document.createElement('div');
-  pad.className = 'pad';
+// ---- TrackaLacker-style browse rows (2026-10-15 v2) ----
+// One row per category: a label on the left, a horizontal strip of small
+// square product tiles on the right. Each tile = photo, a TRACK pill
+// (the real per-product alert switch: tracked = alerts on, i.e. not
+// muted), name, price. Tapping a tile opens a sheet listing every store.
+function lowestPrice(product) {
+  const live = (product.listings || []).filter((l) => l.last_purchasable && l.last_price != null);
+  if (live.length) return Math.min(...live.map((l) => Number(l.last_price)));
+  return null;
+}
 
-  const name = document.createElement('a');
-  name.className = 'card-name card-name-link';
-  name.textContent = product.name;
-  if (l && l.url) { name.href = l.url; name.target = '_blank'; name.rel = 'noopener noreferrer'; }
-  pad.appendChild(name);
-
-  const stock = document.createElement('div');
-  stock.className = 'card-stock';
-  // 2026-10-15 — data-stock lets the light (Pokémon) theme render this as
-  // a colored pill badge (green/gray/blue) instead of plain dim text —
-  // see styles.css's `[data-game="pokemon"] .card-stock[data-stock=...]`
-  // rules. Purely a styling hook: the TEXT shown is unchanged, still
-  // exactly the same real stock state as before, nothing invented.
-  const stockKey = !l
-    ? 'none'
-    : (l.last_purchasable ? 'in_stock' : (!l.last_stock || l.last_stock === 'unknown' ? 'unknown' : l.last_stock === 'account_gated' ? 'account_gated' : 'out_of_stock'));
-  stock.dataset.stock = stockKey;
-  stock.textContent = !l
-    ? 'No retailer link tracked yet for this product.'
-    : (l.last_purchasable ? 'IN STOCK' : (!l.last_stock || l.last_stock === 'unknown' ? 'STATUS UNKNOWN' : l.last_stock === 'account_gated' ? 'ACCOUNT REQUIRED' : 'OUT OF STOCK'));
-  pad.appendChild(stock);
-
-  if (l && l.last_price != null) {
-    const row = document.createElement('div');
-    row.className = 'card-msrp-row';
-    const msrpHtml = product.msrp ? `<span class="strike">$${product.msrp.toFixed(2)}</span>` : '';
-    row.innerHTML = `<span class="num">$${Number(l.last_price).toFixed(2)}</span>${msrpHtml}`;
-    pad.appendChild(row);
-  } else if (product.msrp) {
-    const row = document.createElement('div');
-    row.className = 'card-msrp-row';
-    row.innerHTML = `<span class="mono" style="font-size:13px;color:var(--dim)">MSRP $${product.msrp.toFixed(2)}</span>`;
-    pad.appendChild(row);
-  }
-
-  if (product.tcgplayer_ref) {
-    const ref = document.createElement('div');
-    ref.className = 'ref-price';
-    ref.textContent = `TCGPlayer ref: $${product.tcgplayer_ref.toFixed(2)}`;
-    pad.appendChild(ref);
-  }
-
-  // 2026-10-14 — legitimate purchase-acceleration helpers (see
-  // checkout-helpers.js): an Amazon quick-add-to-cart link (only appears
-  // when this listing is a real, recognizable Amazon URL — none are
-  // tracked yet, so this is dormant until one is) and a per-retailer
-  // checkout-speed checklist. Neither adds to a cart or buys anything on
-  // its own — a human still clicks every step.
-  if (l && window.TCGCheckoutHelpers) {
-    const quickAdd = window.TCGCheckoutHelpers.buildAmazonQuickAddButton(l.url);
-    if (quickAdd) pad.appendChild(quickAdd);
-    pad.appendChild(window.TCGCheckoutHelpers.buildChecklistDetails(l.retailer));
-  }
-
-  // 2026-10-14 — per-product mute (see mute-toggle.js) — the user's own
-  // alternative to a backend restock cooldown.
-  if (window.TCGMuteToggle) {
-    pad.appendChild(window.TCGMuteToggle.buildMuteButton(product));
-  }
-
-  const alertRow = document.createElement('div');
-  alertRow.className = 'alert-row';
-
-  const alertInput = document.createElement('div');
-  alertInput.className = 'alert-input';
-  const defaultTarget = targetState[key] ?? (product.msrp != null ? product.msrp.toFixed(2) : '');
-  alertInput.innerHTML = `<span>ALERT ≤</span><span style="color:#fff">$</span>`;
-  const input = document.createElement('input');
-  input.inputMode = 'decimal';
-  input.value = defaultTarget;
-  input.addEventListener('change', () => { targetState[key] = input.value; });
-  alertInput.appendChild(input);
-  alertRow.appendChild(alertInput);
-
-  const btn = document.createElement('div');
-  btn.className = 'alert-btn';
-  const armed = !!armedState[key];
-  btn.dataset.armed = armed ? '1' : '0';
-  btn.textContent = armed ? '✓ ALERT ARMED' : '+ ADD ALERT';
-  btn.addEventListener('click', () => {
-    const nowArmed = !armedState[key];
-    armedState[key] = nowArmed;
-    // Arming an alert is the thing that should turn push notifications
-    // on — not a separate "Enable alerts" button a person has to go
-    // find. window.tcgEnsurePushEnabled (push-client.js) no-ops if
-    // already subscribed, and the browser's own permission prompt still
-    // has to appear on a real click like this one — that part can't be
-    // skipped, but requiring a SECOND click elsewhere on the page can.
-    if (nowArmed && window.tcgEnsurePushEnabled) window.tcgEnsurePushEnabled();
-    render();
+async function setTracked(product, tracked) {
+  const res = await fetch('/api/admin/set-muted', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ product_id: product.id, muted: !tracked }),
   });
-  alertRow.appendChild(btn);
-
-  pad.appendChild(alertRow);
-  card.appendChild(pad);
-
-  return card;
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  product.muted = tracked ? 0 : 1;
+  if (tracked && window.tcgEnsurePushEnabled) window.tcgEnsurePushEnabled();
 }
 
+function buildTrackPill(product) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  const paint = () => {
+    const tracked = !product.muted;
+    btn.className = 'tl-track' + (tracked ? ' on' : '');
+    btn.textContent = tracked ? '✓ TRACKING' : '+ TRACK';
+  };
+  paint();
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    btn.disabled = true;
+    try { await setTracked(product, !!product.muted); paint(); render(); }
+    catch (err) { console.error('[pokemon] track toggle failed', err); }
+    finally { btn.disabled = false; }
+  });
+  return btn;
+}
+
+function buildPhoto(product, cls) {
+  const wrap = document.createElement('div');
+  wrap.className = cls;
+  const candidates = productImageCandidates(product, product.listings);
+  const fallback = () => {
+    wrap.querySelector('img')?.remove();
+    const ph = document.createElement('div');
+    ph.className = 'tl-ph';
+    ph.innerHTML = '<img src="/icons/pokemon.png" alt="">';
+    wrap.prepend(ph);
+  };
+  if (!candidates.length) { fallback(); return wrap; }
+  let i = 0;
+  const img = document.createElement('img');
+  img.alt = product.name;
+  img.loading = 'lazy';
+  img.referrerPolicy = 'no-referrer';
+  img.src = candidates[0];
+  img.onerror = () => { i += 1; if (i < candidates.length) img.src = candidates[i]; else fallback(); };
+  wrap.appendChild(img);
+  return wrap;
+}
+
+function renderCard(product) {
+  const listings = product.listings || [];
+  const live = listings.some((l) => l.last_purchasable);
+  const good = listings.some((l) => isGoodPriceListing(product, l));
+
+  const tile = document.createElement('div');
+  tile.className = 'tl-tile';
+  tile.tabIndex = 0;
+  tile.addEventListener('click', () => openSheet(product));
+  tile.addEventListener('keydown', (e) => { if (e.key === 'Enter') openSheet(product); });
+
+  const photo = buildPhoto(product, 'tl-photo');
+  if (live || good) {
+    const badge = document.createElement('span');
+    badge.className = 'tl-badge' + (good ? ' good' : '');
+    badge.textContent = good ? '$ Good price' : '● In stock';
+    photo.appendChild(badge);
+  }
+  photo.appendChild(buildTrackPill(product));
+  tile.appendChild(photo);
+
+  const name = document.createElement('div');
+  name.className = 'tl-name';
+  name.textContent = product.name;
+  tile.appendChild(name);
+
+  const price = document.createElement('div');
+  price.className = 'tl-price';
+  const low = lowestPrice(product);
+  price.textContent = low != null ? `$${low.toFixed(2)}` : (product.msrp ? `$${Number(product.msrp).toFixed(2)}` : '—');
+  tile.appendChild(price);
+  return tile;
+}
+
+function renderGrid() {
+  const root = document.getElementById('tlRows');
+  if (!root) return;
+  root.innerHTML = '';
+  const products = state.products.filter((p) => p.game === state.activeGame);
+  if (!products.length) { root.innerHTML = '<div class="empty-state">No tracked products yet.</div>'; return; }
+  const groups = new Map();
+  for (const p of products) {
+    const c = categorize(p.name);
+    if (!groups.has(c)) groups.set(c, []);
+    groups.get(c).push(p);
+  }
+  for (const [cat, list] of groups) {
+    list.sort((a, b) => ((b.listings || []).some((l) => l.last_purchasable) - (a.listings || []).some((l) => l.last_purchasable)) || a.name.localeCompare(b.name));
+    const row = document.createElement('div');
+    row.className = 'tl-row';
+    const label = document.createElement('div');
+    label.className = 'tl-row-label';
+    label.innerHTML = `<span class="tl-row-kicker">Pokémon</span><span class="tl-row-name"></span><span class="tl-row-count">${list.length} tracked</span>`;
+    label.querySelector('.tl-row-name').textContent = cat;
+    row.appendChild(label);
+    const strip = document.createElement('div');
+    strip.className = 'tl-strip';
+    for (const p of list) strip.appendChild(renderCard(p));
+    row.appendChild(strip);
+    root.appendChild(row);
+  }
+}
+
+// Product sheet: every store for one product, with status + direct link.
+function openSheet(product) {
+  const sheet = document.getElementById('tlSheet');
+  if (!sheet) return;
+  const listings = [...(product.listings || [])].sort((a, b) => (b.last_purchasable || 0) - (a.last_purchasable || 0));
+  sheet.innerHTML = '';
+  const panel = document.createElement('div');
+  panel.className = 'tl-panel';
+  const close = document.createElement('button');
+  close.className = 'tl-close'; close.type = 'button'; close.textContent = '✕';
+  close.addEventListener('click', () => { sheet.hidden = true; });
+  panel.appendChild(close);
+  const top = document.createElement('div');
+  top.className = 'tl-panel-top';
+  top.appendChild(buildPhoto(product, 'tl-panel-photo'));
+  const info = document.createElement('div');
+  const meta = [];
+  if (product.msrp) meta.push(`MSRP $${Number(product.msrp).toFixed(2)}`);
+  if (product.tcgplayer_ref) meta.push(`TCGplayer $${Number(product.tcgplayer_ref).toFixed(2)}`);
+  info.innerHTML = `<div class="tl-panel-name"></div><div class="tl-panel-meta">${meta.join(' · ')}</div>`;
+  info.querySelector('.tl-panel-name').textContent = product.name;
+  info.appendChild(buildTrackPill(product));
+  top.appendChild(info);
+  panel.appendChild(top);
+
+  const head = document.createElement('div');
+  head.className = 'tl-where';
+  head.textContent = 'Where to buy';
+  panel.appendChild(head);
+  if (!listings.length) {
+    const none = document.createElement('div');
+    none.className = 'tl-store'; none.textContent = 'No store tracked yet.';
+    panel.appendChild(none);
+  }
+  for (const l of listings) {
+    const [key, label] = storeState(l);
+    const a = document.createElement('a');
+    a.className = 'tl-store'; a.dataset.s = key;
+    a.href = l.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    const price = l.last_price != null && key !== 'unknown' ? `$${Number(l.last_price).toFixed(2)}` : '';
+    a.innerHTML = `<span class="tl-store-name"></span><span class="tl-store-status">${label}</span><span class="tl-store-price">${price}</span><span class="tl-store-go">VIEW →</span><span class="tl-store-time">Checked ${timeAgo(l.last_checked_at)}</span>`;
+    a.querySelector('.tl-store-name').textContent = retailerName(l.retailer);
+    panel.appendChild(a);
+  }
+  sheet.appendChild(panel);
+  sheet.hidden = false;
+  sheet.onclick = (e) => { if (e.target === sheet) sheet.hidden = true; };
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const s = document.getElementById('tlSheet'); if (s) s.hidden = true; } });
+
+// 2026-10-15 — grouped: one row per product + store (latest time shown,
+// with "×N" when it fired more than once), capped at 12 rows. The full,
+// ungrouped history lives on the Notifications page.
 function renderEvents() {
   const wrap = els.eventsList;
   wrap.innerHTML = '';
-  if (state.events.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-state';
-    empty.textContent = 'No alerts yet.';
-    wrap.appendChild(empty);
-    return;
-  }
+  const groups = new Map();
   for (const ev of state.events) {
-    // ev.url (the actual retailer page the poller checked) is now sent
-    // by the API for restock/good_price events — render a real <a> when
-    // it's there instead of a plain <div>, per the explicit ask that
-    // these be clickable.
-    const row = document.createElement(ev.url ? 'a' : 'div');
-    row.className = 'event';
-    row.dataset.kind = ev.kind;
-    if (ev.url) {
-      row.href = ev.url;
-      row.target = '_blank';
-      row.rel = 'noopener noreferrer';
-    }
-    // The kind used to be communicated only by a border color (removed —
-    // see styles.css) — now it's an actual readable label, same badge
-    // language as the rest of the site.
-    const kind = document.createElement('span');
-    kind.className = 'event-kind';
-    kind.textContent = EVENT_KIND_LABELS[ev.kind] || ev.kind;
-    const time = document.createElement('span');
-    time.className = 'event-time';
-    time.textContent = new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const msg = document.createElement('span');
-    msg.className = 'event-msg';
-    msg.textContent = ev.message;
-    row.appendChild(kind);
-    row.appendChild(msg);
-    row.appendChild(time);
-    wrap.appendChild(row);
+    const key = `${ev.kind}|${ev.product_id || ''}|${ev.url || ev.message}`;
+    const g = groups.get(key);
+    if (g) g.count += 1; else groups.set(key, { ev, count: 1 });
+  }
+  if (groups.size === 0) { wrap.innerHTML = '<div class="empty-state">No restocks yet — they’ll show up here.</div>'; return; }
+  for (const { ev, count } of [...groups.values()].slice(0, 10)) {
+    const product = state.products.find((p) => p.id === ev.product_id) || { id: ev.product_id, name: '', listings: [] };
+    const card = document.createElement('div');
+    card.className = 'tl-deal';
+    card.appendChild(buildPhoto(product, 'tl-deal-photo'));
+    const name = document.createElement('div');
+    name.className = 'tl-deal-name';
+    name.textContent = product.name || ev.message;
+    card.appendChild(name);
+    const m = ev.message.match(/at (.+?)(?: — \$([\d.]+))?$/);
+    const price = document.createElement('div');
+    price.className = 'tl-deal-price';
+    price.textContent = m && m[2] ? `$${Number(m[2]).toFixed(2)}` : '';
+    card.appendChild(price);
+    const btn = document.createElement(ev.url ? 'a' : 'div');
+    btn.className = 'tl-deal-btn';
+    if (ev.url) { btn.href = ev.url; btn.target = '_blank'; btn.rel = 'noopener noreferrer'; }
+    btn.textContent = `VIEW AT ${(m ? m[1] : 'STORE').toUpperCase()}`;
+    card.appendChild(btn);
+    const t = document.createElement('div');
+    t.className = 'tl-deal-time';
+    t.textContent = `${EVENT_KIND_LABELS[ev.kind] || ev.kind} · ${timeAgo(ev.created_at)}${count > 1 ? ` · ×${count}` : ''}`;
+    card.appendChild(t);
+    wrap.appendChild(card);
   }
 }
 

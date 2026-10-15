@@ -52,7 +52,11 @@ import {
   updateDrawingState,
   getPollState,
   setPollState,
+  hasRecentRestock,
 } from './db.js';
+
+// See the repeat guard in pollOneListing(). Raise/lower to taste.
+const RESTOCK_REPEAT_GUARD_MIN = 30;
 
 const MIN_MARKUP_OVER_MSRP = 0.25; // TCGPlayer must be >= 25% over MSRP
 const MAX_RETAIL_PREMIUM_OVER_MSRP = 0.10; // retail price must be <= 10% over MSRP
@@ -126,13 +130,20 @@ async function pollOneListing(env, row) {
   // just never fire." The trigger checks below only need `row`/`result`,
   // not a successful write, so a DB failure here is now logged and
   // swallowed instead of skipping the checks that actually matter.
+  // 2026-10-15 — a SUSPICIOUS read (mis-parsed page) used to write
+  // last_purchasable = 0. On pages like Best Buy's, where the first "$"
+  // on the page changes from load to load, that made every listing flip
+  // 0 → 1 → 0 → 1 between ticks, and every flip back to 1 fired a brand-new
+  // "RESTOCK" alert (dozens per hour for the same 3 products). A read we
+  // already decided not to trust now leaves the last known stock state
+  // exactly as it was instead of resetting it.
   try {
     await updateListing(env, {
       product_id: row.product_id,
       retailer: row.retailer,
-      last_price: result.price,
-      last_stock: suspicious ? 'unknown' : result.stock,
-      last_purchasable: nowPurchasable ? 1 : 0,
+      last_price: suspicious ? row.last_price : result.price,
+      last_stock: suspicious ? row.last_stock : result.stock,
+      last_purchasable: suspicious ? (wasPurchasable ? 1 : 0) : (nowPurchasable ? 1 : 0),
       last_checked_at: now,
       image_url: result.image ?? null,
     });
@@ -143,7 +154,13 @@ async function pollOneListing(env, row) {
   if (suspicious) return;
 
   // Trigger 4 — restock.
-  if (!wasPurchasable && nowPurchasable) {
+  // Same-listing repeat guard: the FIRST restock alert still fires
+  // instantly, but the same product at the same store can't re-alert for
+  // RESTOCK_REPEAT_GUARD_MIN minutes. Stops flapping pages from spamming
+  // the alert feed/push; a different store or product is never affected.
+  if (!wasPurchasable && nowPurchasable && await hasRecentRestock(env, row.product_id, row.url, RESTOCK_REPEAT_GUARD_MIN)) {
+    console.log(`[poll] restock for ${row.retailer}/${row.product_id} already alerted in the last ${RESTOCK_REPEAT_GUARD_MIN}min — not re-alerting`);
+  } else if (!wasPurchasable && nowPurchasable) {
     const msg = `RESTOCK: ${row.product_name} is now purchasable at ${retailerLabel(row.retailer)}` + (result.price ? ` — $${result.price}` : '');
     // row.url is the actual retailer product page being polled — it was
     // never carried into data_json before, so the "Recent Alerts" list

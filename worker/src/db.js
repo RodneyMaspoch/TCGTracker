@@ -43,6 +43,23 @@ export async function updateListing(env, row) {
   ).bind(row.last_price, row.last_stock, row.last_purchasable, row.last_checked_at, row.image_url ?? null, row.product_id, row.retailer).run();
 }
 
+// 2026-10-15 — true if a restock event for this exact listing (product +
+// retailer URL, which poll.js stores in data_json) was recorded in the
+// last `minutes`. Fails open (returns false) so a DB hiccup can never
+// swallow a real restock alert.
+export async function hasRecentRestock(env, productId, url, minutes) {
+  try {
+    const since = new Date(Date.now() - minutes * 60 * 1000).toISOString();
+    const row = await env.DB.prepare(
+      `SELECT 1 FROM events WHERE kind = 'restock' AND product_id = ? AND created_at > ? AND data_json LIKE ? LIMIT 1`
+    ).bind(productId, since, `%${url}%`).first();
+    return !!row;
+  } catch (err) {
+    console.warn(`[db] hasRecentRestock failed (alerting anyway): ${err.message}`);
+    return false;
+  }
+}
+
 export async function insertEvent(env, row) {
   await env.DB.prepare(
     `INSERT INTO events (created_at, kind, product_id, message, data_json) VALUES (?, ?, ?, ?, ?)`

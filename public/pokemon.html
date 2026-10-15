@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>TCGTracker — Pokémon</title>
-<meta name="theme-color" content="#f6f8f7">
+<meta name="theme-color" content="#ffffff">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
@@ -17,7 +17,7 @@
 <style>
   /* --tcg-push-accent/-ink feed push-client.js's floating "Enable alerts"
      button so it matches this page's theme instead of MTG's default green. */
-  body { --tcg-push-accent: #17c98c; --tcg-push-accent-ink: #ffffff; }
+  body { --tcg-push-accent: #1bc47d; --tcg-push-accent-ink: #ffffff; }
 </style>
 </head>
 <body data-game="pokemon">
@@ -41,56 +41,30 @@
     </div>
   </header>
 
-  <section id="drawingHero" class="hero-band" hidden></section>
-
-  <!-- Section set below is deliberately the same shape as index.html's/
-       lorcana.html's own page (2026-10-02, user request: "Each page
-       should have the same sections"): a Signal-Check/"What's Hot" strip,
-       then Tracking Now with a category filter, then the same
-       alerts/events/restock-services/local-search sections this page
-       already had. "Shop by category" here is a filter bar instead of
-       those pages' circular icon-art section — there's no real per-
-       category artwork for Pokémon products in this app yet, and the
-       standing "no fake/static data" rule (2026-09-28) means this never
-       invents icons; the categories themselves ARE real, parsed from each
-       product's own name in pokemon-app.js's categorize(), not fabricated. -->
-  <section id="hotSection" hidden>
-    <div style="padding:20px 16px 0">
-      <div class="h2">What's hot</div>
-      <p class="info-note">Products currently in stock at a good price vs. MSRP/TCGPlayer, or with a restock in the last 24h.</p>
-    </div>
-    <div id="hotGrid" class="grid tt-slider"></div>
+  <section class="tl-hero">
+    <div class="tl-eyebrow">Never miss a restock</div>
+    <h1 class="tl-title">Your Pokémon<br>restock tracker</h1>
+    <div id="drawingHero" hidden></div>
   </section>
 
-  <main>
-    <div style="padding:20px 16px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <div class="h2">Tracking now</div>
-      <div id="categoryFilters" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-    </div>
-    <div id="productGrid" class="grid"></div>
-  </main>
-
-  <section class="events">
-    <div class="h2">Recent alerts</div>
-    <div id="eventsList" class="events-list"></div>
+  <section class="tl-coming">
+    <div class="tl-section-title">Coming up</div>
+    <div id="tlComing" class="tl-strip tl-coming-strip"></div>
   </section>
 
-  <section class="info-section">
-    <div class="h2">Upcoming events &amp; championships</div>
-    <div id="eventsUpcomingList" class="info-list"></div>
+  <section class="tl-browse">
+    <div class="tl-section-title">Browse products and start getting restock alerts</div>
+    <div id="tlRows"></div>
   </section>
 
-  <section class="info-section">
-    <div class="h2">Restock alert services</div>
-    <p class="info-note">Reference-only — not connected to this app. Any restock/lottery claim from these is unverified until it matches an official/retailer source.</p>
-    <div id="alertServicesList" class="info-list"></div>
+  <section class="tl-deals">
+    <div class="tl-section-eyebrow">Live from the tracker</div>
+    <div class="tl-section-title" style="margin-top:4px">Recent restocks</div>
+    <div id="eventsList" class="tl-deal-row"></div>
   </section>
 
-  <section class="info-section">
-    <p class="info-note">Local store search (by ZIP) from the original dashboards isn't in this build — it needed live web search, which this standalone server doesn't have. The three Claude-hosted dashboards still do this if you want it.</p>
-  </section>
 </div>
-<script src="/checkout-helpers.js"></script>
+<div id="tlSheet" class="tl-sheet" hidden></div>
 <script src="/mute-toggle.js"></script>
 <script src="/pokemon-app.js"></script>
 <script src="/notification-badge.js"></script>

@@ -11,21 +11,13 @@
   --radius-cut: 16px;
 }
 
-/* ---------- Pokémon: 2026-10-15 — light theme sample (user request: "too
-   dark and messy", redo to match trackalacker.com's clean white/card-grid/
-   mint-green look). This is a SAMPLE restyle of this one page only, to
-   approve the direction before touching MTG/Lorcana/Nintendo/Heads Up/
-   Notifications — every other body[data-game=...] block below is
-   untouched. --hero-base is kept dark navy on purpose (not tied to --bg)
-   so the drawing/feature hero reads as a deliberate dark card on an
-   otherwise light page, same pairing trackalacker's own dark hero banner
-   makes against their white page background. See the project doc for the
-   full before/after reasoning. */
+/* ---------- Pokémon: 2026-10-15 v2 — TrackaLacker-style light page:
+   white background, mint-green accent, image-first tiles. ---------- */
 body[data-game="pokemon"] {
-  --bg: #f6f8f7; --surface: #ffffff; --well: #eef1ef; --hero-base: #11222b;
-  --ink: #16181b; --dim: rgba(22,24,27,.64); --dim2: rgba(22,24,27,.46);
-  --hair: rgba(22,24,27,.09); --hair2: rgba(22,24,27,.16);
-  --accent: #17c98c; --accent-ink: #ffffff;
+  --bg: #ffffff; --surface: #ffffff; --well: #f3f5f4; --hero-base: #ffffff;
+  --ink: #111418; --dim: rgba(17,20,24,.62); --dim2: rgba(17,20,24,.45);
+  --hair: rgba(17,20,24,.10); --hair2: rgba(17,20,24,.18);
+  --accent: #1bc47d; --accent-ink: #ffffff;
   --sec: #2563eb; --sec-ink: #ffffff;
   --warn: #e0365a; --warn-ink: #ffffff;
 }
@@ -73,74 +65,6 @@ body[data-game="notifications"] {
   --sec: #5cc2ff; --sec-ink: #041826;
   --warn: #ff5c5c; --warn-ink: #240404;
 }
-
-/* ==========================================================================
-   Pokémon-only light-theme overrides (2026-10-15 sample restyle)
-   --------------------------------------------------------------------------
-   Everything above (the --bg/--surface/--ink/etc. token swap) handles most
-   of "dark -> light" automatically, since nearly every component here was
-   already written against those tokens. What tokens alone CAN'T fix:
-     1. A handful of hardcoded #fff text colors that assumed a dark page
-        (brand wordmark, nav tooltip, card name) — these need an explicit
-        dark-ink override now that the surface behind them is white.
-     2. The site's whole dark-mode SHAPE language — clipped diagonal
-        corners (.cut/.cut-sm) and skewed parallelogram chips — reads as
-        "edgy gamer HUD", not trackalacker's soft rounded-card SaaS look.
-        Squaring those off to plain border-radius is most of what actually
-        delivers "less messy."
-     3. Stock-status text (IN STOCK/OUT OF STOCK/etc.) had no color-coding
-        before, just dim gray — now rendered as small colored pill badges
-        (see the data-stock attribute pokemon-app.js's renderCard() now
-        sets) instead of a wall of same-colored text.
-   Scoped entirely under [data-game="pokemon"] so MTG/Lorcana/Nintendo/
-   Heads Up/Notifications keep their current (unreviewed) dark styling
-   until this direction is approved.
-   ========================================================================== */
-body[data-game="pokemon"] .tcg-header { background: var(--surface); box-shadow: 0 1px 0 var(--hair); }
-body[data-game="pokemon"] .tcg-brand-word { color: var(--ink); }
-body[data-game="pokemon"] .tcg-nav-item.active { background: color-mix(in srgb, var(--accent) 12%, transparent); }
-body[data-game="pokemon"] .tcg-nav-tip { background: #16181b; color: #fff; border-color: transparent; }
-body[data-game="pokemon"] .mkt-ticker-wrap { box-shadow: 0 1px 0 var(--hair); }
-
-body[data-game="pokemon"] .cut,
-body[data-game="pokemon"] .cut-sm { clip-path: none; border-radius: 14px; }
-body[data-game="pokemon"] .chip { transform: none; border-radius: 999px; }
-body[data-game="pokemon"] .chip > * { transform: none; }
-
-body[data-game="pokemon"] .card {
-  border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(16,24,32,.04), 0 10px 24px rgba(16,24,32,.06);
-}
-body[data-game="pokemon"] .card .artwell { border-radius: 16px 16px 0 0; }
-body[data-game="pokemon"] .card.good-price {
-  box-shadow: 0 0 0 1.5px var(--accent), 0 10px 24px rgba(16,24,32,.08);
-}
-body[data-game="pokemon"] .card-name { color: var(--ink); }
-
-body[data-game="pokemon"] .card-stock {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  font-family: Archivo, sans-serif;
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: .02em;
-  padding: 4px 10px;
-  border-radius: 999px;
-}
-body[data-game="pokemon"] .card-stock[data-stock="in_stock"] { background: color-mix(in srgb, var(--accent) 16%, transparent); color: #0c7a52; }
-body[data-game="pokemon"] .card-stock[data-stock="out_of_stock"] { background: rgba(22,24,27,.06); color: var(--dim); }
-body[data-game="pokemon"] .card-stock[data-stock="unknown"] { background: rgba(22,24,27,.06); color: var(--dim); }
-body[data-game="pokemon"] .card-stock[data-stock="account_gated"] { background: rgba(37,99,235,.12); color: #1d4ed8; }
-body[data-game="pokemon"] .card-stock[data-stock="none"] { background: transparent; color: var(--dim2); padding-left: 0; font-weight: 500; }
-
-body[data-game="pokemon"] .h2 { color: var(--ink); }
-body[data-game="pokemon"] .cat-filter { font-family: Archivo, sans-serif; font-weight: 600; }
-body[data-game="pokemon"] .event,
-body[data-game="pokemon"] .tab-btn { border-radius: 14px; }
-body[data-game="pokemon"] .alert-input,
-body[data-game="pokemon"] .alert-btn,
-body[data-game="pokemon"] .tcg-mute-btn { box-shadow: none; }
 
 * { box-sizing: border-box; }
 
@@ -1378,4 +1302,159 @@ a.event::after {
   font-family: 'Roboto Mono', monospace;
   font-size: 11px;
   color: var(--dim2);
+}
+
+
+/* ==========================================================================
+   2026-10-15 — Pokémon product cards, simplified (trackalacker-style
+   STRUCTURE on the original dark theme): one card per product, a real
+   photo, name, MSRP / TCGplayer, then one row per store with a colored
+   status dot, price and a direct link. Replaces the old one-card-per-
+   listing layout with its checklist / mute / "ALERT ≤" clutter.
+   ========================================================================== */
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 16px; padding: 16px; }
+.pcard { background: var(--surface); border: 1px solid var(--hair); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+.pcard.is-live { border-color: #22c55e; box-shadow: 0 0 0 1px #22c55e inset; }
+.pcard-img { position: relative; aspect-ratio: 1 / 1; background: #fff; display: flex; align-items: center; justify-content: center; }
+.pcard-img img { width: 100%; height: 100%; object-fit: contain; padding: 12px; box-sizing: border-box; }
+.pcard-img .pcard-ph { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px; text-align: center; color: #6b5d55; font-size: 13px; font-weight: 600; background: var(--well); width: 100%; height: 100%; justify-content: center; box-sizing: border-box; }
+.pcard-img .pcard-ph img { width: 44px; height: 44px; padding: 0; opacity: .7; }
+.pcard-img .pcard-ph span { color: var(--dim); }
+.pcard-flag { position: absolute; top: 10px; left: 10px; font: 800 11px/1 Archivo, sans-serif; letter-spacing: .04em; padding: 6px 10px; border-radius: 999px; background: #22c55e; color: #04210f; }
+.pcard-flag.good { background: var(--accent); color: var(--accent-ink); }
+.pcard-bell { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 999px; border: 0; background: rgba(23,10,8,.75); color: #fff; font-size: 16px; cursor: pointer; }
+.pcard-bell.is-muted { opacity: .55; }
+.pcard-body { padding: 14px 14px 6px; }
+.pcard-name { font: 700 16px/1.25 Archivo, sans-serif; color: var(--ink); margin: 0 0 6px; }
+.pcard-meta { font: 500 12px/1.4 'Roboto Mono', monospace; color: var(--dim); }
+.pcard-meta b { color: var(--ink); font-weight: 600; }
+.pcard-stores { list-style: none; margin: 8px 0 0; padding: 0 0 8px; }
+.pcard-store { border-top: 1px solid var(--hair); }
+.pcard-store a, .pcard-store > div { display: grid; grid-template-columns: 10px 1fr auto auto; align-items: center; gap: 10px; padding: 11px 14px; color: var(--ink); text-decoration: none; font-size: 14px; }
+.pcard-store a:hover { background: rgba(255,255,255,.03); }
+.pcard-dot { width: 10px; height: 10px; border-radius: 999px; background: #6b5d55; }
+.pcard-store[data-s="in"] .pcard-dot { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
+.pcard-store[data-s="gated"] .pcard-dot { background: var(--sec); }
+.pcard-store[data-s="out"] .pcard-dot { background: #e5383b; }
+.pcard-status { font: 600 11px/1 'Roboto Mono', monospace; color: var(--dim); text-transform: uppercase; letter-spacing: .03em; }
+.pcard-store[data-s="in"] .pcard-status { color: #22c55e; }
+.pcard-price { font: 700 14px/1 'Roboto Mono', monospace; color: var(--ink); min-width: 58px; text-align: right; }
+.pcard-checked { padding: 0 14px 12px; font: 500 11px/1.3 'Roboto Mono', monospace; color: var(--dim2); }
+
+/* Compact drawing banner (replaces the old full-height drawing hero). */
+.dbanner { margin: 16px; border-radius: 16px; border: 1px solid var(--hair); background: var(--surface); display: flex; gap: 14px; align-items: center; padding: 12px; }
+.dbanner.open { border-color: #22c55e; background: rgba(34,197,94,.08); }
+.dbanner img { width: 64px; height: 64px; object-fit: contain; background: #fff; border-radius: 10px; flex: none; }
+.dbanner-text { flex: 1; min-width: 0; }
+.dbanner-title { font: 800 15px/1.25 Archivo, sans-serif; color: var(--ink); }
+.dbanner-sub { font: 500 12px/1.4 'Roboto Mono', monospace; color: var(--dim); margin-top: 3px; }
+.dbanner a.btn-sm { flex: none; padding: 10px 14px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font: 800 12px/1 Archivo, sans-serif; text-decoration: none; }
+
+/* Grouped recent alerts: one row per product+store, with a repeat count. */
+.alist { display: flex; flex-direction: column; gap: 8px; }
+.arow { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--hair); border-radius: 12px; background: var(--surface); color: var(--ink); text-decoration: none; font-size: 14px; }
+.arow-kind { font: 800 10px/1 Archivo, sans-serif; letter-spacing: .05em; padding: 5px 8px; border-radius: 999px; background: rgba(34,197,94,.15); color: #22c55e; text-transform: uppercase; }
+.arow[data-kind="good_price"] .arow-kind { background: rgba(255,203,5,.15); color: var(--accent); }
+.arow-time { font: 500 12px/1 'Roboto Mono', monospace; color: var(--dim); white-space: nowrap; }
+.arow-count { font: 700 11px/1 'Roboto Mono', monospace; color: var(--dim); margin-left: 6px; }
+@media (max-width: 560px) {
+  .pgrid { gap: 12px; padding: 12px; }
+  .pcard-img { aspect-ratio: auto; height: 180px; }
+}
+
+
+/* ==========================================================================
+   2026-10-15 v2 — TrackaLacker-style Pokémon page (.tl-*). Image-first
+   tiles in horizontal strips, category label on the left, a mint "+ TRACK"
+   pill on every photo, a product sheet with "Where to buy", and a
+   "Recent restocks" deal row. Minimal copy.
+   ========================================================================== */
+body[data-game="pokemon"] { background: #fff; color: var(--ink); }
+body[data-game="pokemon"] .tcg-header { background: #fff; box-shadow: 0 1px 0 var(--hair); }
+body[data-game="pokemon"] .tcg-brand-word { color: var(--ink); }
+body[data-game="pokemon"] .tcg-nav-tip { background: #111418; color: #fff; border-color: transparent; }
+body[data-game="pokemon"] .tcg-nav-item.active { background: rgba(27,196,125,.14); }
+body[data-game="pokemon"] .mkt-ticker-wrap { background: #111418; }
+
+.tl-hero { text-align: center; padding: 40px 16px 24px; background: linear-gradient(180deg, #eafaf3 0%, #fff 100%); }
+.tl-eyebrow, .tl-section-eyebrow { font: 800 13px/1 Archivo, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #e8a400; }
+.tl-title { margin: 10px 0 0; font: 900 clamp(30px, 7vw, 52px)/1 Archivo, sans-serif; font-stretch: 75%; text-transform: uppercase; color: var(--ink); letter-spacing: .01em; }
+.tl-drawing { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; padding: 10px 16px; border-radius: 999px; background: #fff; border: 1px solid var(--hair2); color: var(--ink); font: 700 13px/1.2 Archivo, sans-serif; text-decoration: none; }
+.tl-drawing.open { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tl-drawing-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--dim2); }
+.tl-drawing.open .tl-drawing-dot { background: #fff; }
+
+.tl-coming, .tl-browse, .tl-deals { max-width: 1240px; margin: 0 auto; padding: 24px 16px; }
+.tl-section-title { font: 900 clamp(20px, 3.4vw, 28px)/1.1 Archivo, sans-serif; font-stretch: 80%; color: var(--ink); text-align: center; margin-bottom: 18px; }
+.tl-deals { text-align: center; background: #f2fbf7; max-width: none; }
+.tl-deals > * { max-width: 1240px; margin-left: auto; margin-right: auto; }
+
+.tl-row { display: grid; grid-template-columns: 150px 1fr; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--hair); }
+.tl-row-label { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+.tl-row-kicker { font: 800 10px/1 Archivo, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #e8a400; }
+.tl-row-name { font: 900 15px/1.1 Archivo, sans-serif; font-stretch: 80%; text-transform: uppercase; color: var(--ink); }
+.tl-row-count { font: 700 10px/1 Archivo, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); border-bottom: 2px solid var(--ink); padding-bottom: 2px; margin-top: 4px; }
+
+.tl-strip { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x proximity; padding: 4px 2px 10px; scrollbar-width: thin; }
+.tl-tile { flex: 0 0 150px; scroll-snap-align: start; cursor: pointer; text-decoration: none; color: inherit; text-align: center; outline: none; }
+.tl-tile:focus-visible .tl-photo { box-shadow: 0 0 0 3px rgba(27,196,125,.5); }
+.tl-photo { position: relative; width: 150px; height: 150px; border-radius: 12px; border: 1px solid var(--hair); background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; transition: box-shadow .15s; }
+.tl-tile:hover .tl-photo { box-shadow: 0 6px 18px rgba(17,20,24,.10); }
+.tl-photo > img { width: 100%; height: 100%; object-fit: contain; padding: 10px; box-sizing: border-box; }
+.tl-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--well); }
+.tl-ph img { width: 40px; height: 40px; opacity: .35; }
+.tl-badge { position: absolute; top: 6px; left: 6px; font: 800 10px/1 Archivo, sans-serif; padding: 5px 7px; border-radius: 6px; background: var(--accent); color: #fff; }
+.tl-badge.good { background: #e8a400; }
+.tl-badge.kind-release { background: #2563eb; }
+.tl-badge.kind-lottery { background: #ffc220; color: #111418; }
+.tl-badge.kind-event { background: #111418; }
+.tl-track { position: absolute; right: 6px; bottom: 6px; border: 0; border-radius: 999px; padding: 6px 10px; font: 800 10px/1 Archivo, sans-serif; letter-spacing: .04em; background: var(--accent); color: #fff; cursor: pointer; box-shadow: 0 2px 6px rgba(17,20,24,.15); }
+.tl-track.on { background: #111418; }
+.tl-track:disabled { opacity: .6; }
+.tl-name { margin-top: 8px; font: 600 12px/1.3 Archivo, sans-serif; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tl-price { margin-top: 3px; font: 700 12px/1.2 Archivo, sans-serif; color: var(--dim); }
+
+.tl-cu.hot .tl-photo { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.tl-datebox { flex-direction: column; background: var(--well); }
+.tl-dmon { font: 800 13px/1 Archivo, sans-serif; text-transform: uppercase; color: var(--accent); letter-spacing: .06em; text-align: center; padding: 0 8px; }
+.tl-dday { font: 900 52px/1 Archivo, sans-serif; color: var(--ink); margin-top: 4px; }
+.tl-cu-line { font-weight: 600; }
+
+.tl-deal-row { display: flex; gap: 14px; overflow-x: auto; justify-content: safe center; padding-bottom: 8px; text-align: left; }
+.tl-deal { flex: 0 0 210px; background: #fff; border: 1px solid var(--hair); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.tl-deal-photo { position: relative; height: 120px; border-radius: 8px; background: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.tl-deal-photo > img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.tl-deal-name { font: 700 13px/1.25 Archivo, sans-serif; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tl-deal-price { font: 900 18px/1 Archivo, sans-serif; color: var(--ink); min-height: 18px; }
+.tl-deal-btn { display: block; text-align: center; padding: 9px; border-radius: 8px; background: #111418; color: #fff; font: 800 11px/1 Archivo, sans-serif; letter-spacing: .04em; text-decoration: none; }
+.tl-deal-time { font: 600 11px/1 Archivo, sans-serif; color: var(--dim2); }
+
+.tl-sheet { position: fixed; inset: 0; background: rgba(17,20,24,.45); z-index: 1000; display: flex; align-items: flex-end; justify-content: center; }
+.tl-sheet[hidden] { display: none; }
+.tl-panel { position: relative; width: min(560px, 100%); max-height: 88vh; overflow: auto; background: #fff; border-radius: 18px 18px 0 0; padding: 20px 18px 28px; color: var(--ink); }
+@media (min-width: 700px) { .tl-sheet { align-items: center; } .tl-panel { border-radius: 18px; } }
+.tl-close { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 999px; border: 0; background: var(--well); color: var(--ink); cursor: pointer; }
+.tl-panel-top { display: grid; grid-template-columns: 120px 1fr; gap: 14px; align-items: center; }
+.tl-panel-photo { position: relative; width: 120px; height: 120px; border-radius: 12px; border: 1px solid var(--hair); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.tl-panel-photo > img { width: 100%; height: 100%; object-fit: contain; padding: 8px; box-sizing: border-box; }
+.tl-panel-name { font: 800 18px/1.2 Archivo, sans-serif; padding-right: 30px; }
+.tl-panel-meta { margin: 6px 0 10px; font: 600 12px/1.3 Archivo, sans-serif; color: var(--dim); }
+.tl-panel-top .tl-track { position: static; padding: 9px 14px; font-size: 11px; }
+.tl-where { margin: 20px 0 6px; font: 900 14px/1 Archivo, sans-serif; text-transform: uppercase; letter-spacing: .05em; }
+.tl-store { display: grid; grid-template-columns: 1fr auto auto; grid-template-areas: "n s p" "t t g"; gap: 4px 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--hair); color: var(--ink); text-decoration: none; font: 700 14px/1.2 Archivo, sans-serif; }
+.tl-store-name { grid-area: n; }
+.tl-store-status { grid-area: s; font-size: 11px; padding: 4px 8px; border-radius: 999px; background: var(--well); color: var(--dim); }
+.tl-store[data-s="in"] .tl-store-status { background: rgba(27,196,125,.15); color: #0b8a55; }
+.tl-store[data-s="out"] .tl-store-status { background: rgba(224,54,90,.10); color: #c0284a; }
+.tl-store[data-s="gated"] .tl-store-status { background: rgba(37,99,235,.10); color: #1d4ed8; }
+.tl-store-price { grid-area: p; min-width: 64px; text-align: right; }
+.tl-store-time { grid-area: t; font: 500 11px/1 Archivo, sans-serif; color: var(--dim2); }
+.tl-store-go { grid-area: g; font: 800 11px/1 Archivo, sans-serif; color: var(--accent); text-align: right; }
+
+@media (max-width: 640px) {
+  .tl-row { grid-template-columns: 1fr; gap: 8px; }
+  .tl-row-label { flex-direction: row; justify-content: flex-start; gap: 8px; align-items: baseline; }
+  .tl-row-count { margin-top: 0; }
+  .tl-tile { flex-basis: 132px; }
+  .tl-photo { width: 132px; height: 132px; }
 }
