@@ -134,6 +134,7 @@ body[data-game="pokemon"] .card-stock[data-stock="unknown"] { background: rgba(2
 body[data-game="pokemon"] .card-stock[data-stock="account_gated"] { background: rgba(37,99,235,.12); color: #1d4ed8; }
 body[data-game="pokemon"] .card-stock[data-stock="none"] { background: transparent; color: var(--dim2); padding-left: 0; font-weight: 500; }
 
+body[data-game="pokemon"] .h2 { color: var(--ink); }
 body[data-game="pokemon"] .cat-filter { font-family: Archivo, sans-serif; font-weight: 600; }
 body[data-game="pokemon"] .event,
 body[data-game="pokemon"] .tab-btn { border-radius: 14px; }
