@@ -51,11 +51,11 @@
 // v9 — added nintendo.html/nintendo-app.js, the first non-TCG product
 // page (see the project doc). Same "keep this list in sync or
 // cache.addAll fails for EVERY page" reasoning as v4/v5 above.
-const CACHE = 'tcgtracker-shell-v9';
+const CACHE = 'tcgtracker-shell-v10';
 const SHELL_FILES = [
-  '/', '/index.html', '/lorcana.html', '/pokemon.html', '/heads-up.html', '/nintendo.html',
-  '/runtime.js', '/pwa-boot.js', '/pokemon-app.js', '/heads-up-app.js', '/nintendo-app.js',
-  '/push-client.js', '/urgent-ticker.js', '/styles.css',
+  '/', '/index.html', '/lorcana.html', '/pokemon.html', '/heads-up.html', '/nintendo.html', '/notifications.html',
+  '/runtime.js', '/pwa-boot.js', '/pokemon-app.js', '/heads-up-app.js', '/nintendo-app.js', '/notifications-app.js',
+  '/push-client.js', '/urgent-ticker.js', '/notification-badge.js', '/checkout-helpers.js', '/mute-toggle.js', '/styles.css',
   '/manifest.json',
 ];
 

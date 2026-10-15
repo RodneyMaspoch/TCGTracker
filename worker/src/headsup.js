@@ -21,7 +21,16 @@ import { insertHeadsUp } from './db.js';
 import { notifyAll } from './push.js';
 
 const KEYWORD_RE = /(drawing|lottery|restock|pre[- ]?order|drop)/i;
-const RETAILER_RE = /(walmart|target|best ?buy|gamestop)/i;
+// 2026-10-14 — widened per user request, reasoning that lower-traffic
+// retailers (Sam's Club, Costco, Walgreens, Hobby Lobby, Dollar General)
+// may actually be the best opportunity since fewer people are watching
+// them. This only changes which retailer NAMES this file recognizes
+// inside text these sources ALREADY fetch (SOURCES/RESTOCKD_URL/
+// HOTSTOCK_URL below) — it does not add any new page/source, so it can
+// only surface a mention these pages already happen to contain; it was
+// previously silently dropped by the old walmart/target/bestbuy/gamestop-
+// only regex even when present.
+const RETAILER_RE = /(walmart|target|best ?buy|gamestop|sam'?s ?club|costco|walgreens|hobby ?lobby|dollar ?general|pok[ée]mon ?center)/i;
 // Matches a near-term date mention: a weekday name, "today"/"tomorrow", or
 // a month name + day number — loose on purpose, this only decides whether
 // a snippet is *worth surfacing*, not what the date actually is.
@@ -76,6 +85,10 @@ function normalizeRetailer(raw) {
   if (low.includes('antonline')) return 'Antonline';
   if (low.includes("sam's") || low.includes('sams club')) return "Sam's Club";
   if (low.includes('costco')) return 'Costco';
+  // 2026-10-14 — added alongside the RETAILER_RE widening above.
+  if (low.includes('walgreens')) return 'Walgreens';
+  if (low.includes('hobby lobby')) return 'Hobby Lobby';
+  if (low.includes('dollar general')) return 'Dollar General';
   return raw.trim();
 }
 
@@ -404,7 +417,16 @@ async function checkAutoqueuePokemonCenter(env) {
 // Reddit's own search JSON is public and needs no API key for this volume
 // of use — same "read a public page" boundary as everything else here.
 async function checkReddit(env) {
-  const url = 'https://www.reddit.com/r/pokemontcg/search.json?q=walmart+drawing+OR+walmart+restock&restrict_sr=1&sort=new&limit=10';
+  // 2026-10-14 — widened from a Walmart-only query so lower-traffic
+  // retailers' restock chatter (reasoned by the user to be a real
+  // opportunity precisely because fewer people are watching them) has a
+  // chance to surface here too, not just get silently matched-and-dropped
+  // by what used to be a narrower RETAILER_RE downstream. Built with
+  // encodeURIComponent rather than hand-written +-for-space, since this
+  // query has quotes/apostrophes that need real percent-encoding to stay
+  // valid.
+  const q = 'walmart drawing OR walmart restock OR "sam\'s club" restock OR costco restock OR walgreens restock OR "hobby lobby" restock OR "dollar general" restock';
+  const url = `https://www.reddit.com/r/pokemontcg/search.json?q=${encodeURIComponent(q)}&restrict_sr=1&sort=new&limit=15`;
   let json;
   try {
     const text = await fetchText(url);

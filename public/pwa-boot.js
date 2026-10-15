@@ -22,7 +22,11 @@ async function fetchListingByUrl() {
   const products = await fetch('/api/products').then((r) => r.json());
   const listingByUrl = {};
   for (const p of products) {
-    for (const l of p.listings || []) listingByUrl[l.url] = l;
+    // 2026-10-14 — `muted` lives on the PRODUCT row (0008_product_muted.sql),
+    // not the listing row, but every card here is keyed by listing URL —
+    // carry it along onto each listing object so patchDeals/patchHot/
+    // patchWatch can read it off the same `l` they already have.
+    for (const l of p.listings || []) listingByUrl[l.url] = { ...l, product_muted: !!p.muted };
   }
   return listingByUrl;
 }
@@ -43,6 +47,10 @@ function patchDeals(dealsArray, listingByUrl) {
   for (const d of dealsArray) {
     const l = listingByUrl[d.url];
     d.ago = checkedLabel(l && l.last_checked_at);
+    // Set regardless of whether a price was found this round — mute state
+    // should never go stale/missing just because this tick's scrape came
+    // back empty on price.
+    if (l) { d.muted = l.product_muted; changed = true; }
     if (!l || l.last_price == null) continue;
 
     const price = Number(l.last_price);

@@ -105,6 +105,24 @@ function renderTrackedCard(product, l) {
     pad.appendChild(row);
   }
 
+  // 2026-10-14 — legitimate purchase-acceleration helpers (see
+  // checkout-helpers.js). Amazon quick-add only appears for a real,
+  // recognizable Amazon URL (Nintendo listings are nintendo.com, so this
+  // is dormant here specifically, but the same card renderer pattern is
+  // shared with every other page). The checklist is always real-retailer
+  // text — never an automated add-to-cart/checkout flow.
+  if (l && window.TCGCheckoutHelpers) {
+    const quickAdd = window.TCGCheckoutHelpers.buildAmazonQuickAddButton(l.url);
+    if (quickAdd) pad.appendChild(quickAdd);
+    pad.appendChild(window.TCGCheckoutHelpers.buildChecklistDetails(l.retailer));
+  }
+
+  // 2026-10-14 — per-product mute (see mute-toggle.js) — the user's own
+  // alternative to a backend restock cooldown.
+  if (window.TCGMuteToggle) {
+    pad.appendChild(window.TCGMuteToggle.buildMuteButton(product));
+  }
+
   card.appendChild(pad);
   return card;
 }
@@ -163,6 +181,10 @@ function renderSearchCard(item) {
     row.className = 'card-msrp-row';
     row.innerHTML = `<span class="num">$${Number(item.price).toFixed(2)}</span>`;
     pad.appendChild(row);
+  }
+
+  if (window.TCGCheckoutHelpers) {
+    pad.appendChild(window.TCGCheckoutHelpers.buildChecklistDetails('nintendo'));
   }
 
   const trackBtn = document.createElement('button');

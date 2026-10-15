@@ -67,7 +67,14 @@
       display: flex;
       width: max-content;
       gap: 48px;
-      animation: tcg-urgent-scroll 22s linear infinite;
+      /* 2026-10-13 — was 22s, which read as "flying by" with even a
+         handful of items (each one is a full sentence, not a single
+         word — 22s isn't enough time to actually read several of these
+         back to back). Slowed down; also now scales with how much text
+         there actually is (see setDuration below) instead of a single
+         fixed number, so a long list of items doesn't fly by just as
+         fast as a short one. */
+      animation: tcg-urgent-scroll 55s linear infinite;
       will-change: transform;
     }
     .tcg-urgent-wrap:hover .tcg-urgent-track { animation-play-state: paused; }
@@ -158,6 +165,21 @@
       border-radius: 50%;
     }
     .tcg-toast-close:hover { background: rgba(255,255,255,.08); color: #eef1f4; }
+    .tcg-toast-clearall {
+      align-self: flex-end;
+      background: rgba(21,23,27,.9);
+      border: 1px solid rgba(238,241,244,.18);
+      color: rgba(238,241,244,.75);
+      font-family: 'Roboto Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .tcg-toast-clearall:hover { color: #eef1f4; border-color: rgba(238,241,244,.4); }
   `;
 
   function injectStyle() {
@@ -220,37 +242,126 @@
         track.appendChild(item);
       }
     }
+
+    // 2026-10-13 — a fixed animation-duration meant a list of 6 items
+    // scrolled across the screen just as fast as a list of 1, which is
+    // why this read as "flying by" once more than a couple of events
+    // were active at once. Scale the duration to the actual rendered
+    // width instead: ~70px of content per second is a comfortable
+    // reading pace for short all-caps sentences, with a floor so even a
+    // single short item doesn't rush past, and a ceiling so a very long
+    // list doesn't crawl forever.
+    const PX_PER_SECOND = 70;
+    const halfWidth = track.scrollWidth / 2; // two laps were rendered above
+    const seconds = Math.min(90, Math.max(28, Math.round(halfWidth / PX_PER_SECOND)));
+    track.style.animationDuration = `${seconds}s`;
   }
 
+  // 2026-10-13 — this stack had no cap and no de-duplication: a listing
+  // whose scraped stock status flaps (purchasable → not → purchasable
+  // again across a few ~15s ticks — see the project doc's note on this)
+  // produced a genuinely-new DB event id each time, and each one got its
+  // own permanent, manually-dismissed toast. The visible symptom was a
+  // wall of near-identical "RESTOCK: X is now purchasable..." cards
+  // filling the whole side of the screen. This does NOT change which
+  // events get stored or pushed as OS notifications (see push.js /
+  // notifyAll — a separate channel) — it only changes how many of them
+  // pile up as in-page toasts, which is purely a display concern:
+  //  1. A toast with the EXACT SAME message as one already on screen
+  //     doesn't get a sibling — it bumps a "×N" counter on the existing
+  //     one instead, and refreshes its time-ago text.
+  //  2. At most MAX_VISIBLE_TOASTS are ever shown at once; the oldest is
+  //     dropped (not hidden-but-kept — actually removed) when a new,
+  //     genuinely different one arrives past that cap.
+  //  3. A "Clear all" pill appears once there's more than one toast, so
+  //     clearing a pile-up doesn't mean closing each one individually.
+  const MAX_VISIBLE_TOASTS = 4;
+  let activeToasts = []; // [{ message, el, count, countEl, topEl, timeLabel, createdAt }]
   let toastStack = null;
+  let clearAllBtn = null;
+
   function toastHost() {
     if (!toastStack) {
       injectStyle();
       toastStack = document.createElement('div');
       toastStack.className = 'tcg-toast-stack';
+      clearAllBtn = document.createElement('button');
+      clearAllBtn.type = 'button';
+      clearAllBtn.className = 'tcg-toast-clearall';
+      clearAllBtn.textContent = 'Clear all';
+      clearAllBtn.style.display = 'none';
+      clearAllBtn.addEventListener('click', clearAllToasts);
+      toastStack.appendChild(clearAllBtn);
       document.body.appendChild(toastStack);
     }
     return toastStack;
   }
 
+  function updateClearAllVisibility() {
+    if (clearAllBtn) clearAllBtn.style.display = activeToasts.length > 1 ? '' : 'none';
+  }
+
+  function dismissToast(entry) {
+    entry.el.remove();
+    activeToasts = activeToasts.filter((t) => t !== entry);
+    updateClearAllVisibility();
+  }
+
+  function clearAllToasts() {
+    for (const entry of activeToasts.slice()) dismissToast(entry);
+  }
+
   function showToast(ev) {
+    // Same exact message already showing (a flap, or the same restock
+    // re-confirmed on a later tick) — bump its counter instead of
+    // stacking a duplicate card.
+    const existing = activeToasts.find((t) => t.message === ev.message);
+    if (existing) {
+      existing.count += 1;
+      existing.createdAt = Date.now();
+      existing.countEl.textContent = ` ×${existing.count}`;
+      existing.countEl.style.display = '';
+      existing.timeLabel.textContent = timeAgo(ev.created_at);
+      return;
+    }
+
     const toast = document.createElement('div');
     toast.className = 'tcg-toast';
     const inner = document.createElement(ev.url ? 'a' : 'div');
     if (ev.url) { inner.href = ev.url; inner.target = '_blank'; inner.rel = 'noopener noreferrer'; }
-    inner.innerHTML = `
-      <div class="tcg-toast-top">${kindGlyph(ev.kind)} ${ev.confirmed ? 'NEW' : 'NEW · UNCONFIRMED'}</div>
-      <div class="tcg-toast-title">${ev.message}</div>
-    `;
+    const top = document.createElement('div');
+    top.className = 'tcg-toast-top';
+    const countEl = document.createElement('span');
+    countEl.style.display = 'none';
+    top.innerHTML = `${kindGlyph(ev.kind)} ${ev.confirmed ? 'NEW' : 'NEW · UNCONFIRMED'}`;
+    top.appendChild(countEl);
+    const title = document.createElement('div');
+    title.className = 'tcg-toast-title';
+    title.textContent = ev.message;
+    const timeLabel = document.createElement('span');
+    timeLabel.textContent = '';
+    inner.appendChild(top);
+    inner.appendChild(title);
     toast.appendChild(inner);
     const close = document.createElement('button');
     close.className = 'tcg-toast-close';
     close.type = 'button';
     close.setAttribute('aria-label', 'Dismiss');
     close.textContent = '×';
-    close.addEventListener('click', () => toast.remove());
     toast.appendChild(close);
+
+    const entry = { message: ev.message, el: toast, count: 1, countEl, timeLabel, createdAt: Date.now() };
+    close.addEventListener('click', () => dismissToast(entry));
+    activeToasts.push(entry);
     toastHost().appendChild(toast);
+
+    // Oldest-first eviction once past the visible cap — a genuinely new,
+    // distinct alert always gets shown; it's the pile-up that gets
+    // trimmed, not newly-arriving information.
+    while (activeToasts.length > MAX_VISIBLE_TOASTS) {
+      dismissToast(activeToasts[0]);
+    }
+    updateClearAllVisibility();
   }
 
   // Set of "<table>-<id>" strings already shown, so a poll that sees the

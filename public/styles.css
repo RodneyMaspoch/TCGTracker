@@ -11,14 +11,23 @@
   --radius-cut: 16px;
 }
 
-/* ---------- Pokémon: near-black-red / gold / blue ---------- */
+/* ---------- Pokémon: 2026-10-15 — light theme sample (user request: "too
+   dark and messy", redo to match trackalacker.com's clean white/card-grid/
+   mint-green look). This is a SAMPLE restyle of this one page only, to
+   approve the direction before touching MTG/Lorcana/Nintendo/Heads Up/
+   Notifications — every other body[data-game=...] block below is
+   untouched. --hero-base is kept dark navy on purpose (not tied to --bg)
+   so the drawing/feature hero reads as a deliberate dark card on an
+   otherwise light page, same pairing trackalacker's own dark hero banner
+   makes against their white page background. See the project doc for the
+   full before/after reasoning. */
 body[data-game="pokemon"] {
-  --bg: #170a08; --surface: #20120e; --well: #190d0a; --hero-base: #1b0f0b;
-  --ink: #f7ece3; --dim: rgba(247,236,227,.62); --dim2: rgba(247,236,227,.45);
-  --hair: rgba(247,236,227,.12); --hair2: rgba(247,236,227,.2);
-  --accent: #FFCB05; --accent-ink: #241300;
-  --sec: #3b82f6; --sec-ink: #ffffff;
-  --warn: #e5383b; --warn-ink: #210800;
+  --bg: #f6f8f7; --surface: #ffffff; --well: #eef1ef; --hero-base: #11222b;
+  --ink: #16181b; --dim: rgba(22,24,27,.64); --dim2: rgba(22,24,27,.46);
+  --hair: rgba(22,24,27,.09); --hair2: rgba(22,24,27,.16);
+  --accent: #17c98c; --accent-ink: #ffffff;
+  --sec: #2563eb; --sec-ink: #ffffff;
+  --warn: #e0365a; --warn-ink: #ffffff;
 }
 
 /* ---------- MTG: near-black / lime / purple ---------- */
@@ -51,6 +60,86 @@ body[data-game="headsup"] {
   --sec: #5cc2ff; --sec-ink: #041826;
   --warn: #ff5c5c; --warn-ink: #240404;
 }
+
+/* ---------- Notifications: 2026-10-14, new page — same neutral graphite
+   base as Heads Up (this page also mixes every game), violet accent
+   instead of amber so the two are visually distinct at a glance despite
+   both using a near-identical bell-family icon concept in the nav. ---------- */
+body[data-game="notifications"] {
+  --bg: #0b0d10; --surface: #14171b; --well: #101215; --hero-base: #101215;
+  --ink: #eef1f4; --dim: rgba(238,241,244,.62); --dim2: rgba(238,241,244,.45);
+  --hair: rgba(238,241,244,.12); --hair2: rgba(238,241,244,.2);
+  --accent: #a78bfa; --accent-ink: #1a1030;
+  --sec: #5cc2ff; --sec-ink: #041826;
+  --warn: #ff5c5c; --warn-ink: #240404;
+}
+
+/* ==========================================================================
+   Pokémon-only light-theme overrides (2026-10-15 sample restyle)
+   --------------------------------------------------------------------------
+   Everything above (the --bg/--surface/--ink/etc. token swap) handles most
+   of "dark -> light" automatically, since nearly every component here was
+   already written against those tokens. What tokens alone CAN'T fix:
+     1. A handful of hardcoded #fff text colors that assumed a dark page
+        (brand wordmark, nav tooltip, card name) — these need an explicit
+        dark-ink override now that the surface behind them is white.
+     2. The site's whole dark-mode SHAPE language — clipped diagonal
+        corners (.cut/.cut-sm) and skewed parallelogram chips — reads as
+        "edgy gamer HUD", not trackalacker's soft rounded-card SaaS look.
+        Squaring those off to plain border-radius is most of what actually
+        delivers "less messy."
+     3. Stock-status text (IN STOCK/OUT OF STOCK/etc.) had no color-coding
+        before, just dim gray — now rendered as small colored pill badges
+        (see the data-stock attribute pokemon-app.js's renderCard() now
+        sets) instead of a wall of same-colored text.
+   Scoped entirely under [data-game="pokemon"] so MTG/Lorcana/Nintendo/
+   Heads Up/Notifications keep their current (unreviewed) dark styling
+   until this direction is approved.
+   ========================================================================== */
+body[data-game="pokemon"] .tcg-header { background: var(--surface); box-shadow: 0 1px 0 var(--hair); }
+body[data-game="pokemon"] .tcg-brand-word { color: var(--ink); }
+body[data-game="pokemon"] .tcg-nav-item.active { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+body[data-game="pokemon"] .tcg-nav-tip { background: #16181b; color: #fff; border-color: transparent; }
+body[data-game="pokemon"] .mkt-ticker-wrap { box-shadow: 0 1px 0 var(--hair); }
+
+body[data-game="pokemon"] .cut,
+body[data-game="pokemon"] .cut-sm { clip-path: none; border-radius: 14px; }
+body[data-game="pokemon"] .chip { transform: none; border-radius: 999px; }
+body[data-game="pokemon"] .chip > * { transform: none; }
+
+body[data-game="pokemon"] .card {
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(16,24,32,.04), 0 10px 24px rgba(16,24,32,.06);
+}
+body[data-game="pokemon"] .card .artwell { border-radius: 16px 16px 0 0; }
+body[data-game="pokemon"] .card.good-price {
+  box-shadow: 0 0 0 1.5px var(--accent), 0 10px 24px rgba(16,24,32,.08);
+}
+body[data-game="pokemon"] .card-name { color: var(--ink); }
+
+body[data-game="pokemon"] .card-stock {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  font-family: Archivo, sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: .02em;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+body[data-game="pokemon"] .card-stock[data-stock="in_stock"] { background: color-mix(in srgb, var(--accent) 16%, transparent); color: #0c7a52; }
+body[data-game="pokemon"] .card-stock[data-stock="out_of_stock"] { background: rgba(22,24,27,.06); color: var(--dim); }
+body[data-game="pokemon"] .card-stock[data-stock="unknown"] { background: rgba(22,24,27,.06); color: var(--dim); }
+body[data-game="pokemon"] .card-stock[data-stock="account_gated"] { background: rgba(37,99,235,.12); color: #1d4ed8; }
+body[data-game="pokemon"] .card-stock[data-stock="none"] { background: transparent; color: var(--dim2); padding-left: 0; font-weight: 500; }
+
+body[data-game="pokemon"] .cat-filter { font-family: Archivo, sans-serif; font-weight: 600; }
+body[data-game="pokemon"] .event,
+body[data-game="pokemon"] .tab-btn { border-radius: 14px; }
+body[data-game="pokemon"] .alert-input,
+body[data-game="pokemon"] .alert-btn,
+body[data-game="pokemon"] .tcg-mute-btn { box-shadow: none; }
 
 * { box-sizing: border-box; }
 
@@ -115,22 +204,39 @@ button { font: inherit; cursor: pointer; }
   justify-content: center;
 }
 .artwell .mono {
+  /* 2026-10-08 — first fix: align-self:flex-end, to stop this text from
+     sitting vertically centered behind the top-left .tag-chip retailer
+     badge (see .card .artwell .tag-chip above) when there's no scraped
+     photo yet. That only works when the text is SHORT ENOUGH to leave
+     room below it to push down into — a long product name (confirmed
+     2026-10-13 on the Nintendo Switch 2 Pro Controller + Display Stand
+     listing, whose full name plus the "(official product photo — link
+     out)" line wraps to 5+ lines) fills almost the entire box regardless
+     of alignment, so flex-end did nothing and the badge still overlapped
+     the first line.
+     2026-10-13 — real fix: stretch this element to fill the WHOLE
+     .artwell box (align-self:stretch + width/height 100%) and reserve a
+     fixed top gutter via padding-top that's always taller than the
+     badge (10px offset + its own ~24px height), independent of how much
+     text wraps below it. The name/subtext still center within the
+     remaining space via this element's own nested flex column. .artwell
+     itself still clips overflow (overflow:hidden, unchanged) so an
+     extremely long name is cropped rather than pushed back up over the
+     badge or spilling out of the card. */
+  align-self: stretch;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 34px 14px 14px;
   font-size: 11px;
   color: var(--dim2);
   text-align: center;
-  padding: 14px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  /* 2026-10-08 — was vertically centered via the parent .artwell's
-     align-items:center, which put the first line of a long placeholder
-     name right behind the top-left .tag-chip retailer badge (see
-     .card .artwell .tag-chip above) whenever there was no scraped photo
-     yet to fill the box — exactly the nintendo.html case that surfaced
-     this, since that product is brand new and has no image yet. Bottom-
-     aligning just this text (not the whole .artwell, which still needs
-     center alignment for a real <img> to fill correctly) keeps it clear
-     of the badge regardless of name length. */
-  align-self: flex-end;
 }
 
 #app {
@@ -410,6 +516,60 @@ button { font: inherit; cursor: pointer; }
 .tcg-nav-item:focus-visible .tcg-nav-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
 @media (max-width: 680px) { .tcg-brand-word { display: none; } }
 @media (max-width: 480px) { .tcg-header-inner { padding-left: 14px !important; padding-right: 14px !important; } }
+
+/* 2026-10-14 — notification-center bell badge (notification-badge.js).
+   Sits on the Notifications nav item; hidden by default (JS reveals it
+   with a real unread count > 0, never shown empty). */
+.tcg-nav-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--warn, #ff5c7a);
+  color: #fff;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 17px;
+  text-align: center;
+  display: none;
+  pointer-events: none;
+}
+
+/* Per-product mute toggle — same per-card control pattern as the alert
+   arm button (card-stock/alert-row area), see pokemon-app.js/
+   nintendo-app.js renderCard() and index.html/lorcana.html's deal cards. */
+.tcg-mute-btn {
+  margin-top: 8px;
+  width: 100%;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--hair2);
+  background: transparent;
+  color: var(--dim);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+.tcg-mute-btn.is-muted { color: var(--warn, #ff5c7a); border-color: var(--warn, #ff5c7a); }
+.tcg-mute-btn:disabled { opacity: .6; cursor: default; }
+
+.event-muted-tag {
+  align-self: flex-start;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dim) 16%, transparent);
+  color: var(--dim);
+}
 
 /* ---------- Tabs (legacy — no longer used by any page; kept so nothing
    404s if an old cached HTML still references .tab-btn) ---------- */
@@ -812,6 +972,46 @@ button { font: inherit; cursor: pointer; }
 .ref-price {
   font-size: 12px;
   color: var(--dim);
+}
+
+/* 2026-10-14 — legitimate purchase-acceleration helpers (checkout-helpers.js).
+   Amazon quick-add button opens Amazon's own documented add-to-cart link in
+   a new tab (cart only — a human still clicks checkout there); the
+   checklist is a collapsed <details> of real account/device settings that
+   speed up checkout, not an automated flow. See worker/src/ and the project
+   doc for why a scripted add-to-cart-through-checkout bot was declined. */
+.tcg-quickadd-btn {
+  display: block;
+  margin-top: 8px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #e8b23d;
+  color: #1a1004;
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.tcg-checkout-checklist {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--dim2);
+}
+
+.tcg-checkout-checklist summary {
+  cursor: pointer;
+  color: var(--dim);
+}
+
+.tcg-checkout-checklist ul {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  line-height: 1.5;
+}
+
+.tcg-checkout-checklist li {
+  margin-bottom: 4px;
 }
 
 .good-price-badge {

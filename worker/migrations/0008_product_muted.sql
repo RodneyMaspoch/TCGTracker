@@ -1,0 +1,18 @@
+-- 0008_product_muted.sql — 2026-10-14
+--
+-- Per-product mute, replacing the idea of a backend restock-cooldown that
+-- was raised (not yet built) in the 2026-10-13 round. The user's own
+-- counter-proposal was better: instead of debouncing/suppressing a
+-- genuinely repeated restock signal at the source (which risks swallowing
+-- a real second restock inside the cooldown window), let the user turn
+-- off alerts for a SPECIFIC product they don't care about (e.g. "I don't
+-- want to hear about Pokemon Pitch Black restocks"), while every other
+-- product keeps alerting at full fidelity, cooldown-free.
+--
+-- Muting suppresses the OS push notification and the in-app toast/ticker/
+-- unread-badge for that product's events going forward (see poll.js and
+-- GET /api/events's include_muted param) — it does NOT stop polling that
+-- product, and does NOT stop the event from being recorded (the full
+-- notification history page always shows everything, muted or not, so
+-- nothing is silently lost, just not pushed at you).
+ALTER TABLE products ADD COLUMN muted INTEGER NOT NULL DEFAULT 0;

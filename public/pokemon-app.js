@@ -490,6 +490,15 @@ function renderCard(product, l) {
 
   const stock = document.createElement('div');
   stock.className = 'card-stock';
+  // 2026-10-15 — data-stock lets the light (Pokémon) theme render this as
+  // a colored pill badge (green/gray/blue) instead of plain dim text —
+  // see styles.css's `[data-game="pokemon"] .card-stock[data-stock=...]`
+  // rules. Purely a styling hook: the TEXT shown is unchanged, still
+  // exactly the same real stock state as before, nothing invented.
+  const stockKey = !l
+    ? 'none'
+    : (l.last_purchasable ? 'in_stock' : (!l.last_stock || l.last_stock === 'unknown' ? 'unknown' : l.last_stock === 'account_gated' ? 'account_gated' : 'out_of_stock'));
+  stock.dataset.stock = stockKey;
   stock.textContent = !l
     ? 'No retailer link tracked yet for this product.'
     : (l.last_purchasable ? 'IN STOCK' : (!l.last_stock || l.last_stock === 'unknown' ? 'STATUS UNKNOWN' : l.last_stock === 'account_gated' ? 'ACCOUNT REQUIRED' : 'OUT OF STOCK'));
@@ -513,6 +522,24 @@ function renderCard(product, l) {
     ref.className = 'ref-price';
     ref.textContent = `TCGPlayer ref: $${product.tcgplayer_ref.toFixed(2)}`;
     pad.appendChild(ref);
+  }
+
+  // 2026-10-14 — legitimate purchase-acceleration helpers (see
+  // checkout-helpers.js): an Amazon quick-add-to-cart link (only appears
+  // when this listing is a real, recognizable Amazon URL — none are
+  // tracked yet, so this is dormant until one is) and a per-retailer
+  // checkout-speed checklist. Neither adds to a cart or buys anything on
+  // its own — a human still clicks every step.
+  if (l && window.TCGCheckoutHelpers) {
+    const quickAdd = window.TCGCheckoutHelpers.buildAmazonQuickAddButton(l.url);
+    if (quickAdd) pad.appendChild(quickAdd);
+    pad.appendChild(window.TCGCheckoutHelpers.buildChecklistDetails(l.retailer));
+  }
+
+  // 2026-10-14 — per-product mute (see mute-toggle.js) — the user's own
+  // alternative to a backend restock cooldown.
+  if (window.TCGMuteToggle) {
+    pad.appendChild(window.TCGMuteToggle.buildMuteButton(product));
   }
 
   const alertRow = document.createElement('div');

@@ -20,7 +20,7 @@ export async function getAllProductsWithListings(env) {
 // stable across ticks (D1/SQLite doesn't guarantee row order otherwise).
 export async function getListingsForLane(env, tier) {
   const { results } = await env.DB.prepare(
-    `SELECT rl.*, p.name as product_name, p.msrp, p.tcgplayer_ref, p.game
+    `SELECT rl.*, p.name as product_name, p.msrp, p.tcgplayer_ref, p.game, p.muted
      FROM retailer_listings rl
      JOIN products p ON p.id = rl.product_id
      WHERE p.poll_tier = ?
@@ -49,9 +49,20 @@ export async function insertEvent(env, row) {
   ).bind(row.created_at, row.kind, row.product_id ?? null, row.message, row.data_json ?? null).run();
 }
 
-export async function getEvents(env, limit = 50) {
+// 2026-10-14 — `includeMuted` lets the full notification-history page (see
+// public/notifications-app.js) show everything that ever happened,
+// while every other caller (the top ticker, toasts, the unread badge)
+// defaults to false so a muted product's events don't bug the user
+// anywhere — see 0008_product_muted.sql for the full reasoning. A LEFT
+// JOIN (not INNER) so an event whose product was later deleted, or that
+// has no product_id at all (drawing_open/drawing_reminder are global, not
+// per-product), still comes through rather than silently vanishing.
+export async function getEvents(env, limit = 50, includeMuted = false) {
   const capped = Math.min(parseInt(limit, 10) || 50, 200);
-  const { results } = await env.DB.prepare('SELECT * FROM events ORDER BY id DESC LIMIT ?').bind(capped).all();
+  const sql = includeMuted
+    ? `SELECT e.*, p.muted as product_muted FROM events e LEFT JOIN products p ON p.id = e.product_id ORDER BY e.id DESC LIMIT ?`
+    : `SELECT e.*, p.muted as product_muted FROM events e LEFT JOIN products p ON p.id = e.product_id WHERE p.muted IS NULL OR p.muted = 0 ORDER BY e.id DESC LIMIT ?`;
+  const { results } = await env.DB.prepare(sql).bind(capped).all();
   // data_json is stored as a raw string; lift its `url` (the actual
   // retailer page the poller checked) up to a top-level field so the
   // frontend can render a real link without having to JSON.parse a blob
@@ -65,6 +76,20 @@ export async function getEvents(env, limit = 50) {
     }
   }
   return results;
+}
+
+// Powers the nav bell's unread-count badge (and the PWA app-icon Badging
+// API where the browser supports it) — a cheap COUNT instead of fetching
+// and re-filtering a full event list client-side on every page, on every
+// poll interval. Same mute-aware filtering as getEvents's default (a
+// muted product's restocks never bump this number).
+export async function getEventsCountSince(env, sinceId) {
+  const since = parseInt(sinceId, 10) || 0;
+  const { results } = await env.DB.prepare(
+    `SELECT COUNT(*) as n FROM events e LEFT JOIN products p ON p.id = e.product_id
+     WHERE e.id > ? AND (p.muted IS NULL OR p.muted = 0)`
+  ).bind(since).all();
+  return results[0]?.n || 0;
 }
 
 export async function getDrawingState(env) {
@@ -117,6 +142,13 @@ export async function allSubscriptions(env) {
 
 export async function setProductTier(env, productId, tier) {
   await env.DB.prepare('UPDATE products SET poll_tier = ? WHERE id = ?').bind(tier, productId).run();
+}
+
+// 2026-10-14 — per-product mute (see 0008_product_muted.sql). Does not
+// touch poll_tier — a muted product keeps being checked at its normal
+// cadence, it just stops pushing/toasting/badging the user when it fires.
+export async function setProductMuted(env, productId, muted) {
+  await env.DB.prepare('UPDATE products SET muted = ? WHERE id = ?').bind(muted ? 1 : 0, productId).run();
 }
 
 // 2026-10-08, user request: lets a product+listing be added at RUNTIME

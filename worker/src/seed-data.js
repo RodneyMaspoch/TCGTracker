@@ -127,6 +127,30 @@ export const PRODUCTS = [
     id: 'hunny-rescue', game: 'lorcana', name: "Illumineer's Quest: The Great Hunny Rescue", msrp: null, poll_tier: 'slow',
     listings: [{ retailer: 'ravensburger', url: 'https://www.disneylorcana.com/en-GB/product/great-hunny-rescue' }],
   },
+
+  // ---------------- SAM'S CLUB (fast lane, Pokémon) — 2026-10-14 ----------------
+  // Real product URLs found via web search and verified fetchable (not
+  // invented) — these are SAM'S CLUB-EXCLUSIVE SKUs, not the same products
+  // already tracked at Best Buy/GameStop (no overlap was found between
+  // what Sam's Club carries and this project's existing 30th
+  // Celebration/Delta Reign SKUs, so these are added as their own distinct
+  // products rather than a fabricated extra listing on an unrelated one).
+  // msrp left null — the only price seen (Mew ETB, $34.98) was shown as
+  // Sam's Club's own "current price," which may differ from a true
+  // published MSRP for a club-exclusive item; the poller will capture the
+  // real live price either way.
+  {
+    id: 'samsclub-mew-etb', game: 'pokemon', name: 'Pokémon Mew Elite Trainer Box + 6 Bonus Cards (Sam’s Club exclusive)', msrp: null, poll_tier: 'fast',
+    listings: [{ retailer: 'samsclub', url: 'https://www.samsclub.com/p/pokemon-mew-elite-trainer-box-plus-6-bonus-cards/P03010032' }],
+  },
+  {
+    id: 'samsclub-classic-box', game: 'pokemon', name: 'Pokémon TCG Classic Box Card Pack (Sam’s Club)', msrp: null, poll_tier: 'fast',
+    listings: [{ retailer: 'samsclub', url: 'https://www.samsclub.com/p/pokemon-tcg-classic-box-card-pack/P990352990' }],
+  },
+  {
+    id: 'samsclub-heavy-hitters', game: 'pokemon', name: 'Pokémon Heavy Hitters Premium Collection (Sam’s Club)', msrp: null, poll_tier: 'fast',
+    listings: [{ retailer: 'samsclub', url: 'https://www.samsclub.com/p/pokemon-heavy-hitters-premium-collection/P03010010' }],
+  },
 ];
 
 export { REF_CHECKED_AT };

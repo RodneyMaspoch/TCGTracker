@@ -12,9 +12,11 @@ import {
   getAllProductsWithListings,
   getDrawingState,
   getEvents,
+  getEventsCountSince,
   saveSubscription,
   removeSubscription,
   setProductTier,
+  setProductMuted,
   getHeadsUp,
   insertTrackedProduct,
 } from './db.js';
@@ -44,8 +46,24 @@ app.get('/api/walmart-drawing', async (c) => {
 
 app.get('/api/events', async (c) => {
   const limit = c.req.query('limit') || '50';
-  const events = await getEvents(c.env, limit);
+  // 2026-10-14 — default (no param, or anything other than '1'/'true')
+  // excludes events for a muted product, so the ticker/toasts/badge never
+  // see them; the notification-history page passes include_muted=1 to see
+  // the real, complete record regardless of mute state.
+  const includeMuted = ['1', 'true'].includes((c.req.query('include_muted') || '').toLowerCase());
+  const events = await getEvents(c.env, limit, includeMuted);
   return c.json(events);
+});
+
+// 2026-10-14 — powers the nav bell's unread badge. `since_id` is the
+// highest event id the client has already seen (stored client-side in
+// localStorage — this app has no accounts/auth, so there's nowhere
+// server-side to keep a per-user read marker); returns how many NEWER,
+// non-muted events exist. Cheap COUNT query, no event bodies transferred.
+app.get('/api/events/unread-count', async (c) => {
+  const sinceId = c.req.query('since_id') || '0';
+  const count = await getEventsCountSince(c.env, sinceId);
+  return c.json({ count });
 });
 
 app.get('/api/push/public-key', (c) => {
@@ -80,6 +98,21 @@ app.post('/api/admin/set-tier', async (c) => {
     return c.json({ error: 'product_id and tier (fast|slow) required' }, 400);
   }
   await setProductTier(c.env, product_id, tier);
+  return c.json({ ok: true });
+});
+
+// 2026-10-14 — per-product mute, the user's own counter-proposal to a
+// backend restock-cooldown (see 0008_product_muted.sql for the full
+// reasoning: a cooldown risks swallowing a genuine second restock inside
+// its window; muting a specific product the user doesn't care about
+// doesn't touch anything else's alert fidelity).
+app.post('/api/admin/set-muted', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { product_id, muted } = body;
+  if (!product_id || typeof muted !== 'boolean') {
+    return c.json({ error: 'product_id and muted (boolean) required' }, 400);
+  }
+  await setProductMuted(c.env, product_id, muted);
   return c.json({ ok: true });
 });
 

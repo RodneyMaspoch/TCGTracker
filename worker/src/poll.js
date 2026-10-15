@@ -74,6 +74,7 @@ const RETAILER_LABELS = {
   ravensburger: 'Ravensburger',
   pokemoncenter: 'Pokémon Center',
   nintendo: 'Nintendo Official Store',
+  samsclub: "Sam's Club",
 };
 function retailerLabel(slug) {
   return RETAILER_LABELS[slug] || slug;
@@ -150,7 +151,14 @@ async function pollOneListing(env, row) {
     // asked for these to be clickable, same as the restock alert
     // services list already is).
     await insertEvent(env, { created_at: now, kind: 'restock', product_id: row.product_id, message: msg, data_json: JSON.stringify({ ...result, url: row.url }) });
-    await notifyAll(env, { title: '🟢 Restock', body: msg, url: '/', tag: `${row.product_id}-${row.retailer}` });
+    // 2026-10-14 — a muted product (see 0008_product_muted.sql) still
+    // gets this event recorded — the full notification-history page
+    // always shows the complete real record — it just doesn't get pushed
+    // as an OS notification. The in-app ticker/toast/unread-badge also
+    // skip it, via GET /api/events's default include_muted=false.
+    if (!row.muted) {
+      await notifyAll(env, { title: '🟢 Restock', body: msg, url: '/', tag: `${row.product_id}-${row.retailer}` });
+    }
   }
 
   // Trigger 2b — good price, anchored to MSRP (see poller.js's original
@@ -169,7 +177,9 @@ async function pollOneListing(env, row) {
         message: msg,
         data_json: JSON.stringify({ ...result, url: row.url, msrp: row.msrp, tcgplayer_ref: row.tcgplayer_ref, markupOverMsrp, retailPremiumOverMsrp }),
       });
-      await notifyAll(env, { title: '💰 Good price vs. MSRP/TCGPlayer', body: msg, url: '/', tag: `${row.product_id}-goodprice` });
+      if (!row.muted) {
+        await notifyAll(env, { title: '💰 Good price vs. MSRP/TCGPlayer', body: msg, url: '/', tag: `${row.product_id}-goodprice` });
+      }
     }
   }
 }
