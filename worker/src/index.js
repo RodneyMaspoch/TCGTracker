@@ -17,6 +17,7 @@ import {
   removeSubscription,
   setProductTier,
   setProductMuted,
+  setProductTarget,
   getHeadsUp,
   insertTrackedProduct,
 } from './db.js';
@@ -113,6 +114,18 @@ app.post('/api/admin/set-muted', async (c) => {
     return c.json({ error: 'product_id and muted (boolean) required' }, 400);
   }
   await setProductMuted(c.env, product_id, muted);
+  return c.json({ ok: true });
+});
+
+// 2026-10-15 — per-product price alert. target_price: number > 0, or null to clear.
+app.post('/api/admin/set-target', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { product_id } = body;
+  const target = body.target_price === null ? null : Number(body.target_price);
+  if (!product_id || (target !== null && !(target > 0))) {
+    return c.json({ error: 'product_id and target_price (positive number or null) required' }, 400);
+  }
+  await setProductTarget(c.env, product_id, target);
   return c.json({ ok: true });
 });
 

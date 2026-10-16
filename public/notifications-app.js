@@ -44,13 +44,20 @@ function timeAgo(iso) {
 
 // 2026-10-15 — same list-row design as Heads Up. Repeats of the same alert
 // are grouped into one row with ×N.
-const KIND_TEXT = { restock: 'Restock', good_price: 'Good price', drawing_open: 'Drawing open', drawing_reminder: 'Drawing soon', headsup: 'Unconfirmed' };
+const KIND_TEXT = { restock: 'Restock', good_price: 'Good price', drawing_open: 'Drawing open', drawing_reminder: 'Drawing soon', headsup: 'Unconfirmed', price_target: 'Price alert' };
 const GAME_ICON = { pokemon: '/icons/pokemon.png', mtg: '/icons/mtg.png', lorcana: '/icons/lorcana.png' };
 let productsById = {};
 
 function renderList() {
   listEl.innerHTML = '';
   const filtered = allItems.filter((it) => {
+    // Same rule as the game pages: a "restock" more than 20% over MSRP is a
+    // reseller listing, not a real restock — don't show it.
+    if (it.kind === 'restock') {
+      const msrp = (productsById[it.product_id] || {}).msrp;
+      const m = it.message.match(/\$([\d.]+)/);
+      if (msrp && m && Number(m[1]) > msrp * 1.2 + 0.01) return false;
+    }
     if (activeTab === 'confirmed') return it.confirmed;
     if (activeTab === 'unconfirmed') return !it.confirmed;
     return true;

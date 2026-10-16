@@ -53,7 +53,17 @@ import {
   getPollState,
   setPollState,
   hasRecentRestock,
+  getTargetPrices,
 } from './db.js';
+
+// 2026-10-15, user rule: "show products at MSRP or at most 20% above it, not
+// at market price." A listing priced more than this over MSRP (typically a
+// third-party reseller) is NOT treated as a restock worth alerting on.
+const MAX_OVER_MSRP = 0.20;
+function withinMsrpBand(msrp, price) {
+  if (!msrp || price == null) return true; // can't judge → don't suppress
+  return price <= msrp * (1 + MAX_OVER_MSRP) + 0.01; // +1¢ so e.g. $59.99 on a $49.99 MSRP counts
+}
 
 // See the repeat guard in pollOneListing(). Raise/lower to taste.
 const RESTOCK_REPEAT_GUARD_MIN = 30;
@@ -158,7 +168,21 @@ async function pollOneListing(env, row) {
   // instantly, but the same product at the same store can't re-alert for
   // RESTOCK_REPEAT_GUARD_MIN minutes. Stops flapping pages from spamming
   // the alert feed/push; a different store or product is never affected.
-  if (!wasPurchasable && nowPurchasable && await hasRecentRestock(env, row.product_id, row.url, RESTOCK_REPEAT_GUARD_MIN)) {
+  // Price alert (Trigger 3): purchasable at or below the user's target.
+  // Fires when the price CROSSES the target (or it comes back in stock under
+  // it), then the same 30-min repeat guard as restocks.
+  if (row.target_price && nowPurchasable && result.price != null && result.price <= row.target_price) {
+    const crossed = !wasPurchasable || row.last_price == null || row.last_price > row.target_price;
+    if (crossed && !(await hasRecentRestock(env, row.product_id, row.url, RESTOCK_REPEAT_GUARD_MIN, 'price_target'))) {
+      const msg = `PRICE ALERT: ${row.product_name} is $${result.price} at ${retailerLabel(row.retailer)} — at or below your $${row.target_price} target`;
+      await insertEvent(env, { created_at: now, kind: 'price_target', product_id: row.product_id, message: msg, data_json: JSON.stringify({ ...result, url: row.url, target: row.target_price }) });
+      if (!row.muted) await notifyAll(env, { title: '🎯 Price alert', body: msg, url: '/', tag: `${row.product_id}-target` });
+    }
+  }
+
+  if (!wasPurchasable && nowPurchasable && !withinMsrpBand(row.msrp, result.price)) {
+    console.log(`[poll] ${row.retailer}/${row.product_id} purchasable at $${result.price}, >${MAX_OVER_MSRP * 100}% over MSRP $${row.msrp} — not alerting`);
+  } else if (!wasPurchasable && nowPurchasable && await hasRecentRestock(env, row.product_id, row.url, RESTOCK_REPEAT_GUARD_MIN)) {
     console.log(`[poll] restock for ${row.retailer}/${row.product_id} already alerted in the last ${RESTOCK_REPEAT_GUARD_MIN}min — not re-alerting`);
   } else if (!wasPurchasable && nowPurchasable) {
     const msg = `RESTOCK: ${row.product_name} is now purchasable at ${retailerLabel(row.retailer)}` + (result.price ? ` — $${result.price}` : '');
@@ -299,6 +323,9 @@ export async function tick(env) {
 
   const fastListings = await getListingsForLane(env, 'fast');
   const slowListings = await getListingsForLane(env, 'slow');
+  // Price alerts (migration 0010) — attached per row; {} if not migrated yet.
+  const targets = await getTargetPrices(env);
+  for (const row of [...fastListings, ...slowListings]) row.target_price = targets[row.product_id] ?? null;
   const state = await getPollState(env);
 
   // Fast lane: EVERY listing (not one-at-a-time) checked concurrently,

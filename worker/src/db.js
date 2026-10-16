@@ -47,12 +47,12 @@ export async function updateListing(env, row) {
 // retailer URL, which poll.js stores in data_json) was recorded in the
 // last `minutes`. Fails open (returns false) so a DB hiccup can never
 // swallow a real restock alert.
-export async function hasRecentRestock(env, productId, url, minutes) {
+export async function hasRecentRestock(env, productId, url, minutes, kind = 'restock') {
   try {
     const since = new Date(Date.now() - minutes * 60 * 1000).toISOString();
     const row = await env.DB.prepare(
-      `SELECT 1 FROM events WHERE kind = 'restock' AND product_id = ? AND created_at > ? AND data_json LIKE ? LIMIT 1`
-    ).bind(productId, since, `%${url}%`).first();
+      `SELECT 1 FROM events WHERE kind = ? AND product_id = ? AND created_at > ? AND data_json LIKE ? LIMIT 1`
+    ).bind(kind, productId, since, `%${url}%`).first();
     return !!row;
   } catch (err) {
     console.warn(`[db] hasRecentRestock failed (alerting anyway): ${err.message}`);
@@ -164,6 +164,23 @@ export async function setProductTier(env, productId, tier) {
 // 2026-10-14 — per-product mute (see 0008_product_muted.sql). Does not
 // touch poll_tier — a muted product keeps being checked at its normal
 // cadence, it just stops pushing/toasting/badging the user when it fires.
+// 2026-10-15 — per-product price alert (migration 0010). null clears it.
+export async function setProductTarget(env, productId, target) {
+  await env.DB.prepare('UPDATE products SET target_price = ? WHERE id = ?').bind(target, productId).run();
+}
+
+// Read separately (and fail-soft) so the poller keeps working even before
+// migration 0010 has been applied — then simply no price alerts fire.
+export async function getTargetPrices(env) {
+  try {
+    const { results } = await env.DB.prepare('SELECT id, target_price FROM products WHERE target_price IS NOT NULL').all();
+    return Object.fromEntries(results.map((r) => [r.id, r.target_price]));
+  } catch (err) {
+    console.warn(`[db] target prices unavailable (migration 0010 not applied?): ${err.message}`);
+    return {};
+  }
+}
+
 export async function setProductMuted(env, productId, muted) {
   await env.DB.prepare('UPDATE products SET muted = ? WHERE id = ?').bind(muted ? 1 : 0, productId).run();
 }

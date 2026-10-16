@@ -151,9 +151,21 @@
   function baseName(name) {
     return name.replace(/\s*\((3rd-party seller|preorder)\)\s*/gi, ' ').replace(/booster display/i, 'Booster Box').replace(/\s+/g, ' ').trim();
   }
+  // User rule (2026-10-15): only MSRP or up to 20% over counts as "in stock".
+  // A listing priced higher (usually a reseller at market price) is shown as
+  // "Over MSRP" and never featured, badged or counted as a restock.
+  const MAX_OVER_MSRP = 0.20;
+  function annotate(p) {
+    for (const l of p.listings || []) {
+      l.msrp = p.msrp;
+      l.over = !!(l.last_purchasable && p.msrp && l.last_price != null && l.last_price > p.msrp * (1 + MAX_OVER_MSRP) + 0.01);
+      l.buyable = !!l.last_purchasable && !l.over;
+    }
+  }
   function groupProducts(rows) {
     const map = new Map();
     for (const p of rows) {
+      annotate(p);
       const key = baseName(p.name).toLowerCase();
       const g = map.get(key);
       if (!g) {
@@ -164,6 +176,7 @@
         g.msrp = g.msrp || p.msrp;
         g.tcgplayer_ref = g.tcgplayer_ref || p.tcgplayer_ref;
         g.muted = g.muted && p.muted ? 1 : 0;
+        g.target_price = g.target_price || p.target_price;
       }
     }
     return [...map.values()];
@@ -179,7 +192,8 @@
     return (l.last_price - product.msrp) / product.msrp <= MAX_RETAIL_PREMIUM_OVER_MSRP;
   }
   function storeState(l) {
-    if (l.last_purchasable) return ['in', 'In stock'];
+    if (l.buyable) return ['in', 'In stock'];
+    if (l.over) return ['over', 'Over MSRP'];
     if (l.last_stock === 'account_gated') return ['gated', 'Account req.'];
     if (l.last_stock && l.last_stock !== 'unknown') return ['out', 'Sold out'];
     return ['unknown', 'Checking'];
@@ -194,7 +208,7 @@
   }
   const money = (n) => `$${Number(n).toFixed(2)}`;
   function lowestLivePrice(product) {
-    const live = product.listings.filter((l) => l.last_purchasable && l.last_price != null);
+    const live = product.listings.filter((l) => l.buyable && l.last_price != null);
     return live.length ? Math.min(...live.map((l) => Number(l.last_price))) : null;
   }
   function imageCandidates(product) {
@@ -310,7 +324,7 @@
     }
     // In stock now — newest restock first.
     const restockIds = state.events.filter((e) => e.kind === 'restock').map((e) => e.product_id);
-    const live = state.products.filter((p) => p.listings.some((l) => l.last_purchasable));
+    const live = state.products.filter((p) => p.listings.some((l) => l.buyable));
     live.sort((a, b) => {
       const ai = restockIds.findIndex((id) => a.ids.includes(id));
       const bi = restockIds.findIndex((id) => b.ids.includes(id));
@@ -318,7 +332,7 @@
     });
     if (live.length) {
       const p = live[0];
-      const l = [...p.listings].filter((x) => x.last_purchasable).sort((a, b) => (a.last_price ?? 1e9) - (b.last_price ?? 1e9))[0];
+      const l = [...p.listings].filter((x) => x.buyable).sort((a, b) => (a.last_price ?? 1e9) - (b.last_price ?? 1e9))[0];
       const good = isGoodPriceListing(p, l);
       return {
         kicker: good ? '💰 Good price — in stock' : '🟢 In stock now',
@@ -415,7 +429,7 @@
 
   // ---------------- 3. browse ----------------
   function renderTile(product) {
-    const live = product.listings.some((l) => l.last_purchasable);
+    const live = product.listings.some((l) => l.buyable);
     const good = product.listings.some((l) => isGoodPriceListing(product, l));
     const tile = el('div', 'tl-tile');
     tile.tabIndex = 0;
@@ -428,22 +442,28 @@
     tile.appendChild(el('div', 'tl-name', product.name));
     const low = lowestLivePrice(product);
     tile.appendChild(el('div', 'tl-price', low != null ? money(low) : (product.msrp ? money(product.msrp) : '—')));
+    if (product.target_price) tile.appendChild(el('div', 'tl-target', `🎯 Alert at ${money(product.target_price)}`));
     return tile;
   }
 
+  let filterText = '';
   function renderBrowse() {
     const root = document.getElementById('tlRows');
     if (!root) return;
     root.innerHTML = '';
-    if (!state.products.length) { root.appendChild(el('div', 'empty-state', 'No tracked products yet.')); return; }
+    const q = filterText.trim().toLowerCase();
+    const shown = q ? state.products.filter((p) => p.name.toLowerCase().includes(q)) : state.products;
+    const add = document.getElementById('tlAdd');
+    if (add) add.hidden = !q || shown.length > 0;
+    if (!shown.length) { root.appendChild(el('div', 'empty-state', q ? `Nothing tracked matches "${filterText.trim()}".` : 'No tracked products yet.')); return; }
     const groups = new Map();
-    for (const p of state.products) {
+    for (const p of shown) {
       const c = categorize(p.name);
       if (!groups.has(c)) groups.set(c, []);
       groups.get(c).push(p);
     }
     for (const [cat, list] of groups) {
-      list.sort((a, b) => (b.listings.some((l) => l.last_purchasable) - a.listings.some((l) => l.last_purchasable)) || a.name.localeCompare(b.name));
+      list.sort((a, b) => (b.listings.some((l) => l.buyable) - a.listings.some((l) => l.buyable)) || a.name.localeCompare(b.name));
       const row = el('div', 'tl-row');
       const label = el('div', 'tl-row-label');
       label.appendChild(el('span', 'tl-row-kicker', CFG.label));
@@ -455,6 +475,57 @@
       row.appendChild(strip);
       root.appendChild(row);
     }
+  }
+
+  // Price alert: "tell me when it's at or below $X" (server: /api/admin/set-target).
+  function buildPriceAlert(product) {
+    const box = el('form', 'tl-alertbox');
+    box.appendChild(el('div', 'tl-alertbox-label', '🎯 Price alert'));
+    const row = el('div', 'tl-alertbox-row');
+    const input = el('input');
+    input.type = 'number'; input.step = '0.01'; input.min = '0'; input.inputMode = 'decimal';
+    input.placeholder = product.msrp ? `e.g. ${Number(product.msrp).toFixed(2)}` : 'Price';
+    if (product.target_price) input.value = Number(product.target_price).toFixed(2);
+    const save = el('button', 'tl-btn', product.target_price ? 'Update' : 'Set alert');
+    save.type = 'submit';
+    row.appendChild(el('span', 'tl-alertbox-at', 'At or below $'));
+    row.appendChild(input);
+    row.appendChild(save);
+    if (product.target_price) {
+      const clear = el('button', 'tl-btn tl-btn-ghost', 'Remove');
+      clear.type = 'button';
+      clear.addEventListener('click', () => saveTarget(null));
+      row.appendChild(clear);
+    }
+    box.appendChild(row);
+    const msg = el('div', 'tl-alertbox-msg');
+    box.appendChild(msg);
+    async function saveTarget(value) {
+      msg.textContent = 'Saving…';
+      try {
+        for (const id of product.ids) {
+          const res = await fetch('/api/admin/set-target', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product_id: id, target_price: value }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        }
+        product.target_price = value;
+        if (value && product.muted) await setTracked(product, true);
+        if (value && window.tcgEnsurePushEnabled) window.tcgEnsurePushEnabled();
+        render();
+        openSheet(product);
+      } catch (err) {
+        msg.textContent = `Couldn't save (${err.message}).`;
+      }
+    }
+    box.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = Number(input.value);
+      if (!(v > 0)) { msg.textContent = 'Enter a price.'; return; }
+      saveTarget(Math.round(v * 100) / 100);
+    });
+    return box;
   }
 
   // Product sheet: every store, status + direct link.
@@ -478,8 +549,9 @@
     info.appendChild(buildTrackPill(product));
     top.appendChild(info);
     panel.appendChild(top);
+    panel.appendChild(buildPriceAlert(product));
     panel.appendChild(el('div', 'tl-where', 'Where to buy'));
-    const listings = [...product.listings].sort((a, b) => (b.last_purchasable || 0) - (a.last_purchasable || 0));
+    const listings = [...product.listings].sort((a, b) => (b.buyable ? 1 : 0) - (a.buyable ? 1 : 0));
     if (!listings.length) panel.appendChild(el('div', 'tl-store', 'No store tracked yet.'));
     for (const l of listings) {
       const [key, label] = storeState(l);
@@ -501,7 +573,7 @@
   });
 
   // ---------------- 4. recent restocks ----------------
-  const KIND_LABELS = { restock: 'Restock', good_price: 'Good price', drawing_open: 'Drawing open' };
+  const KIND_LABELS = { restock: 'Restock', good_price: 'Good price', drawing_open: 'Drawing open', price_target: 'Price alert' };
   function renderDeals() {
     const wrap = document.getElementById('tlDeals');
     if (!wrap) return;
@@ -510,6 +582,8 @@
     for (const ev of state.events) {
       const product = ev.product_id ? findProduct(ev.product_id) : null;
       if (!product) continue; // only this game's products
+      const pm = ev.message.match(/\$([\d.]+)/);
+      if (ev.kind === 'restock' && pm && product.msrp && Number(pm[1]) > product.msrp * (1 + MAX_OVER_MSRP) + 0.01) continue; // reseller price — not a real restock
       const key = `${ev.kind}|${ev.product_id}|${ev.url || ev.message}`;
       const g = groups.get(key);
       if (g) g.count += 1; else groups.set(key, { ev, product, count: 1 });
@@ -583,6 +657,39 @@
       wrap.appendChild(tile);
     }
   }
+  // Search tracked products as you type; when nothing matches, offer to start
+  // tracking it from a store link (POST /api/admin/track-product).
+  function initFilter() {
+    const input = document.getElementById('tlFilter');
+    if (!input) return;
+    input.addEventListener('input', () => { filterText = input.value; renderBrowse(); });
+    const form = document.getElementById('tlAddForm');
+    if (!form) return;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('tlAddMsg');
+      const url = document.getElementById('tlAddUrl').value.trim();
+      let host;
+      try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (_) { msg.textContent = 'Paste a full store link (https://…).'; return; }
+      const retailer = host.split('.')[0].replace(/[^a-z0-9]/gi, '').toLowerCase();
+      const name = filterText.trim() || host;
+      msg.textContent = 'Adding…';
+      try {
+        const res = await fetch('/api/admin/track-product', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ game: GAME, name, url, retailer, poll_tier: GAME === 'pokemon' || GAME === 'nintendo' ? 'fast' : 'slow' }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        msg.textContent = `Tracking "${name}". Set a price alert by tapping it.`;
+        document.getElementById('tlAddUrl').value = '';
+        if (window.tcgEnsurePushEnabled) window.tcgEnsurePushEnabled();
+        await loadAll();
+      } catch (err) {
+        msg.textContent = `Couldn't add it (${err.message}).`;
+      }
+    });
+  }
+
   function initSearch() {
     const form = document.getElementById('tlSearchForm');
     if (!form || !CFG.search) return;
@@ -617,6 +724,7 @@
       try { await navigator.serviceWorker.register('/sw.js'); } catch (err) { console.error('[tracker] SW registration failed', err); }
     }
     initSearch();
+    initFilter();
     await loadAll();
     setInterval(loadAll, REFRESH_MS);
   })();

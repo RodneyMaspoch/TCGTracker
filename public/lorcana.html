@@ -45,7 +45,18 @@
   </section>
 
   <section class="tl-browse">
-    <div class="tl-section-title">Browse Disney Lorcana — tap TRACK for alerts</div>
+    <div class="tl-section-title">Browse Disney Lorcana</div>
+    <form class="tl-search-form" onsubmit="return false" role="search">
+      <input id="tlFilter" type="search" placeholder="Search your products…" aria-label="Search your products" autocomplete="off">
+    </form>
+    <div id="tlAdd" class="tl-add" hidden>
+      <div class="tl-add-title">Not tracked yet — paste a store link to track it</div>
+      <form id="tlAddForm" class="tl-search-form">
+        <input id="tlAddUrl" type="url" placeholder="https://www.target.com/p/…" aria-label="Store link">
+        <button type="submit">Track</button>
+      </form>
+      <div id="tlAddMsg" class="tl-search-msg"></div>
+    </div>
     <div id="tlRows"></div>
   </section>
 
