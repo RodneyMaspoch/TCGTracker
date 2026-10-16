@@ -23,7 +23,8 @@ import {
 } from './db.js';
 import { notifyAll, pushConfigured } from './push.js';
 import { Ticker } from './ticker-do.js';
-import { walmartConfigured, walmartLookupRaw, walmartSearch } from './walmart-io.js';
+import { checkSourcesReachable } from './headsup.js';
+import { walmartConfigured, walmartLookupRaw, walmartSearch, walmartCatalog } from './walmart-io.js';
 import { searchNintendoCatalog } from './nintendo-algolia.js';
 
 // Durable Object classes must be exported from the main entry module (this
@@ -129,6 +130,29 @@ app.get('/api/walmart/search', async (c) => {
     return c.json({ error: err.message }, 502);
   }
 });
+
+// 2026-10-16 — every sold-by-Walmart product for one game (cached 30 min).
+app.get('/api/walmart/catalog', async (c) => {
+  if (!walmartConfigured(c.env)) return c.json({ error: 'Walmart feed not configured' }, 400);
+  const game = c.req.query('game') || 'pokemon';
+  const cacheKey = new Request(`https://cache.internal/walmart-catalog/${game}`);
+  const cache = caches.default;
+  const hit = await cache.match(cacheKey);
+  if (hit) return hit;
+  try {
+    const results = await walmartCatalog(c.env, game);
+    const res = new Response(JSON.stringify({ results, cachedAt: new Date().toISOString() }), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=1800' },
+    });
+    c.executionCtx.waitUntil(cache.put(cacheKey, res.clone()));
+    return res;
+  } catch (err) {
+    return c.json({ error: err.message }, 502);
+  }
+});
+
+// 2026-10-16 — which alert sources can the Worker reach right now?
+app.get('/api/admin/sources-check', async (c) => c.json(await checkSourcesReachable()));
 
 // 2026-10-16 — one-off test of the Walmart official feed. Open in a browser:
 //   /api/admin/walmart-test?item=20908222947

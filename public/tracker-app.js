@@ -701,10 +701,43 @@
     });
   }
 
+  // 2026-10-16 — Walmart pages auto-load EVERY sold-by-Walmart product for
+  // this game (server-cached 30 min). Typing filters that list instantly;
+  // pressing Search runs a live Walmart search for anything not in it.
+  let catalog = [];
+  async function loadCatalog() {
+    if (CFG.search !== 'walmart') return;
+    const msg = document.getElementById('tlSearchMsg');
+    msg.textContent = 'Loading Walmart products…';
+    try {
+      const res = await fetch(`/api/walmart/catalog?game=${GAME}`);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      catalog = body.results || [];
+      showCatalog('');
+    } catch (err) {
+      msg.textContent = `Couldn't load Walmart products (${err.message}).`;
+    }
+  }
+  function showCatalog(q) {
+    const msg = document.getElementById('tlSearchMsg');
+    const needle = q.trim().toLowerCase();
+    const items = needle ? catalog.filter((it) => (it.title || '').toLowerCase().includes(needle)) : catalog;
+    const inStock = items.filter((it) => it.inStock).length;
+    msg.textContent = items.length
+      ? `${items.length} sold by Walmart · ${inStock} in stock now — tap + TRACK to get alerts`
+      : 'Nothing in the list matches — press Search to look up Walmart directly.';
+    renderSearchResults(items);
+  }
+
   function initSearch() {
     const form = document.getElementById('tlSearchForm');
     if (!form || !CFG.search) return;
     const msg = document.getElementById('tlSearchMsg');
+    if (CFG.search === 'walmart') {
+      document.getElementById('tlSearchInput').addEventListener('input', (e) => showCatalog(e.target.value));
+      loadCatalog();
+    }
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const q = document.getElementById('tlSearchInput').value.trim();

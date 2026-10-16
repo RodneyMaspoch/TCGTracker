@@ -123,3 +123,33 @@ export async function checkWalmartItem(env, url) {
     seller: item.sellerInfo || null,
   };
 }
+
+// 2026-10-16 — "load everything for this game" catalog for the game pages,
+// so the user can just tap + instead of searching by hand. Runs a handful of
+// preset searches in parallel, keeps only items SOLD BY WALMART whose name is
+// really this game, de-duplicates, and caches the result for 30 minutes.
+const CATALOG_QUERIES = {
+  pokemon: ['pokemon trading card game elite trainer box', 'pokemon tcg booster bundle', 'pokemon tcg booster box',
+    'pokemon tcg collection box', 'pokemon tcg premium collection', 'pokemon tcg tin', 'pokemon tcg blister pack'],
+  mtg: ['magic the gathering booster box', 'magic the gathering collector booster', 'magic the gathering commander deck',
+    'magic the gathering bundle', 'magic the gathering starter kit'],
+  lorcana: ['disney lorcana booster box', 'disney lorcana illumineers trove', 'disney lorcana starter deck',
+    'disney lorcana gift set', 'disney lorcana booster pack'],
+};
+const CATALOG_NAME_RE = { pokemon: /pok[eé]mon/i, mtg: /magic|mtg/i, lorcana: /lorcana/i };
+
+export async function walmartCatalog(env, game) {
+  const queries = CATALOG_QUERIES[game];
+  if (!queries) return [];
+  const settled = await Promise.allSettled(queries.map((q) => walmartSearch(env, q)));
+  const seen = new Map();
+  for (const s of settled) {
+    if (s.status !== 'fulfilled') continue;
+    for (const it of s.value) {
+      if (!CATALOG_NAME_RE[game].test(it.title || '')) continue;
+      if (!seen.has(it.itemId)) seen.set(it.itemId, it);
+    }
+  }
+  // In-stock first, then by name.
+  return [...seen.values()].sort((a, b) => (b.inStock - a.inStock) || String(a.title).localeCompare(String(b.title)));
+}

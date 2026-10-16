@@ -226,13 +226,24 @@ const RESTOCKD_URL = 'https://restockd.app/brands/pokemon';
 // before the price/date pair.
 const RESTOCKD_ENTRY_RE = /([A-Z][^$\n]{5,120}?)(Target|Walmart|GameStop|Pok[ée]mon Center|Best ?Buy|Dollar General)[\s·•\-|]*\$(\d+(?:\.\d{2})?)[\s·•\-|]*([A-Z][a-z]{2}\.?\s+\d{1,2},?\s+\d{4})/g;
 
+// 2026-10-16 — the two signals the user cares most about get their own,
+// louder push titles (and open the store directly) instead of a generic
+// "Heads up": Walmart drawings/lotteries and Pokémon Center drops/queues.
+function classifyHeadsUp(row) {
+  const text = `${row.title} ${row.snippet || ''} ${row.retailer || ''}`;
+  if (/walmart/i.test(text) && /draw(ing)?|lottery|raffle/i.test(text)) return 'walmart_drawing';
+  if (/pok[eé]mon\s*center/i.test(text) || row.source === 'autoqueue-pc') return 'pokemon_center';
+  return 'other';
+}
+
 async function notifyHeadsUp(env, row) {
-  await notifyAll(env, {
-    title: '🔔 Heads up',
-    body: row.title,
-    url: '/heads-up',
-    tag: `headsup-${row.source}`,
-  });
+  const kind = classifyHeadsUp(row);
+  const push = kind === 'walmart_drawing'
+    ? { title: '🎟️ Walmart drawing (unconfirmed)', url: 'https://www.walmart.com/shop/collectibles/draw' }
+    : kind === 'pokemon_center'
+      ? { title: '🟡 Pokémon Center drop (unconfirmed)', url: 'https://www.pokemoncenter.com/category/new-releases' }
+      : { title: '🔔 Heads up', url: '/heads-up' };
+  await notifyAll(env, { title: push.title, body: row.title, url: push.url, tag: `headsup-${kind}-${row.dedupe_key || row.source}` });
 }
 
 async function checkWebSource(env, source) {
@@ -425,7 +436,7 @@ async function checkReddit(env) {
   // encodeURIComponent rather than hand-written +-for-space, since this
   // query has quotes/apostrophes that need real percent-encoding to stay
   // valid.
-  const q = 'walmart drawing OR walmart restock OR "sam\'s club" restock OR costco restock OR walgreens restock OR "hobby lobby" restock OR "dollar general" restock';
+  const q = 'walmart drawing OR walmart lottery OR walmart restock OR "pokemon center" OR "sam\'s club" restock OR costco restock OR walgreens restock OR "hobby lobby" restock OR "dollar general" restock';
   const url = `https://www.reddit.com/r/pokemontcg/search.json?q=${encodeURIComponent(q)}&restrict_sr=1&sort=new&limit=15`;
   let json;
   try {
@@ -505,3 +516,25 @@ export async function runHeadsUpCheck(env) {
 // Kept exported for back-compat with anything still importing it, though
 // runHeadsUpCheck no longer takes an index to mod against it.
 export const HEADS_UP_CHECK_COUNT = DISTINCT_CHECKERS.length;
+
+// 2026-10-16 — diagnostics: can the Worker actually reach each early-signal
+// source right now? Used by GET /api/admin/sources-check.
+export async function checkSourcesReachable() {
+  const urls = {
+    restockd: RESTOCKD_URL,
+    autoqueue_pokemon_center: AUTOQUEUE_PC_URL,
+    reddit: 'https://www.reddit.com/r/pokemontcg/new.json?limit=1',
+    walmart_drawing_page: 'https://www.walmart.com/shop/collectibles/draw',
+  };
+  const out = {};
+  await Promise.all(Object.entries(urls).map(async ([k, u]) => {
+    try {
+      const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', Accept: 'text/html,application/json' } });
+      const body = await r.text();
+      out[k] = { status: r.status, ok: r.ok, bytes: body.length, blocked: /captcha|are you a human|access denied|robot/i.test(body.slice(0, 5000)) };
+    } catch (err) {
+      out[k] = { ok: false, error: err.message };
+    }
+  }));
+  return out;
+}
