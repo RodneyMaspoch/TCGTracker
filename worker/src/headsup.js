@@ -382,7 +382,21 @@ async function checkHotstock(env) {
 // that, even without the specific product.
 const AUTOQUEUE_PC_URL = 'https://autoqueue.app/drops/pokemon-center';
 // "Sep 30, 2026 | 11:59 AM | Browser alert sent and email alert accepted by provider"
-const AUTOQUEUE_PC_ENTRY_RE = /([A-Z][a-z]{2}\s+\d{1,2},\s*\d{4})\s*\|\s*(\d{1,2}:\d{2}\s*[AP]M)\s*\|\s*([^\n|]{5,120}?)(?=[A-Z][a-z]{2}\s+\d{1,2},\s*\d{4}\s*\||$)/g;
+// 2026-10-16 — autoqueue changed its format to e.g.
+// "Thu, Oct 15, 2026, 12:40 PM ET ... Browser and email alerts" (the old
+// "Sep 30, 2026 | 11:59 AM | ..." pattern matched nothing, which is why the
+// Oct 15 Pokémon Center drop was missed). This accepts both shapes.
+const AUTOQUEUE_PC_ENTRY_RE = /(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s*)?([A-Z][a-z]{2})[a-z]*\.?\s+(\d{1,2}),?\s*(\d{4})\s*[,|·\-]?\s*(?:at\s*)?(\d{1,2}:\d{2}\s*[AP]M)\s*(ET|EDT|EST)?\s*[|·\-]?\s*([^\n|]{0,100}?)(?=\s*(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,|[A-Z][a-z]{2}\s+\d{1,2},\s*\d{4})|$)/g;
+function easternToDate(mon, day, year, time) {
+  // ET is UTC-4 from mid-March to early November, UTC-5 otherwise.
+  const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(mon);
+  if (m < 0) return null;
+  const off = m >= 2 && m <= 9 ? 4 : (m === 10 && Number(day) < 2 ? 4 : 5);
+  const t = time.match(/(\d{1,2}):(\d{2})\s*([AP]M)/i);
+  if (!t) return null;
+  let h = Number(t[1]) % 12; if (/pm/i.test(t[3])) h += 12;
+  return new Date(Date.UTC(Number(year), m, Number(day), h + off, Number(t[2])));
+}
 
 async function checkAutoqueuePokemonCenter(env) {
   let text;
@@ -395,15 +409,19 @@ async function checkAutoqueuePokemonCenter(env) {
   const re = new RegExp(AUTOQUEUE_PC_ENTRY_RE.source, 'g');
   let match;
   let count = 0;
+  const seen = new Set();
   while ((match = re.exec(text)) !== null && count < 10) {
-    const [, dateStr, timeStr, statusRaw] = match;
-    const parsed = new Date(`${dateStr} ${timeStr}`);
-    if (isNaN(parsed.getTime())) continue;
+    const [, mon, day, year, timeStr, , statusRaw] = match;
+    const parsed = easternToDate(mon, day, year, timeStr);
+    if (!parsed || isNaN(parsed.getTime())) continue;
+    const dateStr = `${mon} ${day}, ${year}`;
+    if (seen.has(`${dateStr}|${timeStr}`)) continue; // same entry listed twice on the page
+    seen.add(`${dateStr}|${timeStr}`);
     // Only a genuinely recent entry is worth surfacing as "go now" — this
     // page's log goes back 90 days, and almost all of those rows are
     // stale history, not something to alert on.
     if (Date.now() - parsed.getTime() > 36 * 60 * 60 * 1000) continue;
-    const status = statusRaw.trim().replace(/\s+/g, ' ');
+    const status = (statusRaw || '').trim().replace(/\s+/g, ' ') || 'Live signal reported';
     const row = {
       source: 'autoqueue-pc',
       game: 'pokemon',
@@ -577,7 +595,7 @@ export async function checkSourcesReachable(env) {
     const re = new RegExp(AUTOQUEUE_PC_ENTRY_RE.source, 'g');
     const found = [];
     let m;
-    while ((m = re.exec(text)) !== null && found.length < 5) found.push(`${m[1]} ${m[2]} — ${m[3].trim().slice(0, 60)}`);
+    while ((m = re.exec(text)) !== null && found.length < 5) found.push(`${m[1]} ${m[2]}, ${m[3]} ${m[4]} ET`);
     out.autoqueue_pokemon_center.parsedEntries = found;
   } catch (err) {
     out.autoqueue_pokemon_center.parseError = err.message;
