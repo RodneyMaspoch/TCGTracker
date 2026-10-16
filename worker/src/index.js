@@ -23,7 +23,7 @@ import {
 } from './db.js';
 import { notifyAll, pushConfigured } from './push.js';
 import { Ticker } from './ticker-do.js';
-import { walmartConfigured, walmartLookupRaw } from './walmart-io.js';
+import { walmartConfigured, walmartLookupRaw, walmartSearch } from './walmart-io.js';
 import { searchNintendoCatalog } from './nintendo-algolia.js';
 
 // Durable Object classes must be exported from the main entry module (this
@@ -116,6 +116,18 @@ app.post('/api/admin/set-muted', async (c) => {
   }
   await setProductMuted(c.env, product_id, muted);
   return c.json({ ok: true });
+});
+
+// 2026-10-16 — search Walmart (sold-by-Walmart items only) for the game pages.
+app.get('/api/walmart/search', async (c) => {
+  if (!walmartConfigured(c.env)) return c.json({ error: 'Walmart feed not configured' }, 400);
+  const q = (c.req.query('q') || '').trim();
+  if (!q) return c.json({ results: [] });
+  try {
+    return c.json({ results: await walmartSearch(c.env, q) });
+  } catch (err) {
+    return c.json({ error: err.message }, 502);
+  }
 });
 
 // 2026-10-16 — one-off test of the Walmart official feed. Open in a browser:

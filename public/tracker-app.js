@@ -100,9 +100,15 @@
       heroArt: null,
       images: {},
       upcoming: [],
-      search: true,
+      search: 'nintendo',
     },
   };
+  // 2026-10-16 — the three card-game pages search Walmart's official feed
+  // (sold-by-Walmart items only). The game's name is added to the query so
+  // "elite trainer box" on the Pokémon page finds Pokémon products.
+  GAMES.pokemon.search = 'walmart'; GAMES.pokemon.searchTerm = 'pokemon';
+  GAMES.mtg.search = 'walmart'; GAMES.mtg.searchTerm = 'magic the gathering';
+  GAMES.lorcana.search = 'walmart'; GAMES.lorcana.searchTerm = 'disney lorcana';
   const CFG = GAMES[GAME] || GAMES.pokemon;
 
   const RETAILER_NAMES = {
@@ -195,6 +201,7 @@
   function storeState(l) {
     if (l.buyable) return ['in', 'In stock'];
     if (l.over) return ['over', 'Over MSRP'];
+    if (l.last_stock === 'third_party') return ['over', '3rd-party only'];
     if (l.last_stock === 'account_gated') return ['gated', 'Account req.'];
     if (l.last_stock && l.last_stock !== 'unknown') return ['out', 'Sold out'];
     return ['unknown', 'Checking'];
@@ -606,6 +613,7 @@
 
   // ---------------- Nintendo store search ----------------
   function stockText(item) {
+    if (CFG.search === 'walmart') return item.inStock ? ['in', 'In stock'] : ['out', item.stock || 'Sold out'];
     if (item.stockStatus === 'IN_STOCK') return ['in', 'In stock'];
     if (item.stockStatus === 'OUT_OF_STOCK') return ['out', 'Sold out'];
     if ((item.availability || []).length) return ['soon', item.availability[0]];
@@ -640,7 +648,9 @@
         try {
           const res = await fetch('/api/admin/track-product', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ game: 'nintendo', name: item.title, retailer: 'nintendo', url: item.url, poll_tier: 'fast', msrp: typeof item.regPrice === 'number' ? item.regPrice : null }),
+            body: JSON.stringify(CFG.search === 'walmart'
+              ? { game: GAME, name: item.title, retailer: 'walmart', url: item.url, poll_tier: GAME === 'pokemon' ? 'fast' : 'slow', msrp: item.msrp ?? item.price ?? null }
+              : { game: 'nintendo', name: item.title, retailer: 'nintendo', url: item.url, poll_tier: 'fast', msrp: typeof item.regPrice === 'number' ? item.regPrice : null }),
           });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           btn.textContent = '✓ TRACKING'; btn.classList.add('on');
@@ -701,11 +711,13 @@
       if (!q) return;
       msg.textContent = 'Searching…';
       try {
-        const res = await fetch(`/api/nintendo/search?q=${encodeURIComponent(q)}`);
+        const query = CFG.search === 'walmart' && CFG.searchTerm && !q.toLowerCase().includes(CFG.searchTerm.split(' ')[0])
+          ? `${CFG.searchTerm} ${q}` : q;
+        const res = await fetch(`/api/${CFG.search}/search?q=${encodeURIComponent(query)}`);
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
         const items = Array.isArray(body) ? body : (body.results || body.hits || []);
-        msg.textContent = items.length ? '' : 'No results.';
+        msg.textContent = items.length ? '' : (CFG.search === 'walmart' ? 'Nothing sold by Walmart matches that.' : 'No results.');
         renderSearchResults(items);
       } catch (err) {
         msg.textContent = `Search failed (${err.message}).`;

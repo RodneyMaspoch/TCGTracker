@@ -52,6 +52,33 @@ async function signedHeaders(env) {
   };
 }
 
+export function isSoldByWalmart(item) {
+  if (item.marketplace === true) return false;
+  const seller = String(item.sellerInfo || '').toLowerCase();
+  return !seller || seller.startsWith('walmart');
+}
+
+// Product search (affiliate Search API) for the "search Walmart" box on the
+// game pages. Only items SOLD BY WALMART are returned (user rule).
+export async function walmartSearch(env, query) {
+  const url = `${BASE}/search?query=${encodeURIComponent(query)}&numItems=25`;
+  const res = await fetch(url, { headers: await signedHeaders(env) });
+  if (!res.ok) throw new Error(`walmart.io search HTTP ${res.status}`);
+  const body = await res.json();
+  return (body.items || [])
+    .filter(isSoldByWalmart)
+    .map((it) => ({
+      itemId: String(it.itemId),
+      title: it.name,
+      url: `https://www.walmart.com/ip/${it.itemId}`,
+      image: it.largeImage || it.mediumImage || null,
+      price: typeof it.salePrice === 'number' ? it.salePrice : null,
+      msrp: typeof it.msrp === 'number' ? it.msrp : null,
+      stock: it.stock || null,
+      inStock: !!it.stock && !/not available|out of stock/i.test(it.stock) && it.availableOnline !== false,
+    }));
+}
+
 // Raw item lookup — used by the /api/admin/walmart-test endpoint so we can
 // SEE exactly what Walmart returns (does it include stock?) before relying on it.
 export async function walmartLookupRaw(env, itemId) {
@@ -77,15 +104,19 @@ export async function checkWalmartItem(env, url) {
   const stock = typeof item.stock === 'string' ? item.stock.toLowerCase() : null;
   const hasSignal = stock != null || typeof item.availableOnline === 'boolean';
   if (!hasSignal) return null;
-  const purchasable = stock != null
+  const inStock = stock != null
     ? !/not available|out of stock/.test(stock) && (item.availableOnline !== false)
     : item.availableOnline === true;
+  // 2026-10-16, user rule: ONLY "sold by Walmart" counts. A third-party
+  // marketplace seller is never treated as purchasable (no badge, no alert).
+  const soldByWalmart = isSoldByWalmart(item);
+  const purchasable = inStock && soldByWalmart;
   const price = typeof item.salePrice === 'number' ? item.salePrice : null;
   // Walmart marketplace sellers (not Walmart itself) are flagged so they can
   // be recognised; the MSRP +20% rule in poll.js already filters reseller prices.
   return {
     price,
-    stock: purchasable ? 'in_stock' : 'oos',
+    stock: purchasable ? 'in_stock' : (inStock && !soldByWalmart ? 'third_party' : 'oos'),
     purchasable,
     image: item.largeImage || item.mediumImage || null,
     source: 'walmart-io',

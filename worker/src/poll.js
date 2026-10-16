@@ -108,11 +108,14 @@ async function pollOneListing(env, row) {
       result = await checkNintendoProduct(env, row.url);
     } else if (row.retailer.startsWith('walmart') && walmartConfigured(env)) {
       // 2026-10-16 — Walmart's official feed when set up; page check otherwise.
+      // No fallback to the page scrape here: the page can't tell "sold by
+      // Walmart" from a 3rd-party seller, and only Walmart-sold counts.
+      // On a failed lookup, keep the last known state for this tick.
       result = await checkWalmartItem(env, row.url).catch((err) => {
-        console.warn(`[poll] walmart.io failed for ${row.product_id}: ${err.message} — falling back to page check`);
+        console.warn(`[poll] walmart.io failed for ${row.product_id}: ${err.message} — skipping this tick`);
         return null;
       });
-      if (!result) result = await scrapeGeneric(row.url);
+      if (!result) return;
     } else {
       result = await scrapeGeneric(row.url);
     }
