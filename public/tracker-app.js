@@ -708,36 +708,32 @@
   async function loadCatalog() {
     if (CFG.search !== 'walmart') return;
     const msg = document.getElementById('tlSearchMsg');
-    msg.textContent = 'Loading Walmart products…';
+    if (msg) msg.textContent = '';
     try {
       const res = await fetch(`/api/walmart/catalog?game=${GAME}`);
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       catalog = body.results || [];
-      showCatalog('');
+      showCatalog();
     } catch (err) {
-      msg.textContent = `Couldn't load Walmart products (${err.message}).`;
+      console.warn('[tracker] Walmart catalog unavailable', err);
     }
   }
-  function showCatalog(q) {
+  function showCatalog() {
+    const section = document.getElementById('tlCatalogSection');
     const msg = document.getElementById('tlSearchMsg');
-    const needle = q.trim().toLowerCase();
-    const items = needle ? catalog.filter((it) => (it.title || '').toLowerCase().includes(needle)) : catalog;
-    const inStock = items.filter((it) => it.inStock).length;
-    msg.textContent = items.length
-      ? `${items.length} sold by Walmart · ${inStock} in stock now — tap + TRACK to get alerts`
-      : 'Nothing in the list matches — press Search to look up Walmart directly.';
-    renderSearchResults(items);
+    if (section) section.hidden = catalog.length === 0;
+    if (!catalog.length) return;
+    const inStock = catalog.filter((it) => it.inStock).length;
+    if (msg) msg.textContent = `${catalog.length} sold by Walmart · ${inStock} in stock now — tap + TRACK to get alerts`;
+    renderSearchResults(catalog);
   }
 
   function initSearch() {
     const form = document.getElementById('tlSearchForm');
     if (!form || !CFG.search) return;
     const msg = document.getElementById('tlSearchMsg');
-    if (CFG.search === 'walmart') {
-      document.getElementById('tlSearchInput').addEventListener('input', (e) => showCatalog(e.target.value));
-      loadCatalog();
-    }
+    if (CFG.search === 'walmart') return;
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const q = document.getElementById('tlSearchInput').value.trim();
@@ -771,6 +767,7 @@
     }
     initSearch();
     initFilter();
+    loadCatalog();
     await loadAll();
     setInterval(loadAll, REFRESH_MS);
   })();

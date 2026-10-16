@@ -60,6 +60,14 @@ export function isSoldByWalmart(item) {
 
 // Product search (affiliate Search API) for the "search Walmart" box on the
 // game pages. Only items SOLD BY WALMART are returned (user rule).
+export async function walmartSearchRaw(env, query) {
+  const url = `${BASE}/search?query=${encodeURIComponent(query)}&numItems=25`;
+  const res = await fetch(url, { headers: await signedHeaders(env) });
+  const text = await res.text();
+  let body; try { body = JSON.parse(text); } catch (_) { body = text.slice(0, 1500); }
+  return { status: res.status, body };
+}
+
 export async function walmartSearch(env, query) {
   const url = `${BASE}/search?query=${encodeURIComponent(query)}&numItems=25`;
   const res = await fetch(url, { headers: await signedHeaders(env) });

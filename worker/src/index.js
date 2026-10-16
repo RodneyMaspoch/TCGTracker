@@ -24,7 +24,7 @@ import {
 import { notifyAll, pushConfigured } from './push.js';
 import { Ticker } from './ticker-do.js';
 import { checkSourcesReachable } from './headsup.js';
-import { walmartConfigured, walmartLookupRaw, walmartSearch, walmartCatalog } from './walmart-io.js';
+import { walmartConfigured, walmartLookupRaw, walmartSearch, walmartCatalog, walmartSearchRaw } from './walmart-io.js';
 import { searchNintendoCatalog } from './nintendo-algolia.js';
 
 // Durable Object classes must be exported from the main entry module (this
@@ -144,11 +144,26 @@ app.get('/api/walmart/catalog', async (c) => {
     const res = new Response(JSON.stringify({ results, cachedAt: new Date().toISOString() }), {
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=1800' },
     });
-    c.executionCtx.waitUntil(cache.put(cacheKey, res.clone()));
+    if (results.length) c.executionCtx.waitUntil(cache.put(cacheKey, res.clone())); // never cache an empty list
     return res;
   } catch (err) {
     return c.json({ error: err.message }, 502);
   }
+});
+
+// 2026-10-16 — debug: what does Walmart's search return BEFORE our
+// sold-by-Walmart filter? /api/admin/walmart-search-debug?q=pokemon
+app.get('/api/admin/walmart-search-debug', async (c) => {
+  if (!walmartConfigured(c.env)) return c.json({ error: 'Walmart feed not configured' }, 400);
+  const { status, body } = await walmartSearchRaw(c.env, c.req.query('q') || 'pokemon elite trainer box');
+  const items = body && typeof body === 'object' ? (body.items || []) : [];
+  return c.json({
+    status,
+    topLevelKeys: body && typeof body === 'object' ? Object.keys(body) : null,
+    itemCount: items.length,
+    sample: items.slice(0, 8).map((it) => ({ name: it.name, marketplace: it.marketplace, sellerInfo: it.sellerInfo, stock: it.stock, salePrice: it.salePrice })),
+    rawIfNotJson: typeof body === 'string' ? body : undefined,
+  });
 });
 
 // 2026-10-16 — which alert sources can the Worker reach right now?
