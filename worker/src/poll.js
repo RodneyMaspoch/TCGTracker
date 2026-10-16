@@ -45,6 +45,7 @@ import { checkNintendoProduct } from './nintendo-algolia.js';
 import { walmartConfigured, checkWalmartItem, findWalmartListing } from './walmart-io.js';
 import { notifyAll } from './push.js';
 import { runHeadsUpCheck } from './headsup.js';
+import { runReminders } from './reminders.js';
 import {
   getListingsForLane,
   updateListing,
@@ -361,6 +362,7 @@ export async function tick(env) {
   const settled = await Promise.allSettled([
     ...fastListings.map((row) => pollOneListing(env, row)),
     pollWalmartDrawing(env),
+    runReminders(env), // launch + dated-tip reminders (reminders.js)
   ]);
   for (const s of settled) {
     if (s.status === 'rejected') console.error('[poll] fast-lane task rejected:', s.reason);

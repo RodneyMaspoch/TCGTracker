@@ -616,7 +616,7 @@
   });
 
   // ---------------- 4. recent restocks ----------------
-  const KIND_LABELS = { restock: 'Restock', good_price: 'Good price', drawing_open: 'Drawing open', price_target: 'Price alert', new_listing: 'Now listed' };
+  const KIND_LABELS = { restock: 'Restock', good_price: 'Good price', drawing_open: 'Drawing open', price_target: 'Price alert', new_listing: 'Now listed', launch_reminder: 'Reminder', tip_reminder: 'Reminder (unconfirmed)', tip_scheduled: 'Upcoming (unconfirmed)' };
   function renderDeals() {
     const wrap = document.getElementById('tlDeals');
     if (!wrap) return;

@@ -19,6 +19,7 @@
 
 import { insertHeadsUp } from './db.js';
 import { notifyAll } from './push.js';
+import { scheduleTipIfDated } from './reminders.js';
 
 const KEYWORD_RE = /(drawing|lottery|restock|pre[- ]?order|drop)/i;
 // 2026-10-14 — widened per user request, reasoning that lower-traffic
@@ -270,7 +271,7 @@ async function checkWebSource(env, source) {
       dedupe_key: hashText(snip.text),
     };
     const isNew = await insertHeadsUp(env, row);
-    if (isNew) await notifyHeadsUp(env, row);
+    if (isNew) { await notifyHeadsUp(env, row); await scheduleTipIfDated(env, row).catch((e) => console.error('[reminders] schedule:', e)); }
   }
 }
 
@@ -313,7 +314,7 @@ async function checkRestockd(env) {
       dedupe_key: hashText(`${name}|${retailer}|${price}|${date}`),
     };
     const isNew = await insertHeadsUp(env, row);
-    if (isNew) await notifyHeadsUp(env, row);
+    if (isNew) { await notifyHeadsUp(env, row); await scheduleTipIfDated(env, row).catch((e) => console.error('[reminders] schedule:', e)); }
     count++;
   }
 }
@@ -366,7 +367,7 @@ async function checkHotstock(env) {
       dedupe_key: hashText(`${retailer}|${name}`),
     };
     const isNew = await insertHeadsUp(env, row);
-    if (isNew) await notifyHeadsUp(env, row);
+    if (isNew) { await notifyHeadsUp(env, row); await scheduleTipIfDated(env, row).catch((e) => console.error('[reminders] schedule:', e)); }
     count++;
   }
 }
@@ -438,7 +439,7 @@ async function checkAutoqueuePokemonCenter(env) {
       dedupe_key: `${dateStr}|${timeStr}`,
     };
     const isNew = await insertHeadsUp(env, row);
-    if (isNew) await notifyHeadsUp(env, row);
+    if (isNew) { await notifyHeadsUp(env, row); await scheduleTipIfDated(env, row).catch((e) => console.error('[reminders] schedule:', e)); }
     count++;
   }
 }
@@ -513,7 +514,7 @@ async function checkReddit(env) {
       dedupe_key: d.id,
     };
     const isNew = await insertHeadsUp(env, row);
-    if (isNew) await notifyHeadsUp(env, row);
+    if (isNew) { await notifyHeadsUp(env, row); await scheduleTipIfDated(env, row).catch((e) => console.error('[reminders] schedule:', e)); }
   }
 }
 
