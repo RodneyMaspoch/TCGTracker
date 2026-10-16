@@ -20,6 +20,7 @@
 import { insertHeadsUp } from './db.js';
 import { notifyAll } from './push.js';
 import { scheduleTipIfDated } from './reminders.js';
+import { findOfficialMatch, officialSourcesCheck } from './officialnews.js';
 
 const KEYWORD_RE = /(drawing|lottery|restock|pre[- ]?order|drop)/i;
 // 2026-10-14 — widened per user request, reasoning that lower-traffic
@@ -244,7 +245,16 @@ async function notifyHeadsUp(env, row) {
     : kind === 'pokemon_center'
       ? { title: '🟡 Pokémon Center drop (unconfirmed)', url: 'https://www.pokemoncenter.com/category/new-releases' }
       : { title: '🔔 Heads up', url: '/heads-up' };
-  await notifyAll(env, { title: push.title, body: row.title, url: push.url, tag: `headsup-${kind}-${row.dedupe_key || row.source}` });
+  // 2026-10-16 — cross-check against official publisher news. The tip is
+  // still sent either way; a match just says so (and is marked on the row).
+  const official = await findOfficialMatch(env, `${row.title} ${row.snippet || ''}`).catch(() => null);
+  let body = row.title;
+  if (official) {
+    body = `${row.title} — ✓ matches official news: ${official.title}`;
+    await env.DB.prepare(`UPDATE heads_up SET snippet = ? WHERE source = ? AND dedupe_key = ?`)
+      .bind(`✓ Matches official: ${official.title}`, row.source, row.dedupe_key).run().catch(() => {});
+  }
+  await notifyAll(env, { title: push.title, body, url: push.url, tag: `headsup-${kind}-${row.dedupe_key || row.source}` });
 }
 
 async function checkWebSource(env, source) {
@@ -601,6 +611,7 @@ export async function checkSourcesReachable(env) {
   } catch (err) {
     out.autoqueue_pokemon_center.parseError = err.message;
   }
+  out.official = await officialSourcesCheck().catch((err) => ({ error: err.message }));
   out.reddit = env && env.REDDIT_CLIENT_ID
     ? await redditGet(env, '/r/pokemontcg/new?limit=1').then(() => ({ ok: true, via: 'official API' })).catch((err) => ({ ok: false, error: err.message }))
     : { ok: false, note: 'Reddit blocks Cloudflare without an API key — add REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET' };

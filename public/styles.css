@@ -1566,3 +1566,4 @@ div.tl-item { padding-bottom: 14px; }
 .tl-badge.kind-soon { background: #6b7280; color: #fff; }
 .tl-tag-new_listing { background: #7c3aed; color: #fff; }
 .tl-tag-launch_reminder, .tl-tag-tip_reminder, .tl-tag-tip_scheduled { background: #f59e0b; color: #111; }
+.tl-tag-official { background: #dcfce7; color: #166534; }

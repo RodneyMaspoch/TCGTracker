@@ -14,6 +14,10 @@ const SOURCE_LABELS = {
   reddit: 'Reddit — r/PokemonTCG',
   restockd: 'Restockd',
   hotstock: 'HotStock',
+  'official-mtg': 'Wizards of the Coast (official)',
+  'official-lorcana': 'Disney Lorcana (official)',
+  'official-pokemon': 'Pokémon press site (official)',
+  'walmart-new': 'Walmart (direct)',
 };
 // Real per-game icon files (see /public/icons/*.png) — shown in the card's
 // art band as a plain game indicator, never as a stand-in for a product
@@ -67,9 +71,17 @@ function renderCard(row) {
   const tags = document.createElement('div');
   tags.className = 'tl-item-tags';
   const badge = document.createElement('span');
-  badge.className = 'tl-tag tl-tag-unconfirmed';
-  badge.textContent = 'Unconfirmed';
+  const official = String(row.source).startsWith('official-');
+  const direct = row.source === 'walmart-new';
+  badge.className = `tl-tag ${official || direct ? 'tl-tag-official' : 'tl-tag-unconfirmed'}`;
+  badge.textContent = official ? 'Official' : direct ? 'New at Walmart' : 'Unconfirmed';
   tags.appendChild(badge);
+  if (!official && /^✓ Matches official/.test(row.snippet || '')) {
+    const v = document.createElement('span');
+    v.className = 'tl-tag tl-tag-official';
+    v.textContent = '✓ Matches official';
+    tags.appendChild(v);
+  }
   if (row.retailer) {
     const r = document.createElement('span');
     r.className = 'tl-tag';

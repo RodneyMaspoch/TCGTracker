@@ -46,6 +46,8 @@ import { walmartConfigured, checkWalmartItem, findWalmartListing } from './walma
 import { notifyAll } from './push.js';
 import { runHeadsUpCheck } from './headsup.js';
 import { runReminders } from './reminders.js';
+import { checkNewWalmartSkus } from './newskus.js';
+import { runOfficialNews } from './officialnews.js';
 import {
   getListingsForLane,
   updateListing,
@@ -414,6 +416,26 @@ export async function tick(env) {
       await checkWatchedForNewListings(env, tickCount);
     } catch (err) {
       console.error('[poll] watch-for-listing failed:', err);
+    }
+  }
+
+  // 2026-10-16 — direct sources, no tracker apps in between:
+  //  • new Walmart-sold SKUs (one game per run, every NEW_SKU_EVERY_N_TICKS
+  //    ticks, default 8 ≈ 2 min → each game ≈ every 6 min)
+  //  • official publisher news (every 8th tick ≈ 2 min) for cross-checking tips
+  const skuEvery = parseInt(env.NEW_SKU_EVERY_N_TICKS || '8', 10);
+  if (walmartConfigured(env) && tickCount % skuEvery === 2) {
+    try {
+      await checkNewWalmartSkus(env, Math.floor(tickCount / skuEvery));
+    } catch (err) {
+      console.error('[poll] new-SKU check failed:', err);
+    }
+  }
+  if (tickCount % 8 === 5) {
+    try {
+      await runOfficialNews(env);
+    } catch (err) {
+      console.error('[poll] official news failed:', err);
     }
   }
 

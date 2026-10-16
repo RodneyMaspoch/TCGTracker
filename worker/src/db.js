@@ -252,6 +252,6 @@ export async function insertHeadsUp(env, row) {
 
 export async function getHeadsUp(env, limit = 50) {
   const capped = Math.min(parseInt(limit, 10) || 50, 200);
-  const { results } = await env.DB.prepare('SELECT * FROM heads_up ORDER BY id DESC LIMIT ?').bind(capped).all();
+  const { results } = await env.DB.prepare("SELECT * FROM heads_up WHERE source != 'walmart-seen' ORDER BY id DESC LIMIT ?").bind(capped).all();
   return results;
 }
