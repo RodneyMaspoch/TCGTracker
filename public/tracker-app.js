@@ -106,6 +106,40 @@
   // 2026-10-16 — the three card-game pages search Walmart's official feed
   // (sold-by-Walmart items only). The game's name is added to the query so
   // "elite trainer box" on the Pokémon page finds Pokémon products.
+  // 2026-10-16 — WATCH LIST (TrackaLacker/TYPA style): known products that
+  // Walmart may carry, even before any store lists them. + WATCH creates the
+  // product; the server checks Walmart every few minutes and alerts
+  // "Now listed at Walmart" the moment Walmart itself lists it. Only real,
+  // verified product names (official announcements / retailer listings
+  // recorded in the project watchlist) — no guessed SKUs.
+  GAMES.pokemon.watchlist = [
+    { name: '30th Celebration Elite Trainer Box', msrp: 49.99, img: 'pkm-30th-etb' },
+    { name: '30th Celebration Booster Bundle' },
+    { name: '30th Celebration Knock Out Collection' },
+    { name: '30th Celebration Ultra Premium Collection', msrp: 179.99, img: 'pkm-30th-upc-day' },
+    { name: '30th Celebration Mini Tin' },
+    { name: '30th Celebration Poster Collection', msrp: 19.99 },
+    { name: 'Delta Reign Elite Trainer Box', msrp: 49.99, img: 'pkm-delta-reign-etb' },
+    { name: 'Ascended Heroes Elite Trainer Box', msrp: 59.99 },
+    { name: 'Prismatic Evolutions Elite Trainer Box', img: 'pkm-prismatic-etb' },
+    { name: 'Prismatic Evolutions Super Premium Collection', msrp: 129.99 },
+    { name: 'Black Kyurem ex & Melmetal ex', msrp: 49.99 },
+    { name: "Deck Crafter's Collection", msrp: 9.99 },
+  ];
+  GAMES.mtg.watchlist = [
+    { name: 'Reality Fracture Collector Booster Box', msrp: 323.88 },
+    { name: 'Reality Fracture Play Booster Box', msrp: 164.70 },
+    { name: 'Reality Fracture Secret Lair Bundle', msrp: 89.99, img: 'reality-fracture-sld-target' },
+    { name: 'Star Trek Collector Booster Box', msrp: 479.99 },
+    { name: 'The Hobbit Play Booster Box' },
+  ];
+  GAMES.lorcana.watchlist = [
+    { name: 'Hyperia City Booster Box', msrp: 143.76, img: 'hyperia-box-mm' },
+    { name: "Hyperia City Illumineer's Trove", msrp: 49.99, img: 'hyperia-trove' },
+    { name: 'Hyperia City Beast Gift Box', msrp: 29.99 },
+    { name: 'Hyperia City 2-Player Starter Set' },
+  ];
+
   GAMES.pokemon.search = 'walmart'; GAMES.pokemon.searchTerm = 'pokemon';
   GAMES.mtg.search = 'walmart'; GAMES.mtg.searchTerm = 'magic the gathering';
   GAMES.lorcana.search = 'walmart'; GAMES.lorcana.searchTerm = 'disney lorcana';
@@ -445,6 +479,7 @@
     tile.addEventListener('keydown', (e) => { if (e.key === 'Enter') openSheet(product); });
     const photo = buildPhoto(product, 'tl-photo');
     if (live || good) photo.appendChild(el('span', 'tl-badge' + (good ? ' good' : ''), good ? '$ Good price' : '● In stock'));
+    else if (!product.listings.length) photo.appendChild(el('span', 'tl-badge kind-soon', 'Not listed yet'));
     photo.appendChild(buildTrackPill(product));
     tile.appendChild(photo);
     tile.appendChild(el('div', 'tl-name', product.name));
@@ -560,7 +595,7 @@
     panel.appendChild(buildPriceAlert(product));
     panel.appendChild(el('div', 'tl-where', 'Where to buy'));
     const listings = [...product.listings].sort((a, b) => (b.buyable ? 1 : 0) - (a.buyable ? 1 : 0));
-    if (!listings.length) panel.appendChild(el('div', 'tl-store', 'No store tracked yet.'));
+    if (!listings.length) panel.appendChild(el('div', 'tl-store', "Not listed at any store yet — you'll get an alert the moment Walmart lists it."));
     for (const l of listings) {
       const [key, label] = storeState(l);
       const a = linkify(el('a', 'tl-store'), l.url);
@@ -581,7 +616,7 @@
   });
 
   // ---------------- 4. recent restocks ----------------
-  const KIND_LABELS = { restock: 'Restock', good_price: 'Good price', drawing_open: 'Drawing open', price_target: 'Price alert' };
+  const KIND_LABELS = { restock: 'Restock', good_price: 'Good price', drawing_open: 'Drawing open', price_target: 'Price alert', new_listing: 'Now listed' };
   function renderDeals() {
     const wrap = document.getElementById('tlDeals');
     if (!wrap) return;
@@ -754,8 +789,55 @@
     });
   }
 
+  // ---------------- watch list (not-yet-listed products) ----------------
+  const STOPW = new Set(['the', 'a', 'of', 'and', 'tcg', 'trading', 'card', 'game', 'pokemon', 'pokémon', 'magic', 'gathering', 'disney', 'lorcana', 'mtg', 'x']);
+  const wordsOf = (str) => String(str).toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9é ]+/g, ' ').split(/\s+/).filter((w) => w && !STOPW.has(w));
+  function alreadyTracked(name) {
+    const need = wordsOf(name);
+    return state.products.some((p) => {
+      const have = new Set(wordsOf(p.name));
+      return need.every((w) => have.has(w) || have.has(w.replace(/s$/, '')) || have.has(`${w}s`));
+    });
+  }
+  function renderWatchlist() {
+    const wrap = document.getElementById('tlWatch');
+    if (!wrap) return;
+    const items = (CFG.watchlist || []).filter((w) => !alreadyTracked(w.name));
+    wrap.closest('section').hidden = items.length === 0;
+    wrap.innerHTML = '';
+    for (const w of items) {
+      const tile = el('div', 'tl-tile');
+      const photo = buildPhoto(w.img ? { id: w.img, ids: [w.img], listings: [], name: w.name } : null, 'tl-photo');
+      photo.appendChild(el('span', 'tl-badge kind-soon', 'Not listed yet'));
+      const btn = el('button', 'tl-track', '+ WATCH');
+      btn.type = 'button';
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        btn.disabled = true; btn.textContent = 'ADDING…';
+        try {
+          const res = await fetch('/api/admin/watch', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game: GAME, name: w.name, msrp: w.msrp ?? null }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          if (window.tcgEnsurePushEnabled) window.tcgEnsurePushEnabled();
+          await loadAll();
+        } catch (err) {
+          btn.disabled = false; btn.textContent = '+ WATCH';
+          console.error('[tracker] watch failed', err);
+        }
+      });
+      photo.appendChild(btn);
+      tile.appendChild(photo);
+      tile.appendChild(el('div', 'tl-name', w.name));
+      tile.appendChild(el('div', 'tl-price', w.msrp ? `MSRP ${money(w.msrp)}` : '—'));
+      wrap.appendChild(tile);
+    }
+  }
+
   function render() {
     renderHero();
+    renderWatchlist();
     renderComingUp();
     renderBrowse();
     renderDeals();

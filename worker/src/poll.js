@@ -42,7 +42,7 @@
 
 import { scrapeGeneric, scrapeWalmartDrawing } from './scrapers.js';
 import { checkNintendoProduct } from './nintendo-algolia.js';
-import { walmartConfigured, checkWalmartItem } from './walmart-io.js';
+import { walmartConfigured, checkWalmartItem, findWalmartListing } from './walmart-io.js';
 import { notifyAll } from './push.js';
 import { runHeadsUpCheck } from './headsup.js';
 import {
@@ -55,6 +55,8 @@ import {
   setPollState,
   hasRecentRestock,
   getTargetPrices,
+  getUnlistedWatchProducts,
+  addListing,
 } from './db.js';
 
 // 2026-10-15, user rule: "show products at MSRP or at most 20% above it, not
@@ -401,5 +403,41 @@ export async function tick(env) {
     console.error('[poll] heads-up check rejected:', err);
   }
 
+  // 2026-10-16 — "watch before it's listed": every 4th tick (~1 min) check
+  // 3 watched-but-unlisted products against Walmart's search, rotating, so
+  // each is re-checked every few minutes. New Walmart-sold listing → add it
+  // (normal stock/price polling takes over) and alert immediately.
+  if (walmartConfigured(env) && tickCount % 4 === 0) {
+    try {
+      await checkWatchedForNewListings(env, tickCount);
+    } catch (err) {
+      console.error('[poll] watch-for-listing failed:', err);
+    }
+  }
+
   await setPollState(env, { fast_idx: fastIdx, slow_idx: slowIdx, tick_count: tickCount });
+}
+
+
+async function checkWatchedForNewListings(env, tickCount) {
+  const watched = await getUnlistedWatchProducts(env);
+  if (!watched.length) return;
+  const PER_RUN = 3;
+  const start = ((tickCount / 4) * PER_RUN) % watched.length;
+  const batch = [];
+  for (let i = 0; i < Math.min(PER_RUN, watched.length); i++) batch.push(watched[(start + i) % watched.length]);
+  for (const p of batch) {
+    const hit = await findWalmartListing(env, p).catch((err) => {
+      console.warn(`[poll] walmart search failed for ${p.id}: ${err.message}`);
+      return null;
+    });
+    if (!hit) continue;
+    const added = await addListing(env, p.id, 'walmart', hit.url);
+    if (!added) continue;
+    const now = new Date().toISOString();
+    const priceTxt = hit.price != null ? ` — $${hit.price}` : '';
+    const msg = `NOW LISTED at Walmart: ${p.name}${priceTxt}${hit.inStock ? ' (in stock)' : ' (not in stock yet)'}`;
+    await insertEvent(env, { created_at: now, kind: 'new_listing', product_id: p.id, message: msg, data_json: JSON.stringify({ url: hit.url, price: hit.price, inStock: hit.inStock }) });
+    await notifyAll(env, { title: '🆕 Now listed at Walmart', body: msg, url: hit.url, tag: `${p.id}-listed` });
+  }
 }

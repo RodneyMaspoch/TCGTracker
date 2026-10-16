@@ -18,6 +18,7 @@ import {
   setProductTier,
   setProductMuted,
   setProductTarget,
+  insertWatchProduct,
   getHeadsUp,
   insertTrackedProduct,
 } from './db.js';
@@ -167,7 +168,7 @@ app.get('/api/admin/walmart-search-debug', async (c) => {
 });
 
 // 2026-10-16 — which alert sources can the Worker reach right now?
-app.get('/api/admin/sources-check', async (c) => c.json(await checkSourcesReachable()));
+app.get('/api/admin/sources-check', async (c) => c.json(await checkSourcesReachable(c.env)));
 
 // 2026-10-16 — one-off test of the Walmart official feed. Open in a browser:
 //   /api/admin/walmart-test?item=20908222947
@@ -184,6 +185,16 @@ app.get('/api/admin/walmart-test', async (c) => {
   } catch (err) {
     return c.json({ ok: false, error: err.message }, 500);
   }
+});
+
+// 2026-10-16 — watch a product that may not be listed anywhere yet.
+app.post('/api/admin/watch', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { game, name, msrp } = body;
+  if (!game || !name) return c.json({ error: 'game and name required' }, 400);
+  const id = `${game}-watch-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`.slice(0, 80);
+  await insertWatchProduct(c.env, { id, game, name, msrp: typeof msrp === 'number' ? msrp : null });
+  return c.json({ ok: true, id });
 });
 
 // 2026-10-15 — per-product price alert. target_price: number > 0, or null to clear.

@@ -161,3 +161,27 @@ export async function walmartCatalog(env, game) {
   // In-stock first, then by name.
   return [...seen.values()].sort((a, b) => (b.inStock - a.inStock) || String(a.title).localeCompare(String(b.title)));
 }
+
+// 2026-10-16 — does a Walmart search result really match a watched product
+// name? Every meaningful word of the watched name must appear in Walmart's
+// title (so "Delta Reign Elite Trainer Box" won't match a Delta Reign
+// booster pack or a T-shirt).
+const STOP = new Set(['the', 'a', 'of', 'and', 'tcg', 'trading', 'card', 'game', 'pokemon', 'pokémon', 'magic', 'gathering', 'disney', 'lorcana', 'mtg', '&', '-', '—', 'x']);
+function words(str) {
+  return String(str).toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9é ]+/g, ' ').split(/\s+/).filter((w) => w && !STOP.has(w));
+}
+export function titleMatches(watchName, walmartTitle) {
+  const need = words(watchName);
+  if (!need.length) return false;
+  const have = new Set(words(walmartTitle));
+  if (/shirt|tee|hoodie|plush|costume|sticker|poster frame/i.test(walmartTitle)) return false;
+  return need.every((w) => have.has(w) || have.has(w.replace(/s$/, '')) || have.has(`${w}s`));
+}
+
+const GAME_PREFIX = { pokemon: 'pokemon', mtg: 'magic the gathering', lorcana: 'disney lorcana' };
+// Returns the first SOLD-BY-WALMART search result that matches, or null.
+export async function findWalmartListing(env, product) {
+  const q = `${GAME_PREFIX[product.game] || ''} ${product.name}`.trim();
+  const results = await walmartSearch(env, q); // already Walmart-sold only
+  return results.find((it) => titleMatches(product.name, it.title)) || null;
+}

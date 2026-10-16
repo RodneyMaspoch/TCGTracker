@@ -44,7 +44,7 @@ function timeAgo(iso) {
 
 // 2026-10-15 — same list-row design as Heads Up. Repeats of the same alert
 // are grouped into one row with ×N.
-const KIND_TEXT = { restock: 'Restock', good_price: 'Good price', drawing_open: 'Drawing open', drawing_reminder: 'Drawing soon', headsup: 'Unconfirmed', price_target: 'Price alert' };
+const KIND_TEXT = { restock: 'Restock', good_price: 'Good price', drawing_open: 'Drawing open', drawing_reminder: 'Drawing soon', headsup: 'Unconfirmed', price_target: 'Price alert', new_listing: 'Now listed' };
 const GAME_ICON = { pokemon: '/icons/pokemon.png', mtg: '/icons/mtg.png', lorcana: '/icons/lorcana.png' };
 let productsById = {};
 

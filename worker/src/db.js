@@ -205,6 +205,36 @@ export async function insertTrackedProduct(env, { id, game, name, msrp, poll_tie
   ).bind(id, retailer, url).run();
 }
 
+// 2026-10-16 — "watch before it's listed" (TrackaLacker/TYPA style): a product
+// row with NO store listing yet. The poller looks for it on Walmart and adds
+// the listing (and alerts) the moment Walmart itself lists it.
+export async function insertWatchProduct(env, { id, game, name, msrp }) {
+  await env.DB.prepare(
+    'INSERT OR IGNORE INTO products (id, game, name, msrp, poll_tier, tcgplayer_ref) VALUES (?, ?, ?, ?, ?, NULL)'
+  ).bind(id, game, name, msrp ?? null, game === 'pokemon' ? 'fast' : 'slow').run();
+  // A watched product must be tracked (alerts on), even if it existed muted.
+  await env.DB.prepare('UPDATE products SET muted = 0 WHERE id = ?').bind(id).run().catch(() => {});
+}
+
+// Products (alerts on) that don't have a Walmart listing yet.
+export async function getUnlistedWatchProducts(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT p.id, p.game, p.name, p.msrp FROM products p
+     WHERE p.game IN ('pokemon','mtg','lorcana')
+       AND COALESCE(p.muted, 0) = 0
+       AND NOT EXISTS (SELECT 1 FROM retailer_listings rl WHERE rl.product_id = p.id AND rl.retailer LIKE 'walmart%')
+     ORDER BY p.id`
+  ).all();
+  return results;
+}
+
+export async function addListing(env, productId, retailer, url) {
+  const { meta } = await env.DB.prepare(
+    'INSERT OR IGNORE INTO retailer_listings (product_id, retailer, url) VALUES (?, ?, ?)'
+  ).bind(productId, retailer, url).run();
+  return (meta && meta.changes) > 0;
+}
+
 // ---------------- heads_up (early signal / unconfirmed tier) ----------------
 
 // Returns true only if this was a genuinely NEW row (not a duplicate of an

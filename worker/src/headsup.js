@@ -425,6 +425,32 @@ async function checkAutoqueuePokemonCenter(env) {
   }
 }
 
+let redditToken = null;
+let redditTokenExp = 0;
+const REDDIT_UA = 'web:tcgtracker:1.0 (personal restock alerts)';
+async function redditGet(env, path) {
+  if (!redditToken || Date.now() > redditTokenExp - 60000) {
+    const res = await fetch('https://www.reddit.com/api/v1/access_token', {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${btoa(`${env.REDDIT_CLIENT_ID}:${env.REDDIT_CLIENT_SECRET}`)}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': REDDIT_UA,
+      },
+      body: 'grant_type=client_credentials',
+    });
+    if (!res.ok) throw new Error(`reddit token HTTP ${res.status}`);
+    const t = await res.json();
+    redditToken = t.access_token;
+    redditTokenExp = Date.now() + (t.expires_in || 3600) * 1000;
+  }
+  const res = await fetch(`https://oauth.reddit.com${path}`, {
+    headers: { Authorization: `Bearer ${redditToken}`, 'User-Agent': REDDIT_UA },
+  });
+  if (!res.ok) throw new Error(`reddit HTTP ${res.status}`);
+  return res.json();
+}
+
 // Reddit's own search JSON is public and needs no API key for this volume
 // of use — same "read a public page" boundary as everything else here.
 async function checkReddit(env) {
@@ -437,11 +463,15 @@ async function checkReddit(env) {
   // query has quotes/apostrophes that need real percent-encoding to stay
   // valid.
   const q = 'walmart drawing OR walmart lottery OR walmart restock OR "pokemon center" OR "sam\'s club" restock OR costco restock OR walgreens restock OR "hobby lobby" restock OR "dollar general" restock';
-  const url = `https://www.reddit.com/r/pokemontcg/search.json?q=${encodeURIComponent(q)}&restrict_sr=1&sort=new&limit=15`;
+  // 2026-10-16 — Reddit blocks anonymous requests from Cloudflare (HTTP 403,
+  // confirmed via /api/admin/sources-check). It now uses Reddit's official
+  // free API (app-only OAuth) when REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET
+  // are set, and is skipped quietly otherwise.
+  if (!env.REDDIT_CLIENT_ID || !env.REDDIT_CLIENT_SECRET) return;
+  const path = `/r/pokemontcg/search?q=${encodeURIComponent(q)}&restrict_sr=1&sort=new&limit=15&raw_json=1`;
   let json;
   try {
-    const text = await fetchText(url);
-    json = JSON.parse(text);
+    json = await redditGet(env, path);
   } catch (err) {
     console.warn(`[headsup] reddit fetch/parse failed: ${err.message}`);
     return;
@@ -519,11 +549,10 @@ export const HEADS_UP_CHECK_COUNT = DISTINCT_CHECKERS.length;
 
 // 2026-10-16 — diagnostics: can the Worker actually reach each early-signal
 // source right now? Used by GET /api/admin/sources-check.
-export async function checkSourcesReachable() {
+export async function checkSourcesReachable(env) {
   const urls = {
     restockd: RESTOCKD_URL,
     autoqueue_pokemon_center: AUTOQUEUE_PC_URL,
-    reddit: 'https://www.reddit.com/r/pokemontcg/new.json?limit=1',
     walmart_drawing_page: 'https://www.walmart.com/shop/collectibles/draw',
   };
   const out = {};
@@ -531,10 +560,30 @@ export async function checkSourcesReachable() {
     try {
       const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', Accept: 'text/html,application/json' } });
       const body = await r.text();
-      out[k] = { status: r.status, ok: r.ok, bytes: body.length, blocked: /captcha|are you a human|access denied|robot/i.test(body.slice(0, 5000)) };
+      const title = (body.match(/<title[^>]*>([^<]{0,120})/i) || [])[1] || null;
+      const text = stripToText(body);
+      out[k] = {
+        status: r.status, bytes: body.length, title,
+        looksLikeBotWall: /robot or human|are you a human|verify you are human|access denied|pardon our interruption/i.test(text.slice(0, 3000)),
+        textStart: text.slice(0, 220),
+      };
     } catch (err) {
-      out[k] = { ok: false, error: err.message };
+      out[k] = { error: err.message };
     }
   }));
+  // How many Pokémon Center drop-log entries does our parser actually find?
+  try {
+    const text = stripToText(await fetchText(AUTOQUEUE_PC_URL));
+    const re = new RegExp(AUTOQUEUE_PC_ENTRY_RE.source, 'g');
+    const found = [];
+    let m;
+    while ((m = re.exec(text)) !== null && found.length < 5) found.push(`${m[1]} ${m[2]} — ${m[3].trim().slice(0, 60)}`);
+    out.autoqueue_pokemon_center.parsedEntries = found;
+  } catch (err) {
+    out.autoqueue_pokemon_center.parseError = err.message;
+  }
+  out.reddit = env && env.REDDIT_CLIENT_ID
+    ? await redditGet(env, '/r/pokemontcg/new?limit=1').then(() => ({ ok: true, via: 'official API' })).catch((err) => ({ ok: false, error: err.message }))
+    : { ok: false, note: 'Reddit blocks Cloudflare without an API key — add REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET' };
   return out;
 }
