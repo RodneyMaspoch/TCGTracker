@@ -57,6 +57,15 @@ VAPID_SUBJECT = "mailto:stuffiliked@gmail.com"
 NINTENDO_ALGOLIA_APP_ID = "U3B6GR4UA3"
 NINTENDO_ALGOLIA_API_KEY = "a29c6927638bfd8cee23993e51e721c9"
 
+# 2026-10-16: Walmart's official affiliate product feed (walmart.io) — see
+# worker/src/walmart-io.js. The consumer ID is just an app identifier (useless
+# without the private key), so it lives here; keeping it in this file stops a
+# GitHub-triggered deploy from wiping the value that was added in the
+# dashboard. The PRIVATE KEY is NOT here — it's the Cloudflare secret
+# WALMART_PRIVATE_KEY, which deploys never touch.
+WALMART_CONSUMER_ID = "7859347d-4c68-4c9d-9271-9b88701ac613"
+WALMART_KEY_VERSION = "1"
+
 # D1 database binding. Run `wrangler d1 create tcgtracker-db` once, then
 # paste the database_id it prints below (see worker/README.md for the full
 # step-by-step). Left blank here on purpose — wrangler will refuse to

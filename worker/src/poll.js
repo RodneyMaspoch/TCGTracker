@@ -42,6 +42,7 @@
 
 import { scrapeGeneric, scrapeWalmartDrawing } from './scrapers.js';
 import { checkNintendoProduct } from './nintendo-algolia.js';
+import { walmartConfigured, checkWalmartItem } from './walmart-io.js';
 import { notifyAll } from './push.js';
 import { runHeadsUpCheck } from './headsup.js';
 import {
@@ -103,9 +104,18 @@ async function pollOneListing(env, row) {
     // public search index by sku, rather than regexing rendered HTML, so
     // it's strictly more reliable for this one retailer. Every other
     // retailer is unaffected and still goes through scrapeGeneric().
-    result = row.retailer === 'nintendo'
-      ? await checkNintendoProduct(env, row.url)
-      : await scrapeGeneric(row.url);
+    if (row.retailer === 'nintendo') {
+      result = await checkNintendoProduct(env, row.url);
+    } else if (row.retailer.startsWith('walmart') && walmartConfigured(env)) {
+      // 2026-10-16 — Walmart's official feed when set up; page check otherwise.
+      result = await checkWalmartItem(env, row.url).catch((err) => {
+        console.warn(`[poll] walmart.io failed for ${row.product_id}: ${err.message} — falling back to page check`);
+        return null;
+      });
+      if (!result) result = await scrapeGeneric(row.url);
+    } else {
+      result = await scrapeGeneric(row.url);
+    }
   } catch (err) {
     console.warn(`[poll] fetch failed for ${row.retailer}/${row.product_id}: ${err.message}`);
     return;

@@ -1,0 +1,94 @@
+// walmart-io.js — 2026-10-16. Walmart's OFFICIAL affiliate product feed
+// (walmart.io), used instead of reading walmart.com pages (which block
+// cloud servers). Only active once these Worker settings exist:
+//   WALMART_CONSUMER_ID   (plain variable — shown in the walmart.io dashboard)
+//   WALMART_KEY_VERSION   (plain variable — usually "1")
+//   WALMART_PRIVATE_KEY   (SECRET — contents of WALMART_PRIVATE_KEY.pem)
+// Without them, walmartConfigured() is false and poll.js keeps using the
+// normal page check, exactly as before.
+//
+// Request signing (Walmart I/O standard): sign the string
+//   consumerId + "\n" + timestampMs + "\n" + keyVersion + "\n"
+// with RSA SHA-256 (PKCS#1 v1.5), base64, and send it with the headers below.
+
+const BASE = 'https://developer.api.walmart.com/api-proxy/service/affil/product/v2';
+
+export function walmartConfigured(env) {
+  return !!(env.WALMART_CONSUMER_ID && env.WALMART_PRIVATE_KEY);
+}
+
+// walmart.com/ip/<slug>/<itemId>  →  itemId
+export function extractWalmartItemId(url) {
+  const m = String(url).match(/\/ip\/(?:[^/]+\/)?(\d{5,})/);
+  return m ? m[1] : null;
+}
+
+let cachedKey = null;
+async function importKey(pem) {
+  if (cachedKey) return cachedKey;
+  const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+  const der = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  cachedKey = await crypto.subtle.importKey(
+    'pkcs8', der.buffer, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign'],
+  );
+  return cachedKey;
+}
+
+async function signedHeaders(env) {
+  const consumerId = env.WALMART_CONSUMER_ID;
+  const keyVersion = env.WALMART_KEY_VERSION || '1';
+  const ts = String(Date.now());
+  const key = await importKey(env.WALMART_PRIVATE_KEY);
+  const data = new TextEncoder().encode(`${consumerId}\n${ts}\n${keyVersion}\n`);
+  const sig = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, data));
+  let bin = '';
+  for (const b of sig) bin += String.fromCharCode(b);
+  return {
+    'WM_CONSUMER.ID': consumerId,
+    'WM_CONSUMER.INTIMESTAMP': ts,
+    'WM_SEC.KEY_VERSION': keyVersion,
+    'WM_SEC.AUTH_SIGNATURE': btoa(bin),
+    Accept: 'application/json',
+  };
+}
+
+// Raw item lookup — used by the /api/admin/walmart-test endpoint so we can
+// SEE exactly what Walmart returns (does it include stock?) before relying on it.
+export async function walmartLookupRaw(env, itemId) {
+  const res = await fetch(`${BASE}/items/${itemId}`, { headers: await signedHeaders(env) });
+  const text = await res.text();
+  let body;
+  try { body = JSON.parse(text); } catch (_) { body = text.slice(0, 2000); }
+  return { status: res.status, body };
+}
+
+// Normalized check for poll.js. Returns null when Walmart's answer has no
+// usable stock field — the caller then falls back to the page check, so this
+// can never make things worse than today.
+export async function checkWalmartItem(env, url) {
+  const itemId = extractWalmartItemId(url);
+  if (!itemId) return null;
+  const { status, body } = await walmartLookupRaw(env, itemId);
+  if (status !== 200 || !body || typeof body !== 'object') {
+    throw new Error(`walmart.io HTTP ${status}`);
+  }
+  const item = Array.isArray(body.items) ? body.items[0] : body;
+  if (!item) return null;
+  const stock = typeof item.stock === 'string' ? item.stock.toLowerCase() : null;
+  const hasSignal = stock != null || typeof item.availableOnline === 'boolean';
+  if (!hasSignal) return null;
+  const purchasable = stock != null
+    ? !/not available|out of stock/.test(stock) && (item.availableOnline !== false)
+    : item.availableOnline === true;
+  const price = typeof item.salePrice === 'number' ? item.salePrice : null;
+  // Walmart marketplace sellers (not Walmart itself) are flagged so they can
+  // be recognised; the MSRP +20% rule in poll.js already filters reseller prices.
+  return {
+    price,
+    stock: purchasable ? 'in_stock' : 'oos',
+    purchasable,
+    image: item.largeImage || item.mediumImage || null,
+    source: 'walmart-io',
+    seller: item.sellerInfo || null,
+  };
+}

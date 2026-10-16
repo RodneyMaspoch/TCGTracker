@@ -23,6 +23,7 @@ import {
 } from './db.js';
 import { notifyAll, pushConfigured } from './push.js';
 import { Ticker } from './ticker-do.js';
+import { walmartConfigured, walmartLookupRaw } from './walmart-io.js';
 import { searchNintendoCatalog } from './nintendo-algolia.js';
 
 // Durable Object classes must be exported from the main entry module (this
@@ -115,6 +116,23 @@ app.post('/api/admin/set-muted', async (c) => {
   }
   await setProductMuted(c.env, product_id, muted);
   return c.json({ ok: true });
+});
+
+// 2026-10-16 — one-off test of the Walmart official feed. Open in a browser:
+//   /api/admin/walmart-test?item=20908222947
+// Shows Walmart's raw answer so we can confirm it includes stock.
+app.get('/api/admin/walmart-test', async (c) => {
+  if (!walmartConfigured(c.env)) {
+    return c.json({ ok: false, error: 'Walmart not set up yet: add WALMART_CONSUMER_ID, WALMART_KEY_VERSION and the WALMART_PRIVATE_KEY secret in Cloudflare.' }, 400);
+  }
+  const item = c.req.query('item') || '20908222947';
+  try {
+    const { status, body } = await walmartLookupRaw(c.env, item);
+    const it = body && typeof body === 'object' ? (Array.isArray(body.items) ? body.items[0] : body) : null;
+    return c.json({ ok: status === 200, status, stock: it?.stock ?? null, availableOnline: it?.availableOnline ?? null, salePrice: it?.salePrice ?? null, name: it?.name ?? null, raw: body });
+  } catch (err) {
+    return c.json({ ok: false, error: err.message }, 500);
+  }
 });
 
 // 2026-10-15 — per-product price alert. target_price: number > 0, or null to clear.

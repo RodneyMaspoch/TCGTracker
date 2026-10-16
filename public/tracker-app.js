@@ -38,7 +38,7 @@
         'pkm-prismatic-etb': 'https://cdn.shopify.com/s/files/1/0689/9397/4463/files/593355.jpg?v=1748918714',
       },
       upcoming: [
-        { kind: 'RELEASE', name: "Deck Crafter's Collection", date: '2026-10-23', line: '$9.99' },
+        { kind: 'RELEASE', name: "Deck Crafter's Collection", date: '2026-10-23', line: '$9.99', productId: 'pkm-deck-crafter' },
         { kind: 'RELEASE', name: 'Delta Reign — Elite Trainer Box', date: '2026-11-06', line: '$49.99', productId: 'pkm-delta-reign-etb' },
         { kind: 'RELEASE', name: 'ME7: Aura Seeker (Japan)', date: '2026-11-27', line: 'Japan' },
         { kind: 'RELEASE', name: 'ME7a: MEGA x MEGA Parade (Japan)', date: '2027-02-19', line: 'Japan' },
@@ -58,9 +58,10 @@
       },
       upcoming: [
         { kind: 'RELEASE', name: 'Reality Fracture — Secret Lair Bundle', date: '2026-10-23', line: '$89.99 · Target / Walmart', productId: 'reality-fracture-sld-target' },
+        { kind: 'EVENT', name: 'SCG CON: Hartford', date: '2026-10-23', line: 'Hartford, CT · Sealed + Commander' },
         { kind: 'EVENT', name: "Magic Presents: All Leylines' Eve", date: '2026-10-30', line: 'Local game stores' },
         { kind: 'EVENT', name: 'Star Trek Prerelease', date: '2026-11-06', line: 'Local game stores' },
-        { kind: 'RELEASE', name: 'Star Trek', date: '2026-11-13', line: 'Collector Box $479.99' },
+        { kind: 'RELEASE', name: 'Star Trek', date: '2026-11-13', line: 'Collector Box $479.99', productId: 'startrek-cbb' },
         { kind: 'RELEASE', name: 'Mystery Booster: Commander Edition', date: '2026-11-13', line: 'MagicCon only' },
         { kind: 'EVENT', name: 'MagicCon: Atlanta', date: '2026-11-13', line: 'Atlanta, GA' },
         { kind: 'DROP', name: 'Secret Lair × MSCHF: The Zeta Set', date: '2026-12-09', line: '24-hr window · $19.92/pack', url: 'https://magic.wizards.com/en/news/announcements/an-update-on-the-zeta-set-sale' },
