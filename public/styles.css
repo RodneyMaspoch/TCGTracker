@@ -45,12 +45,12 @@ body[data-game="lorcana"] {
 /* ---------- Heads Up: shared across all three games — neutral graphite /
    amber, not any one game's color, since this page mixes all three. ---------- */
 body[data-game="headsup"] {
-  --bg: #0b0d10; --surface: #14171b; --well: #101215; --hero-base: #101215;
-  --ink: #eef1f4; --dim: rgba(238,241,244,.62); --dim2: rgba(238,241,244,.45);
-  --hair: rgba(238,241,244,.12); --hair2: rgba(238,241,244,.2);
-  --accent: #ffb020; --accent-ink: #241800;
-  --sec: #5cc2ff; --sec-ink: #041826;
-  --warn: #ff5c5c; --warn-ink: #240404;
+  --bg: #ffffff; --surface: #ffffff; --well: #f3f4f6; --hero-base: #ffffff;
+  --ink: #111418; --dim: rgba(17,20,24,.62); --dim2: rgba(17,20,24,.45);
+  --hair: rgba(17,20,24,.10); --hair2: rgba(17,20,24,.18);
+  --accent: #d97706; --accent-ink: #ffffff; --accent-soft: #fef6e7;
+  --sec: #2563eb; --sec-ink: #ffffff;
+  --warn: #e0365a; --warn-ink: #ffffff;
 }
 
 /* ---------- Notifications: 2026-10-14, new page — same neutral graphite
@@ -58,12 +58,12 @@ body[data-game="headsup"] {
    instead of amber so the two are visually distinct at a glance despite
    both using a near-identical bell-family icon concept in the nav. ---------- */
 body[data-game="notifications"] {
-  --bg: #0b0d10; --surface: #14171b; --well: #101215; --hero-base: #101215;
-  --ink: #eef1f4; --dim: rgba(238,241,244,.62); --dim2: rgba(238,241,244,.45);
-  --hair: rgba(238,241,244,.12); --hair2: rgba(238,241,244,.2);
-  --accent: #a78bfa; --accent-ink: #1a1030;
-  --sec: #5cc2ff; --sec-ink: #041826;
-  --warn: #ff5c5c; --warn-ink: #240404;
+  --bg: #ffffff; --surface: #ffffff; --well: #f3f4f6; --hero-base: #ffffff;
+  --ink: #111418; --dim: rgba(17,20,24,.62); --dim2: rgba(17,20,24,.45);
+  --hair: rgba(17,20,24,.10); --hair2: rgba(17,20,24,.18);
+  --accent: #111418; --accent-ink: #ffffff; --accent-soft: #f3f4f6;
+  --sec: #2563eb; --sec-ink: #ffffff;
+  --warn: #e0365a; --warn-ink: #ffffff;
 }
 
 * { box-sizing: border-box; }
@@ -1477,3 +1477,54 @@ body.tl-page .tcg-nav-item.active { background: var(--accent-soft); box-shadow: 
   .tl-hero2-photo { order: -1; aspect-ratio: 16 / 9; }
   .tl-hero2-text { padding: 22px; }
 }
+
+body[data-game="nintendo"] {
+  --bg: #ffffff; --surface: #ffffff; --well: #f3f4f6; --hero-base: #ffffff;
+  --ink: #111418; --dim: rgba(17,20,24,.62); --dim2: rgba(17,20,24,.45);
+  --hair: rgba(17,20,24,.10); --hair2: rgba(17,20,24,.18);
+  --accent: #e60012; --accent-ink: #ffffff; --accent-soft: #fdecee;
+  --sec: #2563eb; --sec-ink: #ffffff;
+  --warn: #e0365a; --warn-ink: #ffffff;
+}
+
+/* ---- 2026-10-15 v4: one design across every page (game pages, Nintendo,
+   Heads Up, Alerts). Brand mark, page headers, pill filters, list rows. ---- */
+.tl-brand-dot { width: 26px; height: 26px; border-radius: 8px; background: url(/icons/icon-192.png) center/cover no-repeat; flex: none; }
+.tl-pagehead { max-width: 1240px; margin: 0 auto; padding: 36px 16px 8px; text-align: center; }
+.tl-pagehead-title { margin: 0; font: 900 clamp(30px, 6vw, 48px)/1 Archivo, sans-serif; font-stretch: 78%; text-transform: uppercase; color: var(--ink); }
+.tl-pagehead-sub { margin: 10px auto 0; max-width: 560px; font: 600 15px/1.4 Archivo, sans-serif; color: var(--dim); }
+.tl-pills { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+.tl-pill { border: 1px solid var(--hair2); background: #fff; color: var(--ink); border-radius: 999px; padding: 9px 16px; font: 800 12px/1 Archivo, sans-serif; letter-spacing: .03em; cursor: pointer; }
+.tl-pill.active { background: #111418; border-color: #111418; color: #fff; }
+.tl-pill-ghost { border-style: dashed; color: var(--dim); }
+.tl-list-wrap { max-width: 860px; margin: 0 auto; padding: 16px; }
+.tl-list { display: flex; flex-direction: column; gap: 10px; }
+.tl-item { display: grid; grid-template-columns: 48px 1fr auto; gap: 14px; align-items: center; padding: 14px; border: 1px solid var(--hair); border-radius: 14px; background: #fff; color: var(--ink); text-decoration: none; transition: box-shadow .15s; }
+a.tl-item:hover { box-shadow: 0 6px 18px rgba(17,20,24,.08); }
+.tl-item-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--well); display: flex; align-items: center; justify-content: center; }
+.tl-item-icon img { width: 30px; height: 30px; object-fit: contain; }
+.tl-item-main { min-width: 0; }
+.tl-item-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 5px; }
+.tl-tag { font: 800 10px/1 Archivo, sans-serif; letter-spacing: .05em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px; background: var(--well); color: var(--dim); }
+.tl-tag-restock { background: #16a34a; color: #fff; }
+.tl-tag-good_price { background: #e8a400; color: #fff; }
+.tl-tag-drawing_open, .tl-tag-drawing_reminder { background: #ffc220; color: #111418; }
+.tl-tag-unconfirmed { background: #fef3c7; color: #92400e; }
+.tl-item-title { font: 700 15px/1.3 Archivo, sans-serif; color: var(--ink); }
+.tl-item-meta { margin-top: 4px; font: 600 12px/1.2 Archivo, sans-serif; color: var(--dim2); }
+.tl-item-go { font: 800 11px/1 Archivo, sans-serif; letter-spacing: .04em; color: var(--ink); white-space: nowrap; }
+.tl-wrap { flex-wrap: wrap; justify-content: center; overflow: visible; }
+.tl-search { max-width: 1240px; margin: 0 auto; padding: 24px 16px; }
+.tl-search-form { display: flex; gap: 10px; max-width: 620px; margin: 0 auto 10px; }
+.tl-search-form input { flex: 1; min-width: 0; padding: 14px 18px; border-radius: 999px; border: 1px solid var(--hair2); background: #fff; color: var(--ink); font: 600 15px/1 Archivo, sans-serif; }
+.tl-search-form button { padding: 0 22px; border-radius: 999px; border: 0; background: var(--accent); color: #fff; font: 800 13px/1 Archivo, sans-serif; letter-spacing: .04em; cursor: pointer; }
+.tl-search-msg { text-align: center; font: 600 13px/1.3 Archivo, sans-serif; color: var(--dim); min-height: 18px; margin-bottom: 8px; }
+.tl-dday-xl { font-size: 120px; }
+.tcg-urgent-item, .tcg-urgent-item:visited { text-decoration: none !important; }
+@media (max-width: 640px) {
+  .tl-item { grid-template-columns: 40px 1fr; }
+  .tl-item-icon { width: 40px; height: 40px; }
+  .tl-item-go { display: none; }
+  .tl-dday-xl { font-size: 72px; }
+}
+body.tl-page [hidden] { display: none !important; }

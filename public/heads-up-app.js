@@ -43,66 +43,67 @@ function timeAgo(iso) {
 // something a link to someone else's site can do without that retailer's
 // own authenticated API, which isn't publicly available, so that part
 // really does depend on Restockd's/TrackaLacker's own apps, not this page.
+// 2026-10-15 — same clean list-row design as the Alerts page. Titles are
+// HTML-decoded (sources sometimes send "&amp;"), and identical tips from
+// the same source are shown once.
+function decode(str) {
+  const t = document.createElement('textarea');
+  t.innerHTML = str || '';
+  return t.value;
+}
+
 function renderCard(row) {
-  const hasLink = !!row.url;
-  const card = document.createElement(hasLink ? 'a' : 'div');
-  card.className = 'headsup-card';
-  if (hasLink) {
-    card.href = row.url;
-    card.target = '_blank';
-    card.rel = 'noopener noreferrer';
-  }
+  const card = document.createElement(row.url ? 'a' : 'div');
+  card.className = 'tl-item';
+  if (row.url) { card.href = row.url; card.target = '_blank'; card.rel = 'noopener noreferrer'; }
 
-  const art = document.createElement('div');
-  art.className = 'headsup-art';
-  const iconSrc = GAME_ICONS[row.game];
-  if (iconSrc) {
-    const icon = document.createElement('img');
-    icon.className = 'headsup-art-icon';
-    icon.src = iconSrc;
-    icon.alt = '';
-    art.appendChild(icon);
-  }
-  card.appendChild(art);
+  const icon = document.createElement('div');
+  icon.className = 'tl-item-icon';
+  if (GAME_ICONS[row.game]) icon.innerHTML = `<img src="${GAME_ICONS[row.game]}" alt="">`;
+  card.appendChild(icon);
 
-  const body = document.createElement('div');
-  body.className = 'headsup-body';
-
-  const top = document.createElement('div');
-  top.className = 'headsup-top';
+  const main = document.createElement('div');
+  main.className = 'tl-item-main';
+  const tags = document.createElement('div');
+  tags.className = 'tl-item-tags';
   const badge = document.createElement('span');
-  badge.className = 'headsup-badge';
-  badge.textContent = 'UNCONFIRMED';
-  top.appendChild(badge);
+  badge.className = 'tl-tag tl-tag-unconfirmed';
+  badge.textContent = 'Unconfirmed';
+  tags.appendChild(badge);
   if (row.retailer) {
-    const retailerChip = document.createElement('span');
-    retailerChip.className = 'headsup-retailer-chip';
-    retailerChip.textContent = row.retailer;
-    top.appendChild(retailerChip);
+    const r = document.createElement('span');
+    r.className = 'tl-tag';
+    r.textContent = row.retailer;
+    tags.appendChild(r);
   }
-  if (row.game) {
-    const chip = document.createElement('span');
-    chip.className = 'headsup-game-chip';
-    chip.textContent = GAME_LABELS[row.game] || row.game;
-    top.appendChild(chip);
-  }
-  body.appendChild(top);
-
+  main.appendChild(tags);
   const title = document.createElement('div');
-  title.className = 'headsup-title';
-  title.textContent = row.title;
-  body.appendChild(title);
-
+  title.className = 'tl-item-title';
+  title.textContent = decode(row.title);
+  main.appendChild(title);
   const meta = document.createElement('div');
-  meta.className = 'headsup-meta';
-  const source = document.createElement('span');
-  source.className = 'headsup-source';
-  source.textContent = `${SOURCE_LABELS[row.source] || row.source} · ${timeAgo(row.discovered_at)}`;
-  meta.appendChild(source);
-  body.appendChild(meta);
+  meta.className = 'tl-item-meta';
+  meta.textContent = `${SOURCE_LABELS[row.source] || row.source} · ${timeAgo(row.discovered_at)}`;
+  main.appendChild(meta);
+  card.appendChild(main);
 
-  card.appendChild(body);
+  if (row.url) {
+    const go = document.createElement('span');
+    go.className = 'tl-item-go';
+    go.textContent = 'READ →';
+    card.appendChild(go);
+  }
   return card;
+}
+
+function dedupe(rows) {
+  const seen = new Set();
+  return rows.filter((r) => {
+    const k = `${r.source}|${decode(r.title).toLowerCase()}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 async function load() {
@@ -124,11 +125,11 @@ async function load() {
     if (!rows || rows.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty-state';
-      empty.textContent = "Nothing flagged yet — that's normal, this checks a handful of sources every few minutes and only shows up when one of them mentions something dated and specific.";
+      empty.textContent = 'No tips right now.';
       list.appendChild(empty);
       return;
     }
-    for (const row of rows) list.appendChild(renderCard(row));
+    for (const row of dedupe(rows)) list.appendChild(renderCard(row));
   } catch (err) {
     console.error('[heads-up] load failed', err);
     list.innerHTML = '';

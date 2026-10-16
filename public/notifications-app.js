@@ -42,6 +42,12 @@ function timeAgo(iso) {
   return `${Math.round(diffMin / 1440)}d ago`;
 }
 
+// 2026-10-15 — same list-row design as Heads Up. Repeats of the same alert
+// are grouped into one row with ×N.
+const KIND_TEXT = { restock: 'Restock', good_price: 'Good price', drawing_open: 'Drawing open', drawing_reminder: 'Drawing soon', headsup: 'Unconfirmed' };
+const GAME_ICON = { pokemon: '/icons/pokemon.png', mtg: '/icons/mtg.png', lorcana: '/icons/lorcana.png' };
+let productsById = {};
+
 function renderList() {
   listEl.innerHTML = '';
   const filtered = allItems.filter((it) => {
@@ -49,52 +55,67 @@ function renderList() {
     if (activeTab === 'unconfirmed') return !it.confirmed;
     return true;
   });
-  if (filtered.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-state';
-    empty.textContent = 'Nothing here yet.';
-    listEl.appendChild(empty);
+  const groups = new Map();
+  for (const it of filtered) {
+    const k = `${it.kind}|${it.message}`;
+    const g = groups.get(k);
+    if (g) g.count += 1; else groups.set(k, { it, count: 1 });
+  }
+  if (groups.size === 0) {
+    listEl.innerHTML = '<div class="empty-state">Nothing here yet.</div>';
     return;
   }
-  for (const it of filtered) {
+  for (const { it, count } of groups.values()) {
     const row = document.createElement(it.url ? 'a' : 'div');
-    row.className = 'event';
-    row.dataset.kind = it.kind;
+    row.className = 'tl-item';
     if (it.url) { row.href = it.url; row.target = '_blank'; row.rel = 'noopener noreferrer'; }
+    const game = it.game || (productsById[it.product_id] || {}).game;
+    const icon = document.createElement('div');
+    icon.className = 'tl-item-icon';
+    if (GAME_ICON[game]) icon.innerHTML = `<img src="${GAME_ICON[game]}" alt="">`;
+    row.appendChild(icon);
 
-    const kind = document.createElement('span');
-    kind.className = 'event-kind';
-    kind.textContent = (it.confirmed ? '' : 'UNCONFIRMED · ') + (kindGlyph(it.kind) + ' ' + it.kind.replace('_', ' ').toUpperCase());
-    row.appendChild(kind);
-
-    const msg = document.createElement('div');
-    msg.className = 'event-msg';
-    msg.textContent = it.message;
-    row.appendChild(msg);
-
-    const bottom = document.createElement('div');
-    bottom.style.cssText = 'display:flex;align-items:center;gap:10px;justify-content:space-between';
-    const time = document.createElement('span');
-    time.className = 'event-time';
-    time.textContent = timeAgo(it.created_at);
-    bottom.appendChild(time);
+    const main = document.createElement('div');
+    main.className = 'tl-item-main';
+    const tags = document.createElement('div');
+    tags.className = 'tl-item-tags';
+    const tag = document.createElement('span');
+    tag.className = 'tl-tag tl-tag-' + (it.confirmed ? it.kind : 'unconfirmed');
+    tag.textContent = KIND_TEXT[it.kind] || it.kind;
+    tags.appendChild(tag);
     if (it.product_muted) {
-      const tag = document.createElement('span');
-      tag.className = 'event-muted-tag';
-      tag.textContent = '🔕 muted product';
-      bottom.appendChild(tag);
+      const m = document.createElement('span');
+      m.className = 'tl-tag';
+      m.textContent = 'Alerts off';
+      tags.appendChild(m);
     }
-    row.appendChild(bottom);
-
+    main.appendChild(tags);
+    const title = document.createElement('div');
+    title.className = 'tl-item-title';
+    const t = document.createElement('textarea');
+    t.innerHTML = it.message.replace(/^(RESTOCK|GOOD PRICE):\s*/i, '');
+    title.textContent = t.value;
+    main.appendChild(title);
+    const meta = document.createElement('div');
+    meta.className = 'tl-item-meta';
+    meta.textContent = timeAgo(it.created_at) + (count > 1 ? ` · ×${count}` : '');
+    main.appendChild(meta);
+    row.appendChild(main);
+    if (it.url) {
+      const go = document.createElement('span');
+      go.className = 'tl-item-go';
+      go.textContent = 'VIEW →';
+      row.appendChild(go);
+    }
     listEl.appendChild(row);
   }
 }
 
 tabsEl.addEventListener('click', (e) => {
-  const btn = e.target.closest('.notif-tab');
+  const btn = e.target.closest('.tl-pill[data-tab]');
   if (!btn) return;
   activeTab = btn.dataset.tab;
-  for (const t of tabsEl.querySelectorAll('.notif-tab')) t.classList.toggle('active', t === btn);
+  for (const t of tabsEl.querySelectorAll('.tl-pill[data-tab]')) t.classList.toggle('active', t === btn);
   renderList();
 });
 
@@ -109,11 +130,11 @@ async function loadNotifications() {
     allItems = [
       ...(events || []).map((ev) => ({
         key: `event-${ev.id}`, id: ev.id, message: ev.message, url: ev.url, created_at: ev.created_at,
-        kind: ev.kind, confirmed: true, product_muted: !!ev.product_muted,
+        kind: ev.kind, confirmed: true, product_muted: !!ev.product_muted, product_id: ev.product_id,
       })),
       ...(headsUp || []).map((ev) => ({
         key: `headsup-${ev.id}`, id: null, message: ev.title, url: ev.url, created_at: ev.discovered_at,
-        kind: 'headsup', confirmed: false, product_muted: false,
+        kind: 'headsup', confirmed: false, product_muted: false, game: ev.game,
       })),
     ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     renderList();
@@ -160,21 +181,39 @@ async function loadMuteList() {
     }
     // Alphabetical, not insertion order — this list is for finding one
     // specific product to mute, not for browsing by recency.
-    const sorted = [...products].sort((a, b) => a.name.localeCompare(b.name));
+    productsById = Object.fromEntries(products.map((p) => [p.id, p]));
+    const sorted = [...products].sort((a, b) => (a.game || '').localeCompare(b.game || '') || a.name.localeCompare(b.name));
     for (const p of sorted) {
-      const row = document.createElement('div');
-      row.className = 'notif-mute-item';
-      const name = document.createElement('span');
-      name.className = 'notif-mute-item-name';
+      const tile = document.createElement('div');
+      tile.className = 'tl-tile';
+      const photo = document.createElement('div');
+      photo.className = 'tl-photo';
+      const img = (p.listings || []).map((l) => l.image_url).find(Boolean);
+      photo.innerHTML = img
+        ? `<img class="tl-img" src="${img}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;tl-ph&quot;><img src=&quot;${GAME_ICON[p.game] || '/icons/icon-192.png'}&quot; alt=&quot;&quot;></div>'">`
+        : `<div class="tl-ph"><img src="${GAME_ICON[p.game] || '/icons/icon-192.png'}" alt=""></div>`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      const paint = () => { btn.className = 'tl-track' + (p.muted ? '' : ' on'); btn.textContent = p.muted ? '+ TRACK' : '✓ TRACKING'; };
+      paint();
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          const res = await fetch('/api/admin/set-muted', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: p.id, muted: !p.muted }) });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          p.muted = p.muted ? 0 : 1;
+          paint();
+          if (!p.muted && window.tcgEnsurePushEnabled) window.tcgEnsurePushEnabled();
+        } catch (err) { console.error('[notifications] toggle failed', err); }
+        finally { btn.disabled = false; }
+      });
+      photo.appendChild(btn);
+      tile.appendChild(photo);
+      const name = document.createElement('div');
+      name.className = 'tl-name';
       name.textContent = p.name;
-      row.appendChild(name);
-      if (window.TCGMuteToggle) {
-        const btn = window.TCGMuteToggle.buildMuteButton(p);
-        btn.style.width = 'auto';
-        btn.style.marginTop = '0';
-        row.appendChild(btn);
-      }
-      muteListEl.appendChild(row);
+      tile.appendChild(name);
+      muteListEl.appendChild(tile);
     }
   } catch (err) {
     console.error('[notifications] mute list load failed', err);
@@ -190,6 +229,7 @@ async function loadMuteList() {
   if ('serviceWorker' in navigator) {
     try { await navigator.serviceWorker.register('/sw.js'); } catch (err) { console.error('[notifications] sw register failed', err); }
   }
-  await Promise.all([loadNotifications(), loadMuteList()]);
+  await loadMuteList();
+  await loadNotifications();
   setInterval(loadNotifications, 30000);
 })();

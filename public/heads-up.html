@@ -4,26 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>TCGTracker — Heads Up</title>
-<meta name="theme-color" content="#0b0d10">
+<meta name="theme-color" content="#ffffff">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
-<style>
-  body { --tcg-push-accent: #ffb020; --tcg-push-accent-ink: #241800; }
-</style>
+<style>body { --tcg-push-accent: #f59e0b; --tcg-push-accent-ink: #ffffff; }</style>
 </head>
-<body data-game="headsup">
+<!-- 2026-10-15: same clean TCGTracker layout as every other page. -->
+<body data-game="headsup" class="tl-page">
 <div id="app">
   <header class="tcg-header" data-tcg-sticky-header>
     <div class="tcg-header-inner" style="position:relative">
       <div class="tcg-brand">
-        <span class="tcg-brand-dot"></span>
+        <span class="tl-brand-dot"></span>
         <span class="tcg-brand-word">TCGTRACKER</span>
       </div>
       <nav class="tcg-nav" aria-label="Game selector">
@@ -37,12 +36,15 @@
     </div>
   </header>
 
-  <section class="info-section" style="padding-top:20px">
-    <p class="info-note">Early, <strong>unconfirmed</strong> signal from reference sites and Reddit — a possible upcoming drop, drawing, or restock mentioned before it's official anywhere. Every card here is a guess worth reading, not a confirmed fact. Cross-check the link before acting. Confirmed restocks and price alerts live on each game's own page instead.</p>
+  <section class="tl-pagehead">
+    <h1 class="tl-pagehead-title">Heads up</h1>
+    <p class="tl-pagehead-sub">Unconfirmed tips from restock sites and Reddit. Check the link before you go.</p>
   </section>
-
-  <main id="headsUpList" class="grid"></main>
+  <section class="tl-list-wrap">
+    <div id="headsUpList" class="tl-list"></div>
+  </section>
 </div>
+<div id="tlSheet" class="tl-sheet" hidden></div>
 <script src="/heads-up-app.js"></script>
 <script src="/notification-badge.js"></script>
 <script src="/urgent-ticker.js"></script>

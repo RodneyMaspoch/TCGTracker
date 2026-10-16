@@ -92,12 +92,21 @@
         { kind: 'EVENT', name: 'Lorcana Challenge — Tampa', date: '2026-12-18', line: 'Tampa, FL' },
       ],
     },
+    nintendo: {
+      label: 'Nintendo',
+      icon: '/icons/icon-192.png',
+      drawing: false,
+      heroArt: null,
+      images: {},
+      upcoming: [],
+      search: true,
+    },
   };
   const CFG = GAMES[GAME] || GAMES.pokemon;
 
   const RETAILER_NAMES = {
     target: 'Target', walmart: 'Walmart', walmart_marketplace: 'Walmart (3rd party)', bestbuy: 'Best Buy',
-    gamestop: 'GameStop', pokemoncenter: 'Pokémon Center', samsclub: "Sam's Club", costco: 'Costco', amazon: 'Amazon',
+    gamestop: 'GameStop', nintendo: 'Nintendo Store', pokemoncenter: 'Pokémon Center', samsclub: "Sam's Club", costco: 'Costco', amazon: 'Amazon',
     secretlair: 'Secret Lair', miniaturemarket: 'Miniature Market', disneylorcana: 'Disney Lorcana', ravensburger: 'Ravensburger',
   };
   const retailerName = (slug) => RETAILER_NAMES[slug] || slug;
@@ -115,7 +124,7 @@
     [/\btin\b/i, 'Tin'],
     [/gift/i, 'Gift Set'],
   ];
-  const categorize = (name) => (CATEGORY_RULES.find(([re]) => re.test(name)) || [null, 'More'])[1];
+  const categorize = (name) => (CATEGORY_RULES.find(([re]) => re.test(name)) || [null, 'Tracked'])[1];
 
   // ---------------- state ----------------
   const state = { products: [], drawing: null, events: [] };
@@ -329,7 +338,7 @@
         product: next.productId ? findProduct(next.productId) : null,
       };
     }
-    return { kicker: `${CFG.label} tracker`, title: 'Nothing urgent right now', line: "You'll get an alert the moment something drops." };
+    return null; // nothing to feature — the hero hides itself
   }
 
   function renderHero() {
@@ -337,6 +346,8 @@
     if (!root) return;
     const h = pickHero();
     root.innerHTML = '';
+    root.hidden = !h;
+    if (!h) return;
     root.className = 'tl-hero2' + (h.hot ? ' hot' : '');
     const text = el('div', 'tl-hero2-text');
     text.appendChild(el('div', 'tl-hero2-kicker', h.kicker));
@@ -352,7 +363,17 @@
     if (h.product) actions.appendChild(buildTrackPill(h.product));
     if (actions.children.length) text.appendChild(actions);
     root.appendChild(text);
-    root.appendChild(buildPhoto(h.product, 'tl-hero2-photo', CFG.heroArt));
+    // Photo only ever shows the hero's OWN product (never generic set art —
+    // that put a Reality Fracture box next to "The Hobbit"). No product
+    // photo → a big date block for dated items, else the plain placeholder.
+    if (h.product || !h.countdownTo) {
+      root.appendChild(buildPhoto(h.product, 'tl-hero2-photo'));
+    } else {
+      const box = el('div', 'tl-hero2-photo tl-datebox');
+      box.appendChild(el('span', 'tl-dmon', h.countdownTo.toLocaleString('en-US', { month: 'long' })));
+      box.appendChild(el('span', 'tl-dday tl-dday-xl', String(h.countdownTo.getDate())));
+      root.appendChild(box);
+    }
   }
   setInterval(() => {
     const cd = document.querySelector('.tl-hero2-count');
@@ -508,6 +529,82 @@
     }
   }
 
+  // ---------------- Nintendo store search ----------------
+  function stockText(item) {
+    if (item.stockStatus === 'IN_STOCK') return ['in', 'In stock'];
+    if (item.stockStatus === 'OUT_OF_STOCK') return ['out', 'Sold out'];
+    if ((item.availability || []).length) return ['soon', item.availability[0]];
+    return ['unknown', ''];
+  }
+  function renderSearchResults(items) {
+    const wrap = document.getElementById('tlSearchResults');
+    wrap.innerHTML = '';
+    const trackedUrls = new Set(state.products.flatMap((p) => p.listings.map((l) => l.url)));
+    for (const item of items) {
+      const tile = el('div', 'tl-tile');
+      tile.addEventListener('click', () => { if (item.url) window.open(item.url, '_blank', 'noopener'); });
+      const photo = el('div', 'tl-photo');
+      if (item.image) {
+        const img = el('img', 'tl-img');
+        img.src = item.image; img.alt = item.title || ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+        img.onerror = () => img.replaceWith(Object.assign(el('div', 'tl-ph'), { innerHTML: `<img src="${CFG.icon}" alt="">` }));
+        photo.appendChild(img);
+      } else {
+        photo.appendChild(Object.assign(el('div', 'tl-ph'), { innerHTML: `<img src="${CFG.icon}" alt="">` }));
+      }
+      const [sk, st] = stockText(item);
+      if (sk === 'in') photo.appendChild(el('span', 'tl-badge', '● In stock'));
+      const btn = el('button', 'tl-track');
+      btn.type = 'button';
+      const tracked = trackedUrls.has(item.url);
+      btn.textContent = tracked ? '✓ TRACKING' : '+ TRACK';
+      if (tracked) { btn.classList.add('on'); btn.disabled = true; }
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        btn.disabled = true; btn.textContent = 'ADDING…';
+        try {
+          const res = await fetch('/api/admin/track-product', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game: 'nintendo', name: item.title, retailer: 'nintendo', url: item.url, poll_tier: 'fast', msrp: typeof item.regPrice === 'number' ? item.regPrice : null }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          btn.textContent = '✓ TRACKING'; btn.classList.add('on');
+          if (window.tcgEnsurePushEnabled) window.tcgEnsurePushEnabled();
+          await loadAll();
+        } catch (err) {
+          btn.disabled = false; btn.textContent = '+ TRACK';
+          document.getElementById('tlSearchMsg').textContent = `Couldn't add that one (${err.message}).`;
+        }
+      });
+      photo.appendChild(btn);
+      tile.appendChild(photo);
+      tile.appendChild(el('div', 'tl-name', item.title || ''));
+      tile.appendChild(el('div', 'tl-price', [item.price != null ? money(item.price) : '', st && sk !== 'in' ? st : ''].filter(Boolean).join(' · ')));
+      wrap.appendChild(tile);
+    }
+  }
+  function initSearch() {
+    const form = document.getElementById('tlSearchForm');
+    if (!form || !CFG.search) return;
+    const msg = document.getElementById('tlSearchMsg');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = document.getElementById('tlSearchInput').value.trim();
+      if (!q) return;
+      msg.textContent = 'Searching…';
+      try {
+        const res = await fetch(`/api/nintendo/search?q=${encodeURIComponent(q)}`);
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+        const items = Array.isArray(body) ? body : (body.results || body.hits || []);
+        msg.textContent = items.length ? '' : 'No results.';
+        renderSearchResults(items);
+      } catch (err) {
+        msg.textContent = `Search failed (${err.message}).`;
+      }
+    });
+  }
+
   function render() {
     renderHero();
     renderComingUp();
@@ -519,6 +616,7 @@
     if ('serviceWorker' in navigator) {
       try { await navigator.serviceWorker.register('/sw.js'); } catch (err) { console.error('[tracker] SW registration failed', err); }
     }
+    initSearch();
     await loadAll();
     setInterval(loadAll, REFRESH_MS);
   })();

@@ -3,42 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>TCGTracker — Notifications</title>
-<meta name="theme-color" content="#0b0d10">
+<title>TCGTracker — Alerts</title>
+<meta name="theme-color" content="#ffffff">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
-<style>
-  body { --tcg-push-accent: #a78bfa; --tcg-push-accent-ink: #1a1030; }
-  /* 2026-10-14 — new page: everything that's happened, in one place, so
-     nothing that fired a toast/push and got missed is actually lost —
-     see the project doc for the full "badge + history page + per-product
-     mute" design this replaces a backend restock-cooldown idea with. */
-  .notif-tabs { display: flex; gap: 8px; max-width: 720px; margin: 0 auto 18px; padding: 0 20px; }
-  .notif-tab { padding: 8px 16px; border-radius: 999px; border: 1px solid var(--hair2); background: transparent; color: var(--dim); font-family: 'Roboto Mono', monospace; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .notif-tab.active { border-color: var(--accent); color: var(--accent); background: rgba(255,255,255,.04); }
-  .notif-list { display: flex; flex-direction: column; gap: 10px; max-width: 720px; margin: 0 auto; padding: 0 20px 32px; }
-  .notif-mark-read { max-width: 720px; margin: 0 auto 10px; padding: 0 20px; display: flex; justify-content: flex-end; }
-  .notif-mark-read button { background: transparent; border: 1px solid var(--hair2); color: var(--dim); font-family: 'Roboto Mono', monospace; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
-  .notif-mark-read button:hover { color: var(--ink); border-color: var(--accent); }
-  .notif-section-title { max-width: 720px; margin: 32px auto 10px; padding: 0 20px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--dim2); }
-  .notif-mute-row { max-width: 720px; margin: 0 auto; padding: 0 20px 40px; display: flex; flex-direction: column; gap: 8px; }
-  .notif-mute-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--hair2); }
-  .notif-mute-item-name { font-size: 14px; color: var(--ink); }
-</style>
+<style>body { --tcg-push-accent: #111418; --tcg-push-accent-ink: #ffffff; }</style>
 </head>
-<body data-game="notifications">
+<!-- 2026-10-15: same clean TCGTracker layout as every other page. -->
+<body data-game="notifications" class="tl-page">
 <div id="app">
   <header class="tcg-header" data-tcg-sticky-header>
     <div class="tcg-header-inner" style="position:relative">
       <div class="tcg-brand">
-        <span class="tcg-brand-dot"></span>
+        <span class="tl-brand-dot"></span>
         <span class="tcg-brand-word">TCGTRACKER</span>
       </div>
       <nav class="tcg-nav" aria-label="Game selector">
@@ -52,27 +36,25 @@
     </div>
   </header>
 
-  <section class="info-section" style="padding-top:20px">
-    <p class="info-note">Every confirmed restock/good-price alert and Walmart drawing update, plus unconfirmed early signals — everything that's ever fired a push or toast, so nothing gets lost if you miss one. Muted products are still logged here (see "Manage product alerts" below) — muting only stops the push/toast/badge for that product, never the record.</p>
+  <section class="tl-pagehead">
+    <h1 class="tl-pagehead-title">Alerts</h1>
+    <p class="tl-pagehead-sub">Everything that's fired. Turn alerts on or off per product below.</p>
+    <div class="tl-pills" id="notifTabs">
+      <button type="button" class="tl-pill active" data-tab="all">All</button>
+      <button type="button" class="tl-pill" data-tab="confirmed">Confirmed</button>
+      <button type="button" class="tl-pill" data-tab="unconfirmed">Unconfirmed</button>
+      <button type="button" class="tl-pill tl-pill-ghost" id="notifMarkReadBtn">Mark all read</button>
+    </div>
   </section>
-
-  <div class="notif-mark-read">
-    <button type="button" id="notifMarkReadBtn">Mark all as read</button>
-  </div>
-
-  <div class="notif-tabs" id="notifTabs">
-    <button type="button" class="notif-tab active" data-tab="all">All</button>
-    <button type="button" class="notif-tab" data-tab="confirmed">Confirmed only</button>
-    <button type="button" class="notif-tab" data-tab="unconfirmed">Unconfirmed only</button>
-  </div>
-
-  <main id="notifList" class="notif-list"></main>
-
-  <div class="notif-section-title">Manage product alerts</div>
-  <p class="info-note" style="max-width:720px;margin:-6px auto 14px;padding:0 20px">Turn off alerts for a specific product without affecting anything else — the product keeps being checked at its normal speed, it just stops pushing/toasting/badging you. This is instead of a blanket cooldown, which would risk missing a genuine second restock.</p>
-  <div class="notif-mute-row" id="notifMuteList"></div>
+  <section class="tl-list-wrap">
+    <div id="notifList" class="tl-list"></div>
+  </section>
+  <section class="tl-browse">
+    <div class="tl-section-title">Your products</div>
+    <div id="notifMuteList" class="tl-strip tl-wrap"></div>
+  </section>
 </div>
-<script src="/mute-toggle.js"></script>
+<div id="tlSheet" class="tl-sheet" hidden></div>
 <script src="/notification-badge.js"></script>
 <script src="/notifications-app.js"></script>
 <script src="/push-client.js"></script>
