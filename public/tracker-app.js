@@ -170,20 +170,48 @@
   // ---------------- state ----------------
   const state = { products: [], drawing: null, events: [] };
 
-  async function loadAll() {
+  // 2026-10-17 — one failing endpoint or one bad row must never blank the
+  // whole page again: each fetch and each section is isolated, and any
+  // problem is shown in a small line at the bottom so it can be fixed.
+  const loadErrors = [];
+  async function getJson(url, label) {
     try {
-      const [products, drawing, events] = await Promise.all([
-        fetch('/api/products').then((r) => r.json()),
-        CFG.drawing ? fetch('/api/walmart-drawing').then((r) => r.json()).catch(() => null) : Promise.resolve(null),
-        fetch('/api/events?limit=100').then((r) => r.json()),
-      ]);
-      state.products = groupProducts((products || []).filter((p) => p.game === GAME));
-      state.drawing = drawing;
-      state.events = events || [];
-      render();
+      const r = await fetch(url);
+      const text = await r.text();
+      if (!r.ok) throw new Error(`HTTP ${r.status} ${text.slice(0, 120)}`);
+      return JSON.parse(text);
     } catch (err) {
-      console.error('[tracker] failed to load data', err);
+      loadErrors.push(`${label}: ${err.message}`);
+      return null;
     }
+  }
+  async function loadAll() {
+    loadErrors.length = 0;
+    const [products, drawing, events] = await Promise.all([
+      getJson('/api/products', 'products'),
+      CFG.drawing ? getJson('/api/walmart-drawing', 'drawing') : Promise.resolve(null),
+      getJson('/api/events?limit=100', 'events'),
+    ]);
+    try {
+      state.products = groupProducts((Array.isArray(products) ? products : []).filter((p) => p && p.game === GAME));
+    } catch (err) {
+      loadErrors.push(`products data: ${err.message}`);
+      state.products = [];
+    }
+    state.drawing = drawing;
+    state.events = Array.isArray(events) ? events : [];
+    render();
+  }
+  function showLoadErrors() {
+    let box = document.getElementById('tlLoadErr');
+    if (!loadErrors.length) { if (box) box.remove(); return; }
+    if (!box) {
+      box = el('div', 'tl-search-msg');
+      box.id = 'tlLoadErr';
+      box.style.cssText = 'margin:24px 16px;color:#b91c1c;white-space:pre-wrap';
+      document.getElementById('app').appendChild(box);
+    }
+    box.textContent = `Something didn't load (send a screenshot of this):\n${loadErrors.join('\n')}`;
   }
 
   // The same product tracked at two stores is sometimes stored as two
@@ -870,11 +898,10 @@
   }
 
   function render() {
-    renderHero();
-    renderWatchlist();
-    renderComingUp();
-    renderBrowse();
-    renderDeals();
+    for (const [name, fn] of [['hero', renderHero], ['watch list', renderWatchlist], ['coming up', renderComingUp], ['browse', renderBrowse], ['restocks', renderDeals]]) {
+      try { fn(); } catch (err) { console.error(`[tracker] ${name} failed`, err); loadErrors.push(`${name}: ${err.message}`); }
+    }
+    showLoadErrors();
   }
 
   (async function init() {

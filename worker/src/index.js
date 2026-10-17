@@ -307,7 +307,28 @@ app.get('/api/heads-up', async (c) => {
   }
 });
 
-app.get('/api/health', (c) => c.json({ ok: true, time: new Date().toISOString() }));
+// 2026-10-17 — health now also proves the database answers (and how big the
+// events table is), so "page is blank" can be diagnosed from one link.
+app.get('/api/health', async (c) => {
+  const out = { ok: true, time: new Date().toISOString() };
+  try {
+    const p = await c.env.DB.prepare('SELECT COUNT(*) AS n FROM products').first();
+    const e = await c.env.DB.prepare('SELECT COUNT(*) AS n FROM events').first();
+    const h = await c.env.DB.prepare('SELECT COUNT(*) AS n FROM heads_up').first();
+    out.db = { ok: true, products: p.n, events: e.n, heads_up: h.n };
+  } catch (err) {
+    out.ok = false;
+    out.db = { ok: false, error: String(err && err.message || err) };
+  }
+  return c.json(out, out.ok ? 200 : 500);
+});
+
+// Any unhandled error comes back as JSON with the real message (was a bare
+// "Internal Server Error", which hid the cause).
+app.onError((err, c) => {
+  console.error('[api] unhandled', err);
+  return c.json({ error: 'server_error', message: String(err && err.message || err) }, 500);
+});
 
 export default {
   fetch: app.fetch,

@@ -364,7 +364,6 @@ export async function tick(env) {
   const settled = await Promise.allSettled([
     ...fastListings.map((row) => pollOneListing(env, row)),
     pollWalmartDrawing(env),
-    runReminders(env), // launch + dated-tip reminders (reminders.js)
   ]);
   for (const s of settled) {
     if (s.status === 'rejected') console.error('[poll] fast-lane task rejected:', s.reason);
@@ -423,6 +422,15 @@ export async function tick(env) {
   //  • new Walmart-sold SKUs (one game per run, every NEW_SKU_EVERY_N_TICKS
   //    ticks, default 8 ≈ 2 min → each game ≈ every 6 min)
   //  • official publisher news (every 8th tick ≈ 2 min) for cross-checking tips
+  // Reminders (reminders.js) once a minute, not every 15s — each run reads
+  // the events table, and every 15s was needless database load.
+  if (tickCount % 4 === 1) {
+    try {
+      await runReminders(env);
+    } catch (err) {
+      console.error('[poll] reminders failed:', err);
+    }
+  }
   const skuEvery = parseInt(env.NEW_SKU_EVERY_N_TICKS || '8', 10);
   if (walmartConfigured(env) && tickCount % skuEvery === 2) {
     try {
