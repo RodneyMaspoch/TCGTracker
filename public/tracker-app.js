@@ -175,14 +175,19 @@
   // problem is shown in a small line at the bottom so it can be fixed.
   const loadErrors = [];
   async function getJson(url, label) {
+    // 10s timeout: a hanging server must not leave the page waiting forever.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
     try {
-      const r = await fetch(url);
+      const r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
       const text = await r.text();
       if (!r.ok) throw new Error(`HTTP ${r.status} ${text.slice(0, 120)}`);
       return JSON.parse(text);
     } catch (err) {
-      loadErrors.push(`${label}: ${err.message}`);
+      loadErrors.push(`${label}: ${err.name === 'AbortError' ? 'server did not answer within 10s' : err.message}`);
       return null;
+    } finally {
+      clearTimeout(timer);
     }
   }
   async function loadAll() {
@@ -906,10 +911,13 @@
 
   (async function init() {
     if ('serviceWorker' in navigator) {
-      try { await navigator.serviceWorker.register('/sw.js'); } catch (err) { console.error('[tracker] SW registration failed', err); }
+      navigator.serviceWorker.register('/sw.js').catch((err) => console.error('[tracker] SW registration failed', err));
     }
     initSearch();
     initFilter();
+    // Draw the page right away from what's built in (Coming up, watch list,
+    // hero), then fill in live data when the server answers.
+    try { render(); } catch (err) { console.error('[tracker] first render failed', err); }
     loadCatalog();
     await loadAll();
     setInterval(loadAll, REFRESH_MS);
