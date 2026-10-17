@@ -650,6 +650,8 @@
   function stockText(item) {
     if (CFG.search === 'walmart') return item.inStock ? ['in', 'In stock'] : ['out', item.stock || 'Sold out'];
     if (item.stockStatus === 'IN_STOCK') return ['in', 'In stock'];
+    const soon = (item.availability || []).find((a) => /pre-?order|coming soon/i.test(a));
+    if (soon) return ['soon', soon];
     if (item.stockStatus === 'OUT_OF_STOCK') return ['out', 'Sold out'];
     if ((item.availability || []).length) return ['soon', item.availability[0]];
     return ['unknown', ''];
@@ -672,6 +674,7 @@
       }
       const [sk, st] = stockText(item);
       if (sk === 'in') photo.appendChild(el('span', 'tl-badge', '● In stock'));
+      else if (sk === 'soon') photo.appendChild(el('span', 'tl-badge kind-soon', st));
       const btn = el('button', 'tl-track');
       btn.type = 'button';
       const tracked = trackedUrls.has(item.url);
@@ -741,27 +744,58 @@
   // pressing Search runs a live Walmart search for anything not in it.
   let catalog = [];
   async function loadCatalog() {
-    if (CFG.search !== 'walmart') return;
+    if (CFG.search !== 'walmart' && CFG.search !== 'nintendo') return;
     const msg = document.getElementById('tlSearchMsg');
-    if (msg) msg.textContent = '';
+    if (msg) msg.textContent = CFG.search === 'nintendo' ? 'Loading the Nintendo Store…' : '';
+    if (CFG.search === 'nintendo') { const sec = document.getElementById('tlCatalogSection'); if (sec) sec.hidden = false; }
     try {
-      const res = await fetch(`/api/walmart/catalog?game=${GAME}`);
+      const res = await fetch(CFG.search === 'nintendo' ? '/api/nintendo/catalog' : `/api/walmart/catalog?game=${GAME}`);
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       catalog = body.results || [];
       showCatalog();
     } catch (err) {
-      console.warn('[tracker] Walmart catalog unavailable', err);
+      console.warn('[tracker] catalog unavailable', err);
+      if (CFG.search === 'nintendo' && msg) msg.textContent = `Couldn't load the Nintendo Store right now (${err.message}).`;
+    }
+  }
+  // 2026-10-16 — Nintendo: whole store loads by itself, with filter chips
+  // (In stock / Pre-order & coming soon / each store category).
+  let chip = 'all';
+  const isSoon = (it) => (it.availability || []).some((a) => /pre-?order|coming soon/i.test(a));
+  const isIn = (it) => (CFG.search === 'walmart' ? it.inStock : it.stockStatus === 'IN_STOCK');
+  function chipFilter(it) {
+    if (chip === 'all') return true;
+    if (chip === 'in') return isIn(it);
+    if (chip === 'soon') return isSoon(it);
+    return it.category === chip;
+  }
+  function renderChips() {
+    const wrap = document.getElementById('tlChips');
+    if (!wrap || CFG.search !== 'nintendo') return;
+    const counts = {};
+    for (const it of catalog) if (it.category) counts[it.category] = (counts[it.category] || 0) + 1;
+    const cats = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([c]) => [c, c]);
+    const chips = [['all', `All ${catalog.length}`], ['in', `In stock ${catalog.filter(isIn).length}`], ['soon', `Pre-order / soon ${catalog.filter(isSoon).length}`], ...cats];
+    wrap.innerHTML = '';
+    for (const [key, label] of chips) {
+      const b = el('button', `tl-chip${chip === key ? ' on' : ''}`, label);
+      b.type = 'button';
+      b.addEventListener('click', () => { chip = key; showCatalog(); });
+      wrap.appendChild(b);
     }
   }
   function showCatalog() {
     const section = document.getElementById('tlCatalogSection');
     const msg = document.getElementById('tlSearchMsg');
-    if (section) section.hidden = catalog.length === 0;
-    if (!catalog.length) return;
-    const inStock = catalog.filter((it) => it.inStock).length;
-    if (msg) msg.textContent = `${catalog.length} sold by Walmart · ${inStock} in stock now — tap + TRACK to get alerts`;
-    renderSearchResults(catalog);
+    if (section) section.hidden = catalog.length === 0 && CFG.search !== 'nintendo';
+    if (!catalog.length) { if (CFG.search === 'nintendo' && msg) msg.textContent = 'No products came back from the Nintendo Store.'; return; }
+    const inStock = catalog.filter(isIn).length;
+    if (msg) msg.textContent = CFG.search === 'nintendo'
+      ? 'Tap + TRACK on anything to get an alert when it comes in stock.'
+      : `${catalog.length} sold by Walmart · ${inStock} in stock now — tap + TRACK to get alerts`;
+    renderChips();
+    renderSearchResults(catalog.filter(chipFilter));
   }
 
   function initSearch() {

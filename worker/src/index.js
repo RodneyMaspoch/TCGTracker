@@ -26,7 +26,7 @@ import { notifyAll, pushConfigured } from './push.js';
 import { Ticker } from './ticker-do.js';
 import { checkSourcesReachable } from './headsup.js';
 import { walmartConfigured, walmartLookupRaw, walmartSearch, walmartCatalog, walmartSearchRaw } from './walmart-io.js';
-import { searchNintendoCatalog } from './nintendo-algolia.js';
+import { searchNintendoCatalog, nintendoCatalog } from './nintendo-algolia.js';
 
 // Durable Object classes must be exported from the main entry module (this
 // file, per wrangler.toml's `main`) for Workers to find them — the actual
@@ -260,6 +260,23 @@ app.post('/api/admin/track-product', async (c) => {
 // product. Backed by nintendo.com's own public Algolia search index — see
 // worker/src/nintendo-algolia.js's header comment for the full story and
 // worker/wrangler.toml for the (non-secret) credentials.
+// 2026-10-16 — whole Nintendo store catalog for the Nintendo page (cached 30 min; empty never cached).
+app.get('/api/nintendo/catalog', async (c) => {
+  const cache = caches.default;
+  const cacheKey = new Request('https://cache.internal/nintendo-catalog/v1'); // 10-min cache
+  const hit = await cache.match(cacheKey);
+  if (hit) return hit;
+  try {
+    const results = await nintendoCatalog(c.env);
+    const res = new Response(JSON.stringify({ results }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=600' } });
+    if (results.length) c.executionCtx.waitUntil(cache.put(cacheKey, res.clone()));
+    return res;
+  } catch (err) {
+    console.error('[api/nintendo/catalog] failed', err);
+    return c.json({ error: 'catalog_failed', message: String(err && err.message || err) }, 500);
+  }
+});
+
 app.get('/api/nintendo/search', async (c) => {
   const q = (c.req.query('q') || '').trim();
   if (!q) return c.json({ error: 'q query param is required' }, 400);

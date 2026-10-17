@@ -10,6 +10,7 @@
 // /shown by getHeadsUp accordingly) — no migration needed.
 
 import { walmartCatalog } from './walmart-io.js';
+import { nintendoCatalog } from './nintendo-algolia.js';
 import { insertHeadsUp } from './db.js';
 import { notifyAll } from './push.js';
 
@@ -54,6 +55,34 @@ export async function checkNewWalmartSkus(env, runIndex) {
         url: it.url,
         tag: `walmart-new-${it.itemId}`,
       });
+    }
+  }
+}
+
+// 2026-10-16 — same idea for the Nintendo Store (its own public catalog):
+// any product never seen before → "🆕 New at Nintendo Store".
+export async function checkNewNintendoItems(env) {
+  const items = await nintendoCatalog(env);
+  if (!items.length) return;
+  const now = new Date().toISOString();
+  const baseline = await env.DB.prepare(
+    `SELECT 1 FROM heads_up WHERE source IN ('nintendo-seen','nintendo-new') LIMIT 1`
+  ).first();
+  for (const it of items) {
+    const known = await env.DB.prepare(
+      `SELECT 1 FROM heads_up WHERE source IN ('nintendo-seen','nintendo-new') AND dedupe_key = ? LIMIT 1`
+    ).bind(it.sku).first();
+    if (known) continue;
+    const price = it.price != null ? ` — $${it.price}` : '';
+    const status = it.stockStatus === 'IN_STOCK' ? ' (in stock)' : (it.availability || [])[0] ? ` (${it.availability[0]})` : '';
+    const row = {
+      source: baseline ? 'nintendo-new' : 'nintendo-seen', game: 'nintendo',
+      title: `${it.title}${price}${status}`, snippet: null, url: it.url,
+      retailer: 'Nintendo Store', discovered_at: now, dedupe_key: it.sku,
+    };
+    const isNew = await insertHeadsUp(env, row);
+    if (isNew && baseline) {
+      await notifyAll(env, { title: '🆕 New at Nintendo Store', body: row.title, url: it.url, tag: `nintendo-new-${it.sku}` });
     }
   }
 }

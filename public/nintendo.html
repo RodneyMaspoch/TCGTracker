@@ -38,29 +38,15 @@
 
   <section id="tlHero" class="tl-hero2" aria-label="Next big drop"></section>
 
-  <section class="tl-search">
-    <div class="tl-section-title">Search the Nintendo Store</div>
-    <form id="tlSearchForm" class="tl-search-form" autocomplete="off">
-      <input id="tlSearchInput" type="search" placeholder="zelda, switch 2, amiibo…" aria-label="Search the Nintendo Store">
-      <button type="submit">Search</button>
-    </form>
+  <section class="tl-search" id="tlCatalogSection" hidden>
+    <div class="tl-section-title">Nintendo Store</div>
+    <div id="tlChips" class="tl-chips"></div>
     <div id="tlSearchMsg" class="tl-search-msg"></div>
-    <div id="tlSearchResults" class="tl-strip"></div>
+    <div id="tlSearchResults" class="tl-strip tl-wrap"></div>
   </section>
 
   <section class="tl-browse">
     <div class="tl-section-title">Tracking</div>
-    <form class="tl-search-form" onsubmit="return false" role="search">
-      <input id="tlFilter" type="search" placeholder="Search your products…" aria-label="Search your products" autocomplete="off">
-    </form>
-    <div id="tlAdd" class="tl-add" hidden>
-      <div class="tl-add-title">Not tracked yet — paste a store link to track it</div>
-      <form id="tlAddForm" class="tl-search-form">
-        <input id="tlAddUrl" type="url" placeholder="https://www.target.com/p/…" aria-label="Store link">
-        <button type="submit">Track</button>
-      </form>
-      <div id="tlAddMsg" class="tl-search-msg"></div>
-    </div>
     <div id="tlRows"></div>
   </section>
 

@@ -46,7 +46,7 @@ import { walmartConfigured, checkWalmartItem, findWalmartListing } from './walma
 import { notifyAll } from './push.js';
 import { runHeadsUpCheck } from './headsup.js';
 import { runReminders } from './reminders.js';
-import { checkNewWalmartSkus } from './newskus.js';
+import { checkNewWalmartSkus, checkNewNintendoItems } from './newskus.js';
 import { runOfficialNews } from './officialnews.js';
 import {
   getListingsForLane,
@@ -429,6 +429,13 @@ export async function tick(env) {
       await checkNewWalmartSkus(env, Math.floor(tickCount / skuEvery));
     } catch (err) {
       console.error('[poll] new-SKU check failed:', err);
+    }
+  }
+  if (env.NINTENDO_ALGOLIA_APP_ID && tickCount % 8 === 6) {
+    try {
+      await checkNewNintendoItems(env); // whole Nintendo catalog, one request, ≈ every 2 min
+    } catch (err) {
+      console.error('[poll] new Nintendo items check failed:', err);
     }
   }
   if (tickCount % 8 === 5) {

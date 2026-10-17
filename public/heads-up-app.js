@@ -5,7 +5,7 @@
 // place," per the explicit ask that spawned this page.
 
 const REFRESH_MS = 30000;
-const GAME_LABELS = { pokemon: 'Pokémon', mtg: 'MTG', lorcana: 'Lorcana' };
+const GAME_LABELS = { pokemon: 'Pokémon', mtg: 'MTG', lorcana: 'Lorcana', nintendo: 'Nintendo' };
 const SOURCE_LABELS = {
   trackalacker: 'TrackaLacker',
   tcgdropradar: 'TCG Drop Radar',
@@ -18,6 +18,7 @@ const SOURCE_LABELS = {
   'official-lorcana': 'Disney Lorcana (official)',
   'official-pokemon': 'Pokémon press site (official)',
   'walmart-new': 'Walmart (direct)',
+  'nintendo-new': 'Nintendo Store (direct)',
 };
 // Real per-game icon files (see /public/icons/*.png) — shown in the card's
 // art band as a plain game indicator, never as a stand-in for a product
@@ -72,9 +73,9 @@ function renderCard(row) {
   tags.className = 'tl-item-tags';
   const badge = document.createElement('span');
   const official = String(row.source).startsWith('official-');
-  const direct = row.source === 'walmart-new';
+  const direct = row.source === 'walmart-new' || row.source === 'nintendo-new';
   badge.className = `tl-tag ${official || direct ? 'tl-tag-official' : 'tl-tag-unconfirmed'}`;
-  badge.textContent = official ? 'Official' : direct ? 'New at Walmart' : 'Unconfirmed';
+  badge.textContent = official ? 'Official' : direct ? `New at ${row.retailer || 'store'}` : 'Unconfirmed';
   tags.appendChild(badge);
   if (!official && /^✓ Matches official/.test(row.snippet || '')) {
     const v = document.createElement('span');

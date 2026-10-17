@@ -143,3 +143,27 @@ export async function checkNintendoProduct(env, listingUrl) {
     source: 'nintendo-algolia',
   };
 }
+
+// 2026-10-16 — "load ALL Nintendo products" for the Nintendo page (no typing
+// needed), the same idea as the Walmart catalog on the card-game pages.
+// One Algolia multi-query request with several preset searches, merged and
+// de-duplicated by sku. Also used by newskus.js to alert on brand-new items.
+const CATALOG_QUERIES = [
+  'Nintendo Switch 2', 'Nintendo Switch 2 bundle', 'Nintendo Switch 2 Edition', 'controller',
+  'amiibo', 'Joy-Con', 'case', 'collector', 'pre-order', '',
+];
+export async function nintendoCatalog(env) {
+  const body = await algoliaQuery(env, CATALOG_QUERIES.map((q) => ({
+    indexName: PRODUCT_INDEX, query: q, params: 'hitsPerPage=60',
+  })));
+  const seen = new Map();
+  for (const r of body?.results || []) {
+    for (const hit of r.hits || []) {
+      const it = mapHit(hit);
+      if (!it || !it.sku || !it.url || !it.title) continue;
+      if (!seen.has(it.sku)) seen.set(it.sku, it);
+    }
+  }
+  const rank = (it) => (it.stockStatus === 'IN_STOCK' ? 0 : (it.availability || []).some((a) => /pre-?order|coming soon/i.test(a)) ? 1 : 2);
+  return [...seen.values()].sort((a, b) => rank(a) - rank(b) || String(a.title).localeCompare(String(b.title)));
+}
