@@ -27,6 +27,7 @@ import { Ticker } from './ticker-do.js';
 import { checkSourcesReachable } from './headsup.js';
 import { walmartConfigured, walmartLookupRaw, walmartSearch, walmartCatalog, walmartSearchRaw, titleMatches } from './walmart-io.js';
 import { searchNintendoCatalog, nintendoCatalog } from './nintendo-algolia.js';
+import { readKv, bestMatch } from './market.js';
 
 // Durable Object classes must be exported from the main entry module (this
 // file, per wrangler.toml's `main`) for Workers to find them — the actual
@@ -158,6 +159,28 @@ app.get('/api/images', async (c) => {
     });
   }));
   return c.json(out);
+});
+
+// 2026-10-20 — TCGplayer market prices for any product names (sealed only).
+// GET /api/market?game=pokemon&names=a|b → { name: { market, url, tcgName, image } }
+// Reads 1 small row per game (cached 30 min in memory), filled daily by market.js.
+async function marketList(env, game) {
+  return shared(`market|${game}`, 30 * 60 * 1000, async () => (await readKv(env, `market:${game}`).catch(() => null)) || []);
+}
+app.get('/api/market', async (c) => {
+  const game = c.req.query('game') || 'pokemon';
+  const names = (c.req.query('names') || '').split('|').map((n) => n.trim()).filter(Boolean).slice(0, 80);
+  const list = await marketList(c.env, game);
+  const out = {};
+  for (const n of names) {
+    const hit = bestMatch(n, list);
+    if (hit) out[n] = { market: hit.m, url: hit.u, tcgName: hit.n, image: hit.i };
+  }
+  return c.json(out);
+});
+app.get('/api/admin/market-status', async (c) => {
+  const meta = await readKv(c.env, 'market:meta').catch((err) => ({ error: err.message }));
+  return c.json(meta || { note: 'No TCGplayer prices synced yet — the first sync runs within about an hour of deploying.' });
 });
 
 app.get('/api/walmart/search', async (c) => {

@@ -530,6 +530,7 @@
       tile.appendChild(el('div', 'tl-name', it.name));
       const when = it.date && !it.open && it.exact !== false ? it.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · ' : '';
       tile.appendChild(el('div', 'tl-price', when + it.line));
+      if (it.kind !== 'EVENT' && it.kind !== 'LOTTERY') addMarket(tile, it.name, product && product.tcgplayer_ref);
       wrap.appendChild(tile);
     }
     wrap.closest('section').hidden = wrap.children.length === 0;
@@ -550,7 +551,8 @@
     tile.appendChild(photo);
     tile.appendChild(el('div', 'tl-name', product.name));
     const low = lowestLivePrice(product);
-    tile.appendChild(el('div', 'tl-price', low != null ? money(low) : (product.msrp ? money(product.msrp) : '—')));
+    tile.appendChild(el('div', 'tl-price', low != null ? `${money(low)} now${product.msrp ? ` · MSRP ${money(product.msrp)}` : ''}` : (product.msrp ? `MSRP ${money(product.msrp)}` : '—')));
+    addMarket(tile, product.name, product.tcgplayer_ref);
     if (product.target_price) tile.appendChild(el('div', 'tl-target', `🎯 Alert at ${money(product.target_price)}`));
     return tile;
   }
@@ -768,7 +770,8 @@
       photo.appendChild(btn);
       tile.appendChild(photo);
       tile.appendChild(el('div', 'tl-name', item.title || ''));
-      tile.appendChild(el('div', 'tl-price', [item.price != null ? money(item.price) : '', st && sk !== 'in' ? st : ''].filter(Boolean).join(' · ')));
+      tile.appendChild(el('div', 'tl-price', [item.price != null ? money(item.price) : '', item.msrp && item.msrp !== item.price ? `MSRP ${money(item.msrp)}` : '', st && sk !== 'in' ? st : ''].filter(Boolean).join(' · ')));
+      if (CFG.search === 'walmart') addMarket(tile, item.title);
       wrap.appendChild(tile);
     }
   }
@@ -962,6 +965,7 @@
       tile.appendChild(photo);
       tile.appendChild(el('div', 'tl-name', w.name));
       tile.appendChild(el('div', 'tl-price', w.msrp ? `MSRP ${money(w.msrp)}` : '—'));
+      addMarket(tile, w.name);
       wrap.appendChild(tile);
     }
   }
@@ -978,6 +982,41 @@
   // Real product photos from Walmart's official feed, looked up by name
   // (server: /api/images, remembered 24h). Items with no match keep the
   // big date block.
+  // ---------------- 2026-10-20 — real TCGplayer market prices ----------------
+  // From the server's daily TCGplayer price copy (/api/market). Shown under
+  // every product as "TCGplayer $X" next to the store price / MSRP.
+  const marketMap = {};
+  const marketAsked = new Set();
+  function addMarket(tile, name, known) {
+    const m = known || (marketMap[name] && marketMap[name].market);
+    if (CFG.search !== 'walmart') return;
+    if (m == null) { if (name) wantMarket(name); return; }
+    const line = el('div', 'tl-market', `TCGplayer ${money(m)}`);
+    line.title = marketMap[name] ? `TCGplayer market price · ${marketMap[name].tcgName}` : 'TCGplayer market price';
+    tile.appendChild(line);
+  }
+  let marketTimer = null;
+  function wantMarket(name) {
+    if (marketAsked.has(name)) return;
+    marketAsked.add(name);
+    clearTimeout(marketTimer);
+    marketTimer = setTimeout(fetchMarket, 300);
+  }
+  const marketPending = () => [...marketAsked].filter((n) => !(n in marketMap));
+  async function fetchMarket() {
+    const names = marketPending().slice(0, 80);
+    if (!names.length) return;
+    for (const n of names) marketMap[n] = marketMap[n] || null; // don't ask twice
+    try {
+      const res = await fetch(`/api/market?game=${GAME}&names=${encodeURIComponent(names.join('|'))}`);
+      if (!res.ok) return;
+      const map = await res.json();
+      let changed = false;
+      for (const [k, v] of Object.entries(map)) { marketMap[k] = v; changed = true; }
+      if (changed) { render(); if (catalog.length || liveResults) showCatalog(); }
+    } catch (_) { /* prices are a bonus — never break the page */ }
+  }
+
   const imgMap = {};
   // shared with site-search.js so the top search also finds Coming up / watch list items
   window.TCG_PAGE = { game: GAME, upcoming: CFG.upcoming, watchlist: CFG.watchlist || [], images: CFG.images, imgMap };

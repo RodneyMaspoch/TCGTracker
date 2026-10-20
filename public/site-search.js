@@ -27,6 +27,23 @@
   ];
   const ICON = { pokemon: '/icons/pokemon.png', mtg: '/icons/mtg.png', lorcana: '/icons/lorcana.png', nintendo: '/icons/icon-192.png' };
   const ph = (game) => { const d = el('div', 'tl-ph'); const i = el('img'); i.src = ICON[game] || '/icons/icon-192.png'; i.alt = ''; d.appendChild(i); return d; };
+  // TCGplayer market prices (server: /api/market, daily TCGplayer copy)
+  const marketCache = {};
+  let marketQueue = [];
+  async function fillMarket() {
+    const q = marketQueue; marketQueue = [];
+    const byGame = {};
+    for (const [g, name] of q) if (!(`${g}|${name}` in marketCache)) (byGame[g] = byGame[g] || new Set()).add(name);
+    await Promise.all(Object.entries(byGame).map(async ([g, names]) => {
+      const list = [...names].slice(0, 80);
+      const res = await getJson(`/api/market?game=${g}&names=${encodeURIComponent(list.join('|'))}`) || {};
+      for (const n of list) marketCache[`${g}|${n}`] = res[n] ? res[n].market : null;
+    }));
+    for (const [g, name, tileEl] of q) {
+      const m = marketCache[`${g}|${name}`];
+      if (m != null && tileEl.isConnected && !tileEl.querySelector('.tl-market')) tileEl.appendChild(el('div', 'tl-market', `TCGplayer ${money(m)}`));
+    }
+  }
   const gameOf = (title) => (/pok[eé]mon/i.test(title) ? 'pokemon' : /lorcana/i.test(title) ? 'lorcana' : /magic|mtg|secret lair/i.test(title) ? 'mtg' : null);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const money = (n) => (n == null || n === '' ? '' : `$${Number(n).toFixed(2)}`);
@@ -100,7 +117,9 @@
     }
     t.appendChild(photo);
     t.appendChild(el('div', 'tl-name', item.title));
-    t.appendChild(el('div', 'tl-price', item.line || [money(item.price), item.store || GAME_NAME[item.game]].filter(Boolean).join(' · ')));
+    t.appendChild(el('div', 'tl-price', item.line || [money(item.price), item.msrp && item.msrp !== item.price ? `MSRP ${money(item.msrp)}` : '', item.store || GAME_NAME[item.game]].filter(Boolean).join(' · ')));
+    if (item.market != null) t.appendChild(el('div', 'tl-market', `TCGplayer ${money(item.market)}`));
+    else if (GAME_TERM[item.game]) marketQueue.push([item.game, item.title, t]);
     return t;
   }
 
@@ -153,6 +172,7 @@
           image: ls.map((l) => l.image_url).find(Boolean),
           line: [...new Set(ls.map((l) => RETAILER[l.retailer] || l.retailer))].join(' · ') || 'Watching — not listed yet',
           badge: live ? '● In stock' : null,
+          market: p.tcgplayer_ref ?? undefined,
         };
       })), { track: false });
       // 2. watch list + coming up (this page's game)
@@ -184,6 +204,7 @@
       results.appendChild(chips);
       msg.textContent = n ? `${n} found for "${q}"${lastLiveQ === q ? '' : ' — checking Walmart and Nintendo…'}` : (lastLiveQ === q ? `Nothing found for "${q}" in your products, Walmart or Nintendo — try the store links below.` : 'Searching…');
       if (!d.trackedOk) msg.textContent += ' (your tracked products could not load right now)';
+      fillMarket();
     }
 
     async function liveSearch(q) {

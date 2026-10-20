@@ -48,6 +48,7 @@ import { runHeadsUpCheck } from './headsup.js';
 import { runReminders } from './reminders.js';
 import { checkNewWalmartSkus, checkNewNintendoItems } from './newskus.js';
 import { runOfficialNews } from './officialnews.js';
+import { stepMarketSync } from './market.js';
 import {
   getListingsForLane,
   updateListing,
@@ -484,6 +485,15 @@ export async function tick(env) {
       await checkNewNintendoItems(env); // whole Nintendo catalog, one request, ≈ every 2 min
     } catch (err) {
       console.error('[poll] new Nintendo items check failed:', err);
+    }
+  }
+  // 2026-10-20 — real TCGplayer market prices (via TCGCSV), synced once a
+  // day a few sets at a time on every other tick. See market.js.
+  if (tickCount % 2 === 1) {
+    try {
+      await stepMarketSync(env);
+    } catch (err) {
+      console.error('[poll] market sync step failed:', err);
     }
   }
   if (tickCount % 8 === 5) {
