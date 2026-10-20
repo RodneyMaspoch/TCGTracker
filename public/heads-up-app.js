@@ -4,7 +4,7 @@
 // this page is "show me everything upcoming across all three games in one
 // place," per the explicit ask that spawned this page.
 
-const REFRESH_MS = 30000;
+const REFRESH_MS = 60000; // 2026-10-20 — was 30s; database budget
 const GAME_LABELS = { pokemon: 'Pokémon', mtg: 'MTG', lorcana: 'Lorcana', nintendo: 'Nintendo' };
 const SOURCE_LABELS = {
   trackalacker: 'TrackaLacker',
@@ -158,5 +158,5 @@ async function load() {
     try { await navigator.serviceWorker.register('/sw.js'); } catch (err) { console.error('[heads-up] sw register failed', err); }
   }
   await load();
-  setInterval(load, REFRESH_MS);
+  setInterval(() => { if (!document.hidden) load(); }, REFRESH_MS);
 })();

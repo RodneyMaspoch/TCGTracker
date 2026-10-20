@@ -103,8 +103,11 @@ export async function getEvents(env, limit = 50, includeMuted = false) {
 export async function getEventsCountSince(env, sinceId) {
   const since = parseInt(sinceId, 10) || 0;
   const { results } = await env.DB.prepare(
+    // 2026-10-20 — capped to the newest 200 events. With since_id=0 (never
+    // opened Notifications) this used to COUNT the whole events table every
+    // 30s per open tab — a main cause of hitting D1's free daily read limit.
     `SELECT COUNT(*) as n FROM events e LEFT JOIN products p ON p.id = e.product_id
-     WHERE e.id > ? AND (p.muted IS NULL OR p.muted = 0)`
+     WHERE e.id > MAX(?, COALESCE((SELECT MAX(id) FROM events), 0) - 200) AND (p.muted IS NULL OR p.muted = 0)`
   ).bind(since).all();
   return results[0]?.n || 0;
 }

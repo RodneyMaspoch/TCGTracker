@@ -56,7 +56,9 @@ export function etToDate(y, m, d, hh, mm) {
 const TZ_SHIFT = { ET: 0, EDT: 0, EST: 0, CT: 1, CDT: 1, CST: 1, MT: 2, PT: 3, PDT: 3, PST: 3 }; // hours behind ET
 
 // ---- dedupe via the events table ----
+const sentKeys = new Set();
 async function alreadySent(env, key) {
+  if (sentKeys.has(key)) return true;
   const row = await env.DB.prepare(
     `SELECT 1 FROM events WHERE kind IN ('launch_reminder','tip_reminder') AND data_json LIKE ? LIMIT 1`
   ).bind(`%"key":"${key}"%`).first();
@@ -64,6 +66,7 @@ async function alreadySent(env, key) {
 }
 async function send(env, kind, key, title, body, url, productId = null) {
   if (await alreadySent(env, key)) return;
+  sentKeys.add(key);
   await insertEvent(env, { created_at: new Date().toISOString(), kind, product_id: productId, message: body, data_json: JSON.stringify({ key, url }) });
   await notifyAll(env, { title, body, url, tag: key });
 }
@@ -165,11 +168,21 @@ export async function scheduleTipIfDated(env, row) {
   }
   await env.DB.prepare(`INSERT INTO events (created_at, kind, product_id, message, data_json) VALUES (?, 'tip_scheduled', NULL, ?, ?)`)
     .bind(new Date().toISOString(), `Upcoming (unconfirmed): ${row.title}`, JSON.stringify(data)).run();
+  if (tipCache) tipCache.rows.unshift({ data_json: JSON.stringify(data) });
 }
 
+// 2026-10-20 — database budget: scheduled tips are kept in memory and the
+// events table is only re-read every 30 min (it used to be every run).
+let tipCache = null;
 async function runTipReminders(env, now) {
-  const since = new Date(now - 8 * 86400000).toISOString();
-  const { results } = await env.DB.prepare(`SELECT data_json FROM events WHERE kind = 'tip_scheduled' AND created_at > ? ORDER BY id DESC LIMIT 50`).bind(since).all();
+  if (!tipCache || now - tipCache.at > 30 * 60 * 1000) {
+    const since = new Date(now - 8 * 86400000).toISOString();
+    const { results } = await env.DB.prepare(
+      `SELECT data_json FROM events WHERE id > COALESCE((SELECT MAX(id) FROM events), 0) - 1500 AND kind = 'tip_scheduled' AND created_at > ? ORDER BY id DESC LIMIT 50`
+    ).bind(since).all();
+    tipCache = { at: now, rows: results };
+  }
+  const results = tipCache.rows;
   for (const r of results) {
     let d; try { d = JSON.parse(r.data_json); } catch (_) { continue; }
     const at = new Date(d.at);

@@ -17,71 +17,68 @@ import { notifyAll } from './push.js';
 const GAMES = ['pokemon', 'mtg', 'lorcana'];
 const GAME_NAME = { pokemon: 'Pokémon', mtg: 'MTG', lorcana: 'Lorcana' };
 
+// 2026-10-20 — "seen" item IDs now live in their own small table
+// (seen_items, migration 0013) plus an in-memory copy, instead of hundreds of
+// hidden rows in heads_up that every Heads-Up / ticker request had to scan
+// past. If the table doesn't exist yet, these checks simply don't run.
+const seenCache = new Map(); // store -> Set of keys
+async function loadSeen(env, store) {
+  if (seenCache.has(store)) return seenCache.get(store);
+  const { results } = await env.DB.prepare('SELECT item_key FROM seen_items WHERE store = ?').bind(store).all();
+  const set = new Set(results.map((r) => r.item_key));
+  seenCache.set(store, set);
+  return set;
+}
+async function markSeen(env, store, keys) {
+  if (!keys.length) return;
+  const now = new Date().toISOString();
+  const stmts = keys.map((k) => env.DB.prepare('INSERT OR IGNORE INTO seen_items (store, item_key, first_seen) VALUES (?, ?, ?)').bind(store, k, now));
+  for (let i = 0; i < stmts.length; i += 50) await env.DB.batch(stmts.slice(i, i + 50));
+  const set = seenCache.get(store);
+  for (const k of keys) set.add(k);
+}
+
 export async function checkNewWalmartSkus(env, runIndex) {
   const game = GAMES[runIndex % GAMES.length];
+  const store = `walmart-${game}`;
+  const seen = await loadSeen(env, store);
   const items = await walmartCatalog(env, game);
+  const baseline = seen.size > 0;
+  const fresh = items.filter((it) => !seen.has(String(it.itemId)));
   const now = new Date().toISOString();
-
-  const baseline = await env.DB.prepare(
-    `SELECT 1 FROM heads_up WHERE source IN ('walmart-seen','walmart-new') AND game = ? LIMIT 1`
-  ).bind(game).first();
-  if (!baseline) {
-    // Marker row: the baseline is taken even when Walmart sells nothing for
-    // this game yet, so the FIRST item that appears later still alerts.
-    await insertHeadsUp(env, { source: 'walmart-seen', game, title: `baseline ${game}`, url: null, retailer: 'Walmart', discovered_at: now, dedupe_key: `baseline-${game}` });
-  }
-
-  for (const it of items) {
-    const known = await env.DB.prepare(
-      `SELECT 1 FROM heads_up WHERE source IN ('walmart-seen','walmart-new') AND dedupe_key = ? LIMIT 1`
-    ).bind(it.itemId).first();
-    if (known) continue;
+  await markSeen(env, store, baseline ? fresh.map((it) => String(it.itemId)) : ['_baseline', ...fresh.map((it) => String(it.itemId))]);
+  if (!baseline) return; // first run: just remember what exists
+  for (const it of fresh) {
     const price = it.price != null ? ` — $${it.price}` : '';
     const row = {
-      source: baseline ? 'walmart-new' : 'walmart-seen',
-      game,
+      source: 'walmart-new', game,
       title: `${it.title}${price}${it.inStock ? ' (in stock)' : ' (not in stock yet)'}`,
-      snippet: null,
-      url: it.url,
-      retailer: 'Walmart',
-      discovered_at: now,
-      dedupe_key: it.itemId,
+      snippet: null, url: it.url, retailer: 'Walmart', discovered_at: now, dedupe_key: String(it.itemId),
     };
-    const isNew = await insertHeadsUp(env, row);
-    if (isNew && baseline) {
-      await notifyAll(env, {
-        title: `🆕 New ${GAME_NAME[game]} item at Walmart`,
-        body: row.title,
-        url: it.url,
-        tag: `walmart-new-${it.itemId}`,
-      });
+    if (await insertHeadsUp(env, row)) {
+      await notifyAll(env, { title: `🆕 New ${GAME_NAME[game]} item at Walmart`, body: row.title, url: it.url, tag: `walmart-new-${it.itemId}` });
     }
   }
 }
 
-// 2026-10-16 — same idea for the Nintendo Store (its own public catalog):
-// any product never seen before → "🆕 New at Nintendo Store".
+// Same idea for the Nintendo Store → "🆕 New at Nintendo Store".
 export async function checkNewNintendoItems(env) {
+  const seen = await loadSeen(env, 'nintendo');
   const items = await nintendoCatalog(env);
   if (!items.length) return;
+  const baseline = seen.size > 0;
+  const fresh = items.filter((it) => !seen.has(String(it.sku)));
   const now = new Date().toISOString();
-  const baseline = await env.DB.prepare(
-    `SELECT 1 FROM heads_up WHERE source IN ('nintendo-seen','nintendo-new') LIMIT 1`
-  ).first();
-  for (const it of items) {
-    const known = await env.DB.prepare(
-      `SELECT 1 FROM heads_up WHERE source IN ('nintendo-seen','nintendo-new') AND dedupe_key = ? LIMIT 1`
-    ).bind(it.sku).first();
-    if (known) continue;
+  await markSeen(env, 'nintendo', fresh.map((it) => String(it.sku)));
+  if (!baseline) return;
+  for (const it of fresh) {
     const price = it.price != null ? ` — $${it.price}` : '';
     const status = it.stockStatus === 'IN_STOCK' ? ' (in stock)' : (it.availability || [])[0] ? ` (${it.availability[0]})` : '';
     const row = {
-      source: baseline ? 'nintendo-new' : 'nintendo-seen', game: 'nintendo',
-      title: `${it.title}${price}${status}`, snippet: null, url: it.url,
-      retailer: 'Nintendo Store', discovered_at: now, dedupe_key: it.sku,
+      source: 'nintendo-new', game: 'nintendo', title: `${it.title}${price}${status}`, snippet: null,
+      url: it.url, retailer: 'Nintendo Store', discovered_at: now, dedupe_key: String(it.sku),
     };
-    const isNew = await insertHeadsUp(env, row);
-    if (isNew && baseline) {
+    if (await insertHeadsUp(env, row)) {
       await notifyAll(env, { title: '🆕 New at Nintendo Store', body: row.title, url: it.url, tag: `nintendo-new-${it.sku}` });
     }
   }

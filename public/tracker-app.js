@@ -21,7 +21,7 @@
   'use strict';
 
   const GAME = document.body.dataset.game || 'pokemon';
-  const REFRESH_MS = 20000;
+  const REFRESH_MS = 60000; // 2026-10-20 — was 20s; database budget
 
   // ---------------- per-game content ----------------
   const GAMES = {
@@ -195,7 +195,7 @@
     const [products, drawing, events] = await Promise.all([
       getJson('/api/products', 'products'),
       CFG.drawing ? getJson('/api/walmart-drawing', 'drawing') : Promise.resolve(null),
-      getJson('/api/events?limit=200', 'events'),
+      getJson('/api/events?limit=100', 'events'),
     ]);
     try {
       state.products = groupProducts((Array.isArray(products) ? products : []).filter((p) => p && p.game === GAME));
@@ -946,6 +946,7 @@
     try { render(); } catch (err) { console.error('[tracker] first render failed', err); }
     loadCatalog();
     await loadAll();
-    setInterval(loadAll, REFRESH_MS);
+    setInterval(() => { if (!document.hidden) loadAll(); }, REFRESH_MS);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) loadAll(); });
   })();
 })();

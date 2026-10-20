@@ -17,7 +17,7 @@
 // limitation, not a bug, and is noted in notifications.html itself.
 (function () {
   const LAST_SEEN_KEY = 'tcg-last-seen-event-id';
-  const REFRESH_MS = 30000;
+  const REFRESH_MS = 60000; // 2026-10-20 — was 30s; database budget
 
   function getLastSeenId() {
     try {
@@ -63,6 +63,6 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     refresh();
-    setInterval(refresh, REFRESH_MS);
+    setInterval(() => { if (!document.hidden) refresh(); }, REFRESH_MS);
   });
 })();

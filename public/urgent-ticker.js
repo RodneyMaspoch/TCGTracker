@@ -39,7 +39,7 @@
 // every page regardless of what that page does or doesn't link.
 
 (function () {
-  const REFRESH_MS = 30000;
+  const REFRESH_MS = 60000; // 2026-10-20 — was 30s; database budget
   const FRESH_MS = 3 * 60 * 60 * 1000; // 3 hours
 
   // Matches each page's own warning/urgent color (same values as
@@ -410,6 +410,6 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     load();
-    setInterval(load, REFRESH_MS);
+    setInterval(() => { if (!document.hidden) load(); }, REFRESH_MS);
   });
 })();

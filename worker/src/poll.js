@@ -165,16 +165,31 @@ async function pollOneListing(env, row) {
   // "RESTOCK" alert (dozens per hour for the same 3 products). A read we
   // already decided not to trust now leaves the last known stock state
   // exactly as it was instead of resetting it.
+  // 2026-10-20 — database budget: only write when something changed (or
+  // every 10 min as a "last checked" heartbeat). Writing every listing every
+  // 15s was a big share of the daily free-tier limit that took the site down.
+  const next = {
+    last_price: suspicious ? row.last_price : result.price,
+    last_stock: suspicious ? row.last_stock : result.stock,
+    last_purchasable: suspicious ? (wasPurchasable ? 1 : 0) : (nowPurchasable ? 1 : 0),
+  };
+  const changed = next.last_price !== row.last_price || next.last_stock !== row.last_stock
+    || next.last_purchasable !== (row.last_purchasable ? 1 : 0)
+    || (result.image && result.image !== row.image_url);
+  const stale = !row.last_checked_at || Date.now() - new Date(row.last_checked_at).getTime() > 10 * 60 * 1000;
   try {
-    await updateListing(env, {
-      product_id: row.product_id,
-      retailer: row.retailer,
-      last_price: suspicious ? row.last_price : result.price,
-      last_stock: suspicious ? row.last_stock : result.stock,
-      last_purchasable: suspicious ? (wasPurchasable ? 1 : 0) : (nowPurchasable ? 1 : 0),
-      last_checked_at: now,
-      image_url: result.image ?? null,
-    });
+    if (changed || stale) {
+      await updateListing(env, {
+        product_id: row.product_id,
+        retailer: row.retailer,
+        ...next,
+        last_checked_at: now,
+        image_url: result.image ?? null,
+      });
+      // keep the in-memory copy (see laneCache in tick) in step with the DB
+      Object.assign(row, next, { last_checked_at: now });
+      if (result.image) row.image_url = result.image;
+    }
   } catch (err) {
     console.error(`[poll] updateListing failed for ${row.retailer}/${row.product_id} (continuing to trigger checks anyway): ${err.message}`);
   }
@@ -336,14 +351,24 @@ async function pollWalmartDrawing(env) {
   }
 }
 
+// 2026-10-20 — database budget: the listing list is re-read from D1 once a
+// minute instead of every 15s tick. The rows are kept in memory between
+// ticks and updated in place when a poll changes them, so "was it in stock
+// last time?" stays correct. New/removed products show up within a minute.
+let laneCache = null;
 export async function tick(env) {
   const slowEveryN = parseInt(env.SLOW_LANE_EVERY_N_TICKS || '3', 10);
 
-  const fastListings = await getListingsForLane(env, 'fast');
-  const slowListings = await getListingsForLane(env, 'slow');
-  // Price alerts (migration 0010) — attached per row; {} if not migrated yet.
-  const targets = await getTargetPrices(env);
-  for (const row of [...fastListings, ...slowListings]) row.target_price = targets[row.product_id] ?? null;
+  if (!laneCache || Date.now() - laneCache.at > 60 * 1000) {
+    const fast = await getListingsForLane(env, 'fast');
+    const slow = await getListingsForLane(env, 'slow');
+    // Price alerts (migration 0010) — attached per row; {} if not migrated yet.
+    const targets = await getTargetPrices(env);
+    for (const row of [...fast, ...slow]) row.target_price = targets[row.product_id] ?? null;
+    laneCache = { at: Date.now(), fast, slow };
+  }
+  const fastListings = laneCache.fast;
+  const slowListings = laneCache.slow;
   const state = await getPollState(env);
 
   // Fast lane: EVERY listing (not one-at-a-time) checked concurrently,

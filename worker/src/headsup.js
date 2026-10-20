@@ -17,7 +17,20 @@
 // human reads the actual sentence rather than trusting an auto-parsed
 // "confirmed" time that might be wrong.
 
-import { insertHeadsUp } from './db.js';
+import { insertHeadsUp as dbInsertHeadsUp } from './db.js';
+
+// 2026-10-20 — database budget: every source is re-read every tick and
+// mostly finds the same tips again. Remember which ones are already stored
+// so they don't cost a database read every 15 seconds.
+const knownTips = new Set();
+async function insertHeadsUp(env, row) {
+  const k = `${row.source}|${row.dedupe_key}`;
+  if (knownTips.has(k)) return false;
+  const isNew = await dbInsertHeadsUp(env, row);
+  knownTips.add(k);
+  if (knownTips.size > 5000) knownTips.clear();
+  return isNew;
+}
 import { notifyAll } from './push.js';
 import { scheduleTipIfDated, parseTipDay } from './reminders.js';
 import { findOfficialMatch, officialSourcesCheck } from './officialnews.js';

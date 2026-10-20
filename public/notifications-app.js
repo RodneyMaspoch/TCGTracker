@@ -238,5 +238,5 @@ async function loadMuteList() {
   }
   await loadMuteList();
   await loadNotifications();
-  setInterval(loadNotifications, 30000);
+  setInterval(() => { if (!document.hidden) loadNotifications(); }, 60000); // 2026-10-20 — was 30s
 })();
