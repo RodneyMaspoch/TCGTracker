@@ -451,6 +451,7 @@
         countdownTo: next.date,
         cta: next.url ? 'DETAILS' : null, url: next.url,
         product: next.productId ? findProduct(next.productId) : null,
+        image: imgMap[next.name] || null,
       };
     }
     return null; // nothing to feature — the hero hides itself
@@ -481,8 +482,8 @@
     // Photo only ever shows the hero's OWN product (never generic set art —
     // that put a Reality Fracture box next to "The Hobbit"). No product
     // photo → a big date block for dated items, else the plain placeholder.
-    if (h.product || !h.countdownTo) {
-      root.appendChild(buildPhoto(h.product, 'tl-hero2-photo'));
+    if (h.product || h.image || !h.countdownTo) {
+      root.appendChild(buildPhoto(h.product || (h.image ? { name: h.title, listings: [], ids: [] } : null), 'tl-hero2-photo', h.image));
     } else {
       const box = el('div', 'tl-hero2-photo tl-datebox');
       box.appendChild(el('span', 'tl-dmon', h.countdownTo.toLocaleString('en-US', { month: 'long' })));
@@ -506,9 +507,12 @@
       if (it.url) linkify(tile, it.url);
       else if (product) tile.addEventListener('click', () => openSheet(product));
       let photo;
+      const pic = !product && imgMap[it.name];
       if (product) {
-        photo = buildPhoto(product, 'tl-photo');
+        photo = buildPhoto(product, 'tl-photo', imgMap[it.name]);
         photo.appendChild(buildTrackPill(product));
+      } else if (pic) {
+        photo = buildPhoto({ name: it.name, listings: [], ids: [] }, 'tl-photo', pic);
       } else {
         photo = el('div', 'tl-photo tl-datebox');
         if (it.date && (it.exact !== false)) {
@@ -519,6 +523,9 @@
         }
       }
       photo.appendChild(el('span', 'tl-badge kind-' + it.kind.toLowerCase(), it.kind));
+      if ((product || pic) && it.date && it.exact !== false && !it.open) {
+        photo.appendChild(el('span', 'tl-datechip', it.date.toLocaleString('en-US', { month: 'short', day: 'numeric' })));
+      }
       tile.appendChild(photo);
       tile.appendChild(el('div', 'tl-name', it.name));
       const when = it.date && !it.open && it.exact !== false ? it.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · ' : '';
@@ -815,6 +822,7 @@
       showCatalog();
     } catch (err) {
       console.warn('[tracker] catalog unavailable', err);
+      if (CFG.search === 'walmart') showCatalog();
       if (CFG.search === 'nintendo' && msg) msg.textContent = `Couldn't load the Nintendo Store right now (${err.message}).`;
     }
   }
@@ -844,40 +852,70 @@
       wrap.appendChild(b);
     }
   }
+  // 2026-10-20 — search box on every page you can track from: typing filters
+  // the store list (and your tracked products) instantly; Enter searches the
+  // store itself for anything not already listed.
+  let findText = '';
+  let liveResults = null; // results of a live store search, or null
+  const matchesFind = (title) => {
+    const words = findText.toLowerCase().split(/\s+/).filter(Boolean);
+    const t = String(title || '').toLowerCase();
+    return words.every((w) => t.includes(w));
+  };
   function showCatalog() {
     const section = document.getElementById('tlCatalogSection');
     const msg = document.getElementById('tlSearchMsg');
-    if (section) section.hidden = catalog.length === 0 && CFG.search !== 'nintendo';
-    if (!catalog.length) { if (CFG.search === 'nintendo' && msg) msg.textContent = 'No products came back from the Nintendo Store.'; return; }
-    const inStock = catalog.filter(isIn).length;
-    if (msg) msg.textContent = CFG.search === 'nintendo'
-      ? 'Tap + TRACK on anything to get an alert when it comes in stock.'
-      : `${catalog.length} sold by Walmart · ${inStock} in stock now — tap + TRACK to get alerts`;
+    if (section) section.hidden = false;
     renderChips();
-    renderSearchResults(catalog.filter(chipFilter));
+    if (liveResults) {
+      if (msg) msg.textContent = liveResults.length
+        ? `${liveResults.length} found for "${findText}" — tap + TRACK to get alerts`
+        : (CFG.search === 'walmart' ? `Nothing sold by Walmart matches "${findText}" right now. Use + WATCH above or try other words.` : `No results for "${findText}".`);
+      renderSearchResults(liveResults);
+      return;
+    }
+    const list = catalog.filter(chipFilter).filter((it) => !findText || matchesFind(it.title));
+    if (msg) {
+      if (!catalog.length) msg.textContent = CFG.search === 'nintendo' ? 'Loading the Nintendo Store…' : 'Nothing sold by Walmart itself right now — search above to look for something specific.';
+      else if (findText) msg.textContent = list.length ? `${list.length} match "${findText}" — press Enter to search the whole store` : `No matches here — press Enter to search the whole store for "${findText}"`;
+      else msg.textContent = CFG.search === 'nintendo'
+        ? 'Tap + TRACK on anything to get an alert when it comes in stock.'
+        : `${catalog.length} sold by Walmart · ${catalog.filter(isIn).length} in stock now — tap + TRACK to get alerts`;
+    }
+    renderSearchResults(list);
   }
 
   function initSearch() {
-    const form = document.getElementById('tlSearchForm');
-    if (!form || !CFG.search) return;
-    const msg = document.getElementById('tlSearchMsg');
-    if (CFG.search === 'walmart') return;
-    form.addEventListener('submit', async (e) => {
+    const input = document.getElementById('tlFind');
+    if (!input || !CFG.search) return;
+    let timer;
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        findText = input.value.trim();
+        liveResults = null;
+        filterText = findText; // also filters "Browse" / "Tracking"
+        showCatalog();
+        renderBrowse();
+      }, 120);
+    });
+    input.closest('form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const q = document.getElementById('tlSearchInput').value.trim();
-      if (!q) return;
-      msg.textContent = 'Searching…';
+      clearTimeout(timer);
+      findText = input.value.trim();
+      if (!findText) { liveResults = null; showCatalog(); return; }
+      const msg = document.getElementById('tlSearchMsg');
+      if (msg) msg.textContent = 'Searching the store…';
       try {
-        const query = CFG.search === 'walmart' && CFG.searchTerm && !q.toLowerCase().includes(CFG.searchTerm.split(' ')[0])
-          ? `${CFG.searchTerm} ${q}` : q;
-        const res = await fetch(`/api/${CFG.search}/search?q=${encodeURIComponent(query)}`);
+        const prefix = { pokemon: 'pokemon', mtg: 'magic the gathering', lorcana: 'disney lorcana' }[GAME];
+        const q = CFG.search === 'walmart' && prefix && !findText.toLowerCase().includes(prefix.split(' ')[0]) ? `${prefix} ${findText}` : findText;
+        const res = await fetch(`/api/${CFG.search}/search?q=${encodeURIComponent(q)}`);
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-        const items = Array.isArray(body) ? body : (body.results || body.hits || []);
-        msg.textContent = items.length ? '' : (CFG.search === 'walmart' ? 'Nothing sold by Walmart matches that.' : 'No results.');
-        renderSearchResults(items);
+        liveResults = Array.isArray(body) ? body : (body.results || body.hits || []);
+        showCatalog();
       } catch (err) {
-        msg.textContent = `Search failed (${err.message}).`;
+        if (msg) msg.textContent = `Search failed (${err.message}).`;
       }
     });
   }
@@ -900,7 +938,7 @@
     wrap.innerHTML = '';
     for (const w of items) {
       const tile = el('div', 'tl-tile');
-      const photo = buildPhoto(w.img ? { id: w.img, ids: [w.img], listings: [], name: w.name } : null, 'tl-photo');
+      const photo = buildPhoto(w.img ? { id: w.img, ids: [w.img], listings: [], name: w.name } : { ids: [], listings: [], name: w.name }, 'tl-photo', imgMap[w.name]);
       photo.appendChild(el('span', 'tl-badge kind-soon', 'Not listed yet'));
       const btn = el('button', 'tl-track', '+ WATCH');
       btn.type = 'button';
@@ -933,7 +971,62 @@
       try { fn(); } catch (err) { console.error(`[tracker] ${name} failed`, err); loadErrors.push(`${name}: ${err.message}`); }
     }
     showLoadErrors();
+    enhanceSliders();
   }
+
+  // ---------------- 2026-10-20 — photos for items with none ----------------
+  // Real product photos from Walmart's official feed, looked up by name
+  // (server: /api/images, remembered 24h). Items with no match keep the
+  // big date block.
+  const imgMap = {};
+  async function loadImages() {
+    if (CFG.search !== 'walmart') return;
+    const names = [
+      ...CFG.upcoming.filter((u) => !(u.productId && CFG.images[u.productId]) && u.kind !== 'EVENT').map((u) => u.name),
+      ...(CFG.watchlist || []).filter((w) => !w.img).map((w) => w.name),
+    ];
+    if (!names.length) return;
+    try {
+      const res = await fetch(`/api/images?game=${GAME}&names=${encodeURIComponent(names.join('|'))}`);
+      if (!res.ok) return;
+      const map = await res.json();
+      let changed = false;
+      for (const [k, v] of Object.entries(map)) if (v) { imgMap[k] = v; changed = true; }
+      if (changed) render();
+    } catch (_) { /* keep date blocks */ }
+  }
+
+  // ---------------- 2026-10-20 — sliders instead of scrollbars ----------------
+  // Every horizontal row gets ‹ › buttons that move by one screenful of tiles.
+  function enhanceSliders() {
+    document.querySelectorAll('.tl-strip:not(.tl-wrap)').forEach((strip) => {
+      if (strip.parentElement.classList.contains('tl-slider')) { updateSlider(strip); return; }
+      const box = el('div', 'tl-slider');
+      strip.parentNode.insertBefore(box, strip);
+      const prev = el('button', 'tl-slide-btn prev', '‹');
+      const next = el('button', 'tl-slide-btn next', '›');
+      prev.type = next.type = 'button';
+      prev.setAttribute('aria-label', 'Previous'); next.setAttribute('aria-label', 'Next');
+      box.append(prev, strip, next);
+      const step = () => {
+        const tile = strip.querySelector('.tl-tile');
+        const w = tile ? tile.getBoundingClientRect().width + 14 : 164;
+        return Math.max(1, Math.floor((strip.clientWidth + 14) / w)) * w;
+      };
+      prev.addEventListener('click', () => strip.scrollBy({ left: -step(), behavior: 'smooth' }));
+      next.addEventListener('click', () => strip.scrollBy({ left: step(), behavior: 'smooth' }));
+      strip.addEventListener('scroll', () => updateSlider(strip), { passive: true });
+      updateSlider(strip);
+    });
+  }
+  function updateSlider(strip) {
+    const box = strip.parentElement;
+    const max = strip.scrollWidth - strip.clientWidth - 2;
+    box.querySelector('.prev').disabled = strip.scrollLeft <= 2;
+    box.querySelector('.next').disabled = strip.scrollLeft >= max;
+    box.classList.toggle('no-overflow', max <= 0);
+  }
+  window.addEventListener('resize', () => document.querySelectorAll('.tl-slider > .tl-strip').forEach(updateSlider));
 
   (async function init() {
     if ('serviceWorker' in navigator) {
@@ -945,6 +1038,7 @@
     // hero), then fill in live data when the server answers.
     try { render(); } catch (err) { console.error('[tracker] first render failed', err); }
     loadCatalog();
+    loadImages();
     await loadAll();
     setInterval(() => { if (!document.hidden) loadAll(); }, REFRESH_MS);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) loadAll(); });

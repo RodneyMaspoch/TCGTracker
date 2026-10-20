@@ -1571,3 +1571,25 @@ div.tl-item { padding-bottom: 14px; }
 .tl-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0 16px 12px; }
 .tl-chip { border: 1px solid #e3e5e8; background: #fff; color: #111418; border-radius: 999px; padding: 8px 14px; font: 700 12px/1 Archivo, sans-serif; cursor: pointer; }
 .tl-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* 2026-10-20 — sliders (‹ › instead of scrollbars) */
+.tl-slider { position: relative; display: flex; align-items: center; gap: 8px; }
+.tl-slider > .tl-strip { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory; }
+.tl-slider > .tl-strip::-webkit-scrollbar { display: none; }
+.tl-slide-btn { flex: 0 0 40px; height: 40px; border-radius: 999px; border: 1px solid var(--hair2, #e3e5e8); background: #fff; color: #111418; font: 700 24px/1 Archivo, sans-serif; cursor: pointer; box-shadow: 0 2px 8px rgba(17,20,24,.08); margin-top: -40px; }
+.tl-slide-btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tl-slide-btn:disabled { opacity: .3; cursor: default; box-shadow: none; }
+.tl-slider.no-overflow .tl-slide-btn { visibility: hidden; }
+/* date chip on a photo tile */
+.tl-datechip { position: absolute; left: 6px; bottom: 6px; padding: 4px 8px; border-radius: 999px; background: #111418; color: #fff; font: 800 10px/1 Archivo, sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+/* page search box */
+.tl-find { margin-bottom: 14px; }
+/* menu search overlay */
+.tcg-nav-search { cursor: pointer; }
+.tl-gs { position: fixed; inset: 0; z-index: 5000; background: #fff; overflow-y: auto; padding: 28px 16px 60px; }
+.tl-gs[hidden] { display: none; }
+.tl-gs-bar { max-width: 760px; }
+.tl-gs-close { background: #111418 !important; padding: 0 16px !important; }
+.tl-gs-results { max-width: 1240px; margin: 0 auto; }
+.tl-gs-head { font: 800 18px/1.2 Archivo, sans-serif; margin: 22px 0 10px; text-align: center; }
+body.tl-gs-open { overflow: hidden; }
+@media (max-width: 600px) { .tl-slide-btn { display: none; } .tl-slider > .tl-strip { scrollbar-width: thin; } }

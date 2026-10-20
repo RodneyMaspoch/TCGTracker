@@ -25,7 +25,7 @@ import {
 import { notifyAll, pushConfigured } from './push.js';
 import { Ticker } from './ticker-do.js';
 import { checkSourcesReachable } from './headsup.js';
-import { walmartConfigured, walmartLookupRaw, walmartSearch, walmartCatalog, walmartSearchRaw } from './walmart-io.js';
+import { walmartConfigured, walmartLookupRaw, walmartSearch, walmartCatalog, walmartSearchRaw, titleMatches } from './walmart-io.js';
 import { searchNintendoCatalog, nintendoCatalog } from './nintendo-algolia.js';
 
 // Durable Object classes must be exported from the main entry module (this
@@ -135,6 +135,31 @@ app.post('/api/admin/set-muted', async (c) => {
 });
 
 // 2026-10-16 — search Walmart (sold-by-Walmart items only) for the game pages.
+// 2026-10-20 — "more images": product photos for Coming-up / watch-list
+// items that have no tracked listing yet. Looks each name up in Walmart's
+// official feed (any seller — the photo only, nothing is bought or tracked)
+// and returns the first result whose title really matches. Remembered for
+// 24h, so each name costs one lookup a day. No database use.
+const IMG_PREFIX = { pokemon: 'pokemon', mtg: 'magic the gathering', lorcana: 'disney lorcana' };
+app.get('/api/images', async (c) => {
+  if (!walmartConfigured(c.env)) return c.json({});
+  const game = c.req.query('game') || 'pokemon';
+  const names = (c.req.query('names') || '').split('|').map((n) => n.trim()).filter(Boolean).slice(0, 30);
+  const out = {};
+  await Promise.all(names.map(async (name) => {
+    const clean = name.replace(/\(.*?\)/g, ' ').replace(/[—–-]/g, ' ').replace(/\s+/g, ' ').trim();
+    out[name] = await shared(`img|${game}|${clean}`, 24 * 3600 * 1000, async () => {
+      try {
+        const { status, body } = await walmartSearchRaw(c.env, `${IMG_PREFIX[game] || ''} ${clean}`);
+        if (status !== 200 || !body || !Array.isArray(body.items)) return null;
+        const hit = body.items.find((it) => it.name && titleMatches(clean, it.name) && (it.largeImage || it.mediumImage));
+        return hit ? (hit.largeImage || hit.mediumImage) : null;
+      } catch (_) { return null; }
+    });
+  }));
+  return c.json(out);
+});
+
 app.get('/api/walmart/search', async (c) => {
   if (!walmartConfigured(c.env)) return c.json({ error: 'Walmart feed not configured' }, 400);
   const q = (c.req.query('q') || '').trim();
