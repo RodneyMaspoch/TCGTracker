@@ -38,13 +38,27 @@ export { Ticker };
 const app = new Hono();
 app.use('*', cors());
 
+// 2026-10-20 — database budget: every open window used to hit the database
+// on its own. Read-only answers are now shared for 30s, so 5 open windows
+// cost the same as 1. Anything that changes data clears this right away.
+const memo = new Map();
+async function shared(key, ttlMs, fn) {
+  const hit = memo.get(key);
+  if (hit && Date.now() - hit.at < ttlMs) return hit.value;
+  const value = await fn();
+  memo.set(key, { at: Date.now(), value });
+  if (memo.size > 200) memo.clear();
+  return value;
+}
+app.use('/api/admin/*', async (c, next) => { memo.clear(); await next(); });
+
 app.get('/api/products', async (c) => {
-  const products = await getAllProductsWithListings(c.env);
+  const products = await shared('products', 30000, () => getAllProductsWithListings(c.env));
   return c.json(products);
 });
 
 app.get('/api/walmart-drawing', async (c) => {
-  const state = await getDrawingState(c.env);
+  const state = await shared('drawing', 30000, () => getDrawingState(c.env));
   return c.json(state || { id: 1, is_open: 0, items_json: null, last_checked_at: null });
 });
 
@@ -55,7 +69,7 @@ app.get('/api/events', async (c) => {
   // see them; the notification-history page passes include_muted=1 to see
   // the real, complete record regardless of mute state.
   const includeMuted = ['1', 'true'].includes((c.req.query('include_muted') || '').toLowerCase());
-  const events = await getEvents(c.env, limit, includeMuted);
+  const events = await shared(`events|${limit}|${includeMuted}`, 30000, () => getEvents(c.env, limit, includeMuted));
   return c.json(events);
 });
 
@@ -66,7 +80,7 @@ app.get('/api/events', async (c) => {
 // non-muted events exist. Cheap COUNT query, no event bodies transferred.
 app.get('/api/events/unread-count', async (c) => {
   const sinceId = c.req.query('since_id') || '0';
-  const count = await getEventsCountSince(c.env, sinceId);
+  const count = await shared(`unread|${sinceId}`, 30000, () => getEventsCountSince(c.env, sinceId));
   return c.json({ count });
 });
 
@@ -294,7 +308,7 @@ app.get('/api/nintendo/search', async (c) => {
 app.get('/api/heads-up', async (c) => {
   const limit = c.req.query('limit') || '50';
   try {
-    const rows = await getHeadsUp(c.env, limit);
+    const rows = await shared(`headsup|${limit}`, 30000, () => getHeadsUp(c.env, limit));
     return c.json(rows);
   } catch (err) {
     // Most likely cause: migration 0002_heads_up.sql hasn't been applied
