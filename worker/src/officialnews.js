@@ -88,7 +88,7 @@ export function sameProduct(a, b) {
 export async function findOfficialMatch(env, tipText) {
   const since = new Date(Date.now() - 60 * 86400000).toISOString();
   const { results } = await env.DB.prepare(
-    `SELECT title, url FROM heads_up WHERE source LIKE 'official-%' AND discovered_at > ? ORDER BY id DESC LIMIT 100`
+    `SELECT title, url FROM heads_up WHERE id > COALESCE((SELECT MAX(id) FROM heads_up), 0) - 1000 AND source LIKE 'official-%' AND discovered_at > ? ORDER BY id DESC LIMIT 100`
   ).bind(since).all();
   return results.find((r) => sameProduct(tipText, r.title)) || null;
 }
@@ -97,7 +97,7 @@ export async function findOfficialMatch(env, tipText) {
 async function findTipMatch(env, officialTitle) {
   const since = new Date(Date.now() - 14 * 86400000).toISOString();
   const { results } = await env.DB.prepare(
-    `SELECT title, source FROM heads_up WHERE source NOT LIKE 'official-%' AND discovered_at > ? ORDER BY id DESC LIMIT 200`
+    `SELECT title, source FROM heads_up WHERE id > COALESCE((SELECT MAX(id) FROM heads_up), 0) - 1000 AND source NOT LIKE 'official-%' AND discovered_at > ? ORDER BY id DESC LIMIT 200`
   ).bind(since).all();
   return results.find((r) => sameProduct(officialTitle, r.title)) || null;
 }

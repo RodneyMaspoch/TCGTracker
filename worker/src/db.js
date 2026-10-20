@@ -51,7 +51,7 @@ export async function hasRecentRestock(env, productId, url, minutes, kind = 'res
   try {
     const since = new Date(Date.now() - minutes * 60 * 1000).toISOString();
     const row = await env.DB.prepare(
-      `SELECT 1 FROM events WHERE kind = ? AND product_id = ? AND created_at > ? AND data_json LIKE ? LIMIT 1`
+      `SELECT 1 FROM events WHERE id > COALESCE((SELECT MAX(id) FROM events), 0) - 2000 AND kind = ? AND product_id = ? AND created_at > ? AND data_json LIKE ? LIMIT 1`
     ).bind(kind, productId, since, `%${url}%`).first();
     return !!row;
   } catch (err) {

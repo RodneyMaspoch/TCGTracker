@@ -60,7 +60,7 @@ const sentKeys = new Set();
 async function alreadySent(env, key) {
   if (sentKeys.has(key)) return true;
   const row = await env.DB.prepare(
-    `SELECT 1 FROM events WHERE kind IN ('launch_reminder','tip_reminder') AND data_json LIKE ? LIMIT 1`
+    `SELECT 1 FROM events WHERE id > COALESCE((SELECT MAX(id) FROM events), 0) - 2000 AND kind IN ('launch_reminder','tip_reminder') AND data_json LIKE ? LIMIT 1`
   ).bind(`%"key":"${key}"%`).first();
   return !!row;
 }

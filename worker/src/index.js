@@ -313,8 +313,8 @@ app.get('/api/health', async (c) => {
   const out = { ok: true, time: new Date().toISOString() };
   try {
     const p = await c.env.DB.prepare('SELECT COUNT(*) AS n FROM products').first();
-    const e = await c.env.DB.prepare('SELECT COUNT(*) AS n FROM events').first();
-    const h = await c.env.DB.prepare('SELECT COUNT(*) AS n FROM heads_up').first();
+    const e = await c.env.DB.prepare('SELECT COALESCE(MAX(id), 0) AS n FROM events').first();
+    const h = await c.env.DB.prepare('SELECT COALESCE(MAX(id), 0) AS n FROM heads_up').first();
     out.db = { ok: true, products: p.n, events: e.n, heads_up: h.n };
   } catch (err) {
     out.ok = false;
