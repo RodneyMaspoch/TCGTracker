@@ -12,6 +12,9 @@ INSERT OR IGNORE INTO seen_items (store, item_key, first_seen)
   SELECT CASE WHEN source LIKE 'nintendo%' THEN 'nintendo' ELSE 'walmart-' || game END, dedupe_key, discovered_at
   FROM heads_up WHERE source IN ('walmart-seen', 'walmart-new', 'nintendo-seen', 'nintendo-new');
 DELETE FROM heads_up WHERE source IN ('walmart-seen', 'nintendo-seen');
+-- the "good price" alert used to be saved every 15s (bug, fixed in v21):
+-- keep only the newest one per product
+DELETE FROM events WHERE kind = 'good_price' AND id NOT IN (SELECT MAX(id) FROM events WHERE kind = 'good_price' GROUP BY product_id);
 -- keep 30 days of alert history (older rows only slowed every query down)
 DELETE FROM events WHERE created_at < datetime('now', '-30 days');
 DELETE FROM heads_up WHERE discovered_at < datetime('now', '-30 days');

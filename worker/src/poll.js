@@ -215,7 +215,8 @@ async function pollOneListing(env, row) {
 
   if (!wasPurchasable && nowPurchasable && !withinMsrpBand(row.msrp, result.price)) {
     console.log(`[poll] ${row.retailer}/${row.product_id} purchasable at $${result.price}, >${MAX_OVER_MSRP * 100}% over MSRP $${row.msrp} — not alerting`);
-  } else if (!wasPurchasable && nowPurchasable && await hasRecentRestock(env, row.product_id, row.url, RESTOCK_REPEAT_GUARD_MIN)) {
+  } else if (!wasPurchasable && nowPurchasable && (Date.now() - (restockSent.get(`${row.product_id}|${row.url}`) || 0) < RESTOCK_REPEAT_GUARD_MIN * 60000
+      || await hasRecentRestock(env, row.product_id, row.url, RESTOCK_REPEAT_GUARD_MIN))) {
     console.log(`[poll] restock for ${row.retailer}/${row.product_id} already alerted in the last ${RESTOCK_REPEAT_GUARD_MIN}min — not re-alerting`);
   } else if (!wasPurchasable && nowPurchasable) {
     const msg = `RESTOCK: ${row.product_name} is now purchasable at ${retailerLabel(row.retailer)}` + (result.price ? ` — $${result.price}` : '');
@@ -224,6 +225,7 @@ async function pollOneListing(env, row) {
     // had a real restock event but nothing to link out to (the user
     // asked for these to be clickable, same as the restock alert
     // services list already is).
+    restockSent.set(`${row.product_id}|${row.url}`, Date.now());
     await insertEvent(env, { created_at: now, kind: 'restock', product_id: row.product_id, message: msg, data_json: JSON.stringify({ ...result, url: row.url }) });
     // 2026-10-14 — a muted product (see 0008_product_muted.sql) still
     // gets this event recorded — the full notification-history page
@@ -242,7 +244,17 @@ async function pollOneListing(env, row) {
     const markupOverMsrp = (row.tcgplayer_ref - row.msrp) / row.msrp;
     const retailPremiumOverMsrp = (result.price - row.msrp) / row.msrp;
 
-    if (markupOverMsrp >= MIN_MARKUP_OVER_MSRP && retailPremiumOverMsrp <= MAX_RETAIL_PREMIUM_OVER_MSRP) {
+    // 2026-10-20 — BUG FIX: this used to record an event AND send a push on
+    // EVERY 15s tick for as long as the product stayed at a good price
+    // (≈14,000 events/day per the D1 dashboard). That bloated the events
+    // table and is what drained the database's daily read limit. Now it
+    // fires once, then stays quiet for 6 hours for that listing.
+    const gpKey = `${row.product_id}|${row.url}`;
+    const lastGp = goodPriceSent.get(gpKey) || 0;
+    if (markupOverMsrp >= MIN_MARKUP_OVER_MSRP && retailPremiumOverMsrp <= MAX_RETAIL_PREMIUM_OVER_MSRP
+        && Date.now() - lastGp > GOOD_PRICE_QUIET_MS
+        && !(await hasRecentRestock(env, row.product_id, row.url, GOOD_PRICE_QUIET_MS / 60000, 'good_price'))) {
+      goodPriceSent.set(gpKey, Date.now());
       const msg = `GOOD PRICE: ${row.product_name} — MSRP $${row.msrp.toFixed(2)}, TCGPlayer $${row.tcgplayer_ref.toFixed(2)} (+${Math.round(markupOverMsrp * 100)}% over MSRP) — purchasable now at ${retailerLabel(row.retailer)} for $${result.price.toFixed(2)}`;
       await insertEvent(env, {
         created_at: now,
@@ -356,6 +368,9 @@ async function pollWalmartDrawing(env) {
 // ticks and updated in place when a poll changes them, so "was it in stock
 // last time?" stays correct. New/removed products show up within a minute.
 let laneCache = null;
+const goodPriceSent = new Map(); // listing -> last good-price alert time (memory)
+const restockSent = new Map();   // listing -> last restock alert time (memory)
+const GOOD_PRICE_QUIET_MS = 6 * 60 * 60 * 1000;
 export async function tick(env) {
   const slowEveryN = parseInt(env.SLOW_LANE_EVERY_N_TICKS || '3', 10);
 
