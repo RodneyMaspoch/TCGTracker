@@ -290,6 +290,8 @@
     const out = [];
     for (const l of product.listings || []) if (l.image_url) out.push(l.image_url);
     for (const id of product.ids || [product.id]) if (CFG.images[id]) out.push(CFG.images[id]);
+    const tcg = tcgImage(product.name); // TCGplayer's own product photo (via the daily price copy)
+    if (tcg) out.push(tcg);
     return [...new Set(out)];
   }
   function el(tag, cls, text) {
@@ -507,7 +509,8 @@
       if (it.url) linkify(tile, it.url);
       else if (product) tile.addEventListener('click', () => openSheet(product));
       let photo;
-      const pic = !product && imgMap[it.name];
+      if (!product && it.kind !== 'EVENT' && it.kind !== 'LOTTERY') wantMarket(it.name);
+      const pic = !product && (imgMap[it.name] || tcgImage(it.name));
       if (product) {
         photo = buildPhoto(product, 'tl-photo', imgMap[it.name]);
         photo.appendChild(buildTrackPill(product));
@@ -566,7 +569,10 @@
     const shown = q ? state.products.filter((p) => p.name.toLowerCase().includes(q)) : state.products;
     const add = document.getElementById('tlAdd');
     if (add) add.hidden = !q || shown.length > 0;
-    if (!shown.length) { root.appendChild(el('div', 'empty-state', q ? `Nothing tracked matches "${filterText.trim()}".` : 'No tracked products yet.')); return; }
+    // 2026-10-20 — an empty section is hidden instead of saying "nothing here".
+    const sec = root.closest('section');
+    if (sec) sec.hidden = !shown.length;
+    if (!shown.length) return;
     const groups = new Map();
     for (const p of shown) {
       const c = categorize(p.name);
@@ -878,6 +884,8 @@
       return;
     }
     const list = catalog.filter(chipFilter).filter((it) => !findText || matchesFind(it.title));
+    // Walmart has nothing sold by Walmart itself for this game → hide the section.
+    if (section && CFG.search === 'walmart' && !catalog.length) { section.hidden = true; return; }
     if (msg) {
       if (!catalog.length) msg.textContent = CFG.search === 'nintendo' ? 'Loading the Nintendo Store…' : 'Nothing sold by Walmart itself right now — use the search at the top to look everywhere.';
       else if (findText) msg.textContent = list.length ? `${list.length} match "${findText}" — use the search at the top to look everywhere` : `No matches here — use the search at the top to look everywhere for "${findText}"`;
@@ -941,7 +949,7 @@
     wrap.innerHTML = '';
     for (const w of items) {
       const tile = el('div', 'tl-tile');
-      const photo = buildPhoto(w.img ? { id: w.img, ids: [w.img], listings: [], name: w.name } : { ids: [], listings: [], name: w.name }, 'tl-photo', imgMap[w.name]);
+      const photo = buildPhoto(w.img ? { id: w.img, ids: [w.img], listings: [], name: w.name } : { ids: [], listings: [], name: w.name }, 'tl-photo', imgMap[w.name] || tcgImage(w.name));
       photo.appendChild(el('span', 'tl-badge kind-soon', 'Not listed yet'));
       const btn = el('button', 'tl-track', '+ WATCH');
       btn.type = 'button';
@@ -986,6 +994,11 @@
   // From the server's daily TCGplayer price copy (/api/market). Shown under
   // every product as "TCGplayer $X" next to the store price / MSRP.
   const marketMap = {};
+  // TCGplayer product photos come with the prices; ask for the bigger size.
+  function tcgImage(name) {
+    const m = name && marketMap[name];
+    return m && m.image ? m.image.replace(/_\d+w\.(jpg|png|webp)/i, '_400w.$1') : null;
+  }
   const marketAsked = new Set();
   function addMarket(tile, name, known) {
     const m = known || (marketMap[name] && marketMap[name].market);
