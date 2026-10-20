@@ -122,13 +122,49 @@ export function parseTipTime(text, now = new Date()) {
   return at;
 }
 
+// 2026-10-20 — a DAY with no time ("likely this Wednesday (10/21)",
+// "Oct 21", "tomorrow"). Returns {y, m, d} in Eastern time when it is
+// today .. 7 days ahead, else null.
+const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+export function parseTipDay(text, now = new Date()) {
+  const t = String(text).toLowerCase();
+  const etNow = new Date(now.getTime() - 4 * 3600000); // close enough to "today" in ET
+  const today = Date.UTC(etNow.getUTCFullYear(), etNow.getUTCMonth(), etNow.getUTCDate());
+  const pick = (y, m, d) => {
+    const ts = Date.UTC(y, m, d);
+    const days = (ts - today) / 86400000;
+    return days >= 0 && days <= 7 ? { y, m, d } : null;
+  };
+  let mm = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+  if (mm) return pick(etNow.getUTCFullYear(), Number(mm[1]) - 1, Number(mm[2])); // explicit date wins, even if past
+  mm = t.match(new RegExp(`\\b(${MONTHS.join('|')})[a-z]*\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b`));
+  if (mm) return pick(etNow.getUTCFullYear(), MONTHS.indexOf(mm[1]), Number(mm[2]));
+  if (/\btoday\b|\btonight\b/.test(t)) return pick(etNow.getUTCFullYear(), etNow.getUTCMonth(), etNow.getUTCDate());
+  if (/\btomorrow\b/.test(t)) return pick(etNow.getUTCFullYear(), etNow.getUTCMonth(), etNow.getUTCDate() + 1);
+  const wd = t.match(/\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/);
+  if (wd) {
+    const ahead = (WEEKDAYS.indexOf(wd[1]) - etNow.getUTCDay() + 7) % 7;
+    return pick(etNow.getUTCFullYear(), etNow.getUTCMonth(), etNow.getUTCDate() + ahead);
+  }
+  return null;
+}
+
 // Called by headsup.js for each NEW tip.
 export async function scheduleTipIfDated(env, row) {
-  const at = parseTipTime(`${row.title} ${row.snippet || ''}`);
-  if (!at) return;
+  const text = `${row.title} ${row.snippet || ''}`;
   const key = `tip-${row.source}-${row.dedupe_key}`.replace(/[^a-zA-Z0-9-]+/g, '-').slice(0, 120);
+  const at = parseTipTime(text);
+  let data;
+  if (at) {
+    data = { key, at: at.toISOString(), url: row.url || '/heads-up', title: row.title };
+  } else {
+    const day = parseTipDay(text);
+    if (!day) return;
+    const dayAt = etToDate(day.y, day.m, day.d, 8, 0); // 8:00 AM ET that day
+    data = { key, at: dayAt.toISOString(), dayOnly: true, url: row.url || '/heads-up', title: row.title };
+  }
   await env.DB.prepare(`INSERT INTO events (created_at, kind, product_id, message, data_json) VALUES (?, 'tip_scheduled', NULL, ?, ?)`)
-    .bind(new Date().toISOString(), `Upcoming (unconfirmed): ${row.title}`, JSON.stringify({ key, at: at.toISOString(), url: row.url || '/heads-up', title: row.title })).run();
+    .bind(new Date().toISOString(), `Upcoming (unconfirmed): ${row.title}`, JSON.stringify(data)).run();
 }
 
 async function runTipReminders(env, now) {
@@ -137,6 +173,13 @@ async function runTipReminders(env, now) {
   for (const r of results) {
     let d; try { d = JSON.parse(r.data_json); } catch (_) { continue; }
     const at = new Date(d.at);
+    if (d.dayOnly) {
+      // Day known, time not: evening before (7 PM ET) + morning of (8 AM ET).
+      const eve = new Date(at.getTime() - 13 * 3600000);
+      if (due(eve, now)) await send(env, 'tip_reminder', `${d.key}-eve`, '📅 Tomorrow (unconfirmed)', d.title, d.url);
+      if (due(at, now)) await send(env, 'tip_reminder', `${d.key}-am`, '📅 Today (unconfirmed)', d.title, d.url);
+      continue;
+    }
     const when = at.toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: '2-digit' });
     if (due(new Date(at.getTime() - 3600000), now)) await send(env, 'tip_reminder', `${d.key}-1h`, '⏰ In 1 hour (unconfirmed)', `${d.title} — ${when} ET`, d.url);
     if (due(new Date(at.getTime() - 15 * 60000), now)) await send(env, 'tip_reminder', `${d.key}-15m`, '⏰ In 15 minutes (unconfirmed)', `${d.title} — ${when} ET`, d.url);

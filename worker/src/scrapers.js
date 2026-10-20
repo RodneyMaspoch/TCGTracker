@@ -272,9 +272,22 @@ const DRAWING_SCHEDULE_RE = new RegExp(
 );
 const TZ_OFFSET_HOURS = { ET: -4, EDT: -4, EST: -5, PT: -7, PDT: -7, PST: -8, CT: -5, CDT: -5, CST: -6 };
 
+// 2026-10-20 — the page lists SEVERAL drawings (old ended ones and new
+// upcoming ones). Only the first match used to be read, so a stale
+// "Oct 14" line could hide a new "Oct 21" one. Now every match is parsed
+// and the soonest one that isn't stale wins.
 function parseUpcomingDrawingTime(bodyText, now = new Date()) {
-  const m = bodyText.match(DRAWING_SCHEDULE_RE);
-  if (!m) return null;
+  const re = new RegExp(DRAWING_SCHEDULE_RE.source, 'gi');
+  let best = null;
+  let m;
+  while ((m = re.exec(bodyText)) !== null) {
+    const iso = parseOneDrawingMatch(m, now);
+    if (iso && (!best || iso < best)) best = iso;
+  }
+  return best;
+}
+
+function parseOneDrawingMatch(m, now) {
   const [, monthDay, yearStr, timeStr, tzStr] = m;
   const year = yearStr ? parseInt(yearStr, 10) : now.getUTCFullYear();
   const tz = (tzStr || 'ET').toUpperCase();

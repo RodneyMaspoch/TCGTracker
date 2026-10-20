@@ -383,7 +383,7 @@
       const events = eventsRes.ok ? await eventsRes.json() : [];
       const headsUp = headsUpRes.ok ? await headsUpRes.json() : [];
       const normalized = [
-        ...(events || []).map((ev) => ({
+        ...(events || []).filter((ev) => ev.kind !== 'tip_scheduled').map((ev) => ({
           key: `event-${ev.id}`, message: ev.message, url: ev.url, created_at: ev.created_at, kind: ev.kind, confirmed: true,
         })),
         ...(headsUp || []).map((ev) => ({

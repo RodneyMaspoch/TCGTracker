@@ -19,7 +19,7 @@
 
 import { insertHeadsUp } from './db.js';
 import { notifyAll } from './push.js';
-import { scheduleTipIfDated } from './reminders.js';
+import { scheduleTipIfDated, parseTipDay } from './reminders.js';
 import { findOfficialMatch, officialSourcesCheck } from './officialnews.js';
 
 const KEYWORD_RE = /(drawing|lottery|restock|pre[- ]?order|drop)/i;
@@ -291,6 +291,36 @@ async function checkWebSource(env, source) {
 // These still land in the same "unconfirmed" heads_up tier rather than
 // being upgraded to a confirmed event, because it's Restockd's
 // detection, not one this app verified itself against the retailer page.
+// 2026-10-20 — Restockd's page also has short dated UPDATE NOTES, e.g.
+// "Walmart: Another drawing is likely this Wednesday (10/21), following the
+// pattern we've seen over the past few weeks." The entry parser below never
+// read those, which is how an Oct 21 Walmart drawing heads-up was missed.
+// Only notes naming a store + drawing/lottery/restock/drop AND a day that is
+// today or later are kept (old notes like "winners are being selected now"
+// are skipped).
+const RESTOCKD_NOTE_RE = /\b((?:Walmart|Target|Best ?Buy|GameStop|Pok[ée]mon Center|Costco|Sam'?s Club)\b[^.!?]{0,40}?(?:drawing|lottery|raffle|restock|drop|queue)[^.!?]{0,200}[.!?])/gi;
+async function checkRestockdNotes(env, text) {
+  const re = new RegExp(RESTOCKD_NOTE_RE.source, 'gi');
+  const now = new Date().toISOString();
+  let m; let count = 0;
+  const seen = new Set();
+  while ((m = re.exec(text)) !== null && count < 5) {
+    const note = m[1].trim().replace(/\s+/g, ' ');
+    if (seen.has(note)) continue;
+    seen.add(note);
+    if (!parseTipDay(note)) continue; // no upcoming day → not a heads-up
+    const row = {
+      source: 'restockd', game: 'pokemon', title: note.slice(0, 200), snippet: null,
+      url: /walmart/i.test(note) && /draw|lottery|raffle/i.test(note) ? 'https://www.walmart.com/shop/collectibles/draw' : RESTOCKD_URL,
+      retailer: normalizeRetailer((note.match(RETAILER_RE) || [])[0]),
+      discovered_at: now, dedupe_key: hashText(`note|${note}`),
+    };
+    const isNew = await insertHeadsUp(env, row);
+    if (isNew) { await notifyHeadsUp(env, row); await scheduleTipIfDated(env, row).catch((e) => console.error('[reminders] schedule:', e)); }
+    count++;
+  }
+}
+
 async function checkRestockd(env) {
   let html;
   try {
@@ -300,6 +330,7 @@ async function checkRestockd(env) {
     return;
   }
   const text = stripToText(html);
+  await checkRestockdNotes(env, text).catch((err) => console.error('[headsup] restockd notes:', err));
   const re = new RegExp(RESTOCKD_ENTRY_RE.source, 'g');
   const now = new Date().toISOString();
   let match;

@@ -195,7 +195,7 @@
     const [products, drawing, events] = await Promise.all([
       getJson('/api/products', 'products'),
       CFG.drawing ? getJson('/api/walmart-drawing', 'drawing') : Promise.resolve(null),
-      getJson('/api/events?limit=100', 'events'),
+      getJson('/api/events?limit=200', 'events'),
     ]);
     try {
       state.products = groupProducts((Array.isArray(products) ? products : []).filter((p) => p && p.game === GAME));
@@ -362,15 +362,41 @@
   function datedItems() {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const items = [];
+    let officialDrawDay = null;
     if (CFG.drawing && state.drawing) {
-      const next = state.drawing.next_drawing_at ? new Date(state.drawing.next_drawing_at) : null;
+      let next = state.drawing.next_drawing_at ? new Date(state.drawing.next_drawing_at) : null;
+      if (next && next.getTime() < Date.now() - 6 * 3600000) next = null; // old drawing — don't show it as upcoming
+      if (next) officialDrawDay = next.toDateString();
       items.push({
         kind: 'LOTTERY', name: 'Walmart Collectibles Drawing',
         date: state.drawing.is_open ? new Date() : next,
-        line: state.drawing.is_open ? 'OPEN NOW' : (next ? 'Entries open' : 'Next date not announced'),
+        line: state.drawing.is_open ? 'OPEN NOW'
+          : (next ? `Starts ${next.toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })} · Walmart` : 'Next date not announced'),
         url: 'https://www.walmart.com/shop/collectibles/draw', productId: 'pkm-30th-etb',
         open: !!state.drawing.is_open, exact: !!next,
       });
+    }
+    // 2026-10-20 — upcoming Walmart drawings reported by other sources
+    // (e.g. Restockd: "another drawing is likely this Wednesday (10/21)")
+    // before Walmart posts it. Shown as unconfirmed; dropped once Walmart's
+    // own page lists that same day.
+    if (CFG.drawing) {
+      const seenDays = new Set();
+      for (const ev of state.events) {
+        if (ev.kind !== 'tip_scheduled') continue;
+        let d; try { d = JSON.parse(ev.data_json || '{}'); } catch (_) { continue; }
+        if (!d.at || !/walmart/i.test(d.title || '') || !/draw|lottery|raffle/i.test(d.title || '')) continue;
+        const at = new Date(d.at);
+        if (isNaN(at) || at < today) continue;
+        const day = at.toDateString();
+        if (day === officialDrawDay || seenDays.has(day)) continue;
+        seenDays.add(day);
+        items.push({
+          kind: 'LOTTERY', name: 'Walmart drawing (unconfirmed)', date: at, exact: true,
+          line: d.dayOnly ? 'Likely · time not announced' : `Likely · ${at.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
+          url: 'https://www.walmart.com/shop/collectibles/draw',
+        });
+      }
     }
     for (const r of CFG.upcoming) {
       const d = new Date(r.date + 'T12:00:00');
