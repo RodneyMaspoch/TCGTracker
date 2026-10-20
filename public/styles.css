@@ -1593,3 +1593,8 @@ div.tl-item { padding-bottom: 14px; }
 .tl-gs-head { font: 800 18px/1.2 Archivo, sans-serif; margin: 22px 0 10px; text-align: center; }
 body.tl-gs-open { overflow: hidden; }
 @media (max-width: 600px) { .tl-slide-btn { display: none; } .tl-slider > .tl-strip { scrollbar-width: thin; } }
+/* 2026-10-20 — search at the top of product pages */
+.tl-topsearch { max-width: 1240px; margin: 18px auto 6px; padding: 0 16px; }
+.tl-topsearch .tl-gs-results:empty { display: none; }
+.tl-topsearch .tl-gs-results { border-bottom: 1px solid var(--hair, #eceef1); padding-bottom: 18px; margin-bottom: 8px; }
+.tl-gs-results .tl-chips a.tl-chip { text-decoration: none; display: inline-block; }

@@ -876,8 +876,8 @@
     }
     const list = catalog.filter(chipFilter).filter((it) => !findText || matchesFind(it.title));
     if (msg) {
-      if (!catalog.length) msg.textContent = CFG.search === 'nintendo' ? 'Loading the Nintendo Store…' : 'Nothing sold by Walmart itself right now — search above to look for something specific.';
-      else if (findText) msg.textContent = list.length ? `${list.length} match "${findText}" — press Enter to search the whole store` : `No matches here — press Enter to search the whole store for "${findText}"`;
+      if (!catalog.length) msg.textContent = CFG.search === 'nintendo' ? 'Loading the Nintendo Store…' : 'Nothing sold by Walmart itself right now — use the search at the top to look everywhere.';
+      else if (findText) msg.textContent = list.length ? `${list.length} match "${findText}" — use the search at the top to look everywhere` : `No matches here — use the search at the top to look everywhere for "${findText}"`;
       else msg.textContent = CFG.search === 'nintendo'
         ? 'Tap + TRACK on anything to get an alert when it comes in stock.'
         : `${catalog.length} sold by Walmart · ${catalog.filter(isIn).length} in stock now — tap + TRACK to get alerts`;
@@ -979,6 +979,8 @@
   // (server: /api/images, remembered 24h). Items with no match keep the
   // big date block.
   const imgMap = {};
+  // shared with site-search.js so the top search also finds Coming up / watch list items
+  window.TCG_PAGE = { game: GAME, upcoming: CFG.upcoming, watchlist: CFG.watchlist || [], images: CFG.images, imgMap };
   async function loadImages() {
     if (CFG.search !== 'walmart') return;
     const names = [
